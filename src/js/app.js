@@ -150,6 +150,9 @@ let undoStack = [];
 let redoStack = [];
 let currentFileSceneId = null;  // [LITE] ID de la escena que abrió el file picker
 let currentBrowsePath = '';     // [LITE] Subpath actual en el explorador jerárquico
+let liteNavHistory = [];        // [LITE] Historial de rutas visitadas
+let liteNavHistoryIndex = -1;   // [LITE] Posición actual en el historial
+let _isHistoryNavigation = false; // [LITE] Flag para no grabar entradas al navegar por historial
 
 // NOTA TÉCNICA: saveState ahora es ligero. No guarda las imágenes (MBs), solo referencias (Bytes).
 function saveState() {
@@ -1789,8 +1792,36 @@ document.addEventListener('keydown', (e) => {
 function closeLiteFileModal() {
     document.getElementById('quick-file-modal').style.display = 'none';
     currentBrowsePath = '';
+    // Limpiar historial al cerrar para evitar fugas de estado
+    liteNavHistory = [];
+    liteNavHistoryIndex = -1;
+    _isHistoryNavigation = false;
+    updateHistoryButtons();
     const search = document.getElementById('lite-file-search');
     if (search) search.value = '';
+}
+
+/** Habilita/deshabilita los botones ◀ / ▶ según la posición en el historial. */
+function updateHistoryButtons() {
+    const back = document.getElementById('btn-hist-back');
+    const fwd = document.getElementById('btn-hist-forward');
+    if (back) back.disabled = (liteNavHistoryIndex <= 0);
+    if (fwd) fwd.disabled = (liteNavHistoryIndex >= liteNavHistory.length - 1);
+}
+
+/**
+ * Graba un path en el historial de navegación del explorador de archivos.
+ * No graba si la navegación fue disparada por los propios botones atrás/adelante.
+ * @param {string} path
+ */
+function recordLiteHistory(path) {
+    if (_isHistoryNavigation) { _isHistoryNavigation = false; return; }
+    if (path === liteNavHistory[liteNavHistoryIndex]) return;
+    // Eliminar el futuro (rama muerta) si navegamos desde un punto intermedio
+    liteNavHistory = liteNavHistory.slice(0, liteNavHistoryIndex + 1);
+    liteNavHistory.push(path);
+    liteNavHistoryIndex++;
+    updateHistoryButtons();
 }
 
 /** Alterna la vista Grid/Lista en el explorador de archivos. */
@@ -1992,6 +2023,7 @@ async function openQuickFileModal(sceneId, subpath = '') {
         }
 
         grid.innerHTML = goUp + _renderGridItems(items, mediaRoot);
+        recordLiteHistory(currentBrowsePath);
 
     } catch (err) {
         console.error('[Lite] Error fetching /lite/files:', err);
@@ -2302,8 +2334,8 @@ function _onFolderDragOver(event) {
 
     const rect = container.getBoundingClientRect();
     const y = event.clientY - rect.top;
-    const threshold = 130; // pixels from edge to trigger scroll
-    const speed = 22;
+    const threshold = 250; // pixels from edge to trigger scroll
+    const speed = 30;
 
     clearInterval(_dragScrollInterval);
 
@@ -2515,6 +2547,19 @@ document.addEventListener('DOMContentLoaded', () => {
         const dropdown = document.getElementById('timeline-nav-results');
         if (dropdown) dropdown.style.display = 'none';
         timelineNavSearch('');
+    });
+    // Historial de navegación del explorador de archivos
+    document.getElementById('btn-hist-back')?.addEventListener('click', () => {
+        if (liteNavHistoryIndex <= 0) return;
+        liteNavHistoryIndex--;
+        _isHistoryNavigation = true;
+        openQuickFileModal(null, liteNavHistory[liteNavHistoryIndex]);
+    });
+    document.getElementById('btn-hist-forward')?.addEventListener('click', () => {
+        if (liteNavHistoryIndex >= liteNavHistory.length - 1) return;
+        liteNavHistoryIndex++;
+        _isHistoryNavigation = true;
+        openQuickFileModal(null, liteNavHistory[liteNavHistoryIndex]);
     });
     document.getElementById('lite-sort-select')?.addEventListener('change', () => {
         // Re-render with new sort: if searching, re-filter; otherwise reload current folder

@@ -280,6 +280,14 @@
             <div class="close-modal-x" onclick="closeLiteFileModal()">×</div>
             <h3 style="margin:0 0 10px 0; color:var(--accent); font-size:1.05rem;">🗂️ Explorador de Archivos</h3>
 
+            <!-- History navigation buttons -->
+            <div style="display:flex; align-items:center; gap:4px; margin-bottom:6px;">
+                <button id="btn-hist-back" disabled title="Atrás"
+                    style="background:#222; border:1px solid #444; color:#ccc; padding:3px 10px; border-radius:4px; cursor:pointer; font-size:0.85rem; line-height:1;">◀</button>
+                <button id="btn-hist-forward" disabled title="Adelante"
+                    style="background:#222; border:1px solid #444; color:#ccc; padding:3px 10px; border-radius:4px; cursor:pointer; font-size:0.85rem; line-height:1;">▶</button>
+            </div>
+
             <!-- Breadcrumb bar -->
             <div class="file-breadcrumb" id="lite-breadcrumb">
                 <span class="crumb" onclick="openQuickFileModal(currentFileSceneId, '')">🏠 Inicio</span>
