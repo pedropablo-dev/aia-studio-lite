@@ -1637,7 +1637,7 @@ footer {
 }
 
 .scene-card[data-type="audio"] .linked-file-name {
-    color: #bc13fe !important;
+    color: #d500f9 !important;
 }
 
 /* also colour the chain icon */
@@ -1651,5 +1651,5 @@ footer {
 }
 
 .scene-card[data-type="audio"] [style*="flex-shrink:0"] {
-    color: #bc13fe !important;
+    color: #d500f9 !important;
 }

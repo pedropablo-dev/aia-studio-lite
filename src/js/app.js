@@ -2284,8 +2284,8 @@ function _onFolderDragOver(event) {
 
     const rect = container.getBoundingClientRect();
     const y = event.clientY - rect.top;
-    const threshold = 50; // pixels from edge to trigger scroll
-    const speed = 15;
+    const threshold = 130; // pixels from edge to trigger scroll
+    const speed = 22;
 
     clearInterval(_dragScrollInterval);
 
@@ -2490,6 +2490,13 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     document.getElementById('lite-nav-end')?.addEventListener('click', () => {
         if (scenes.length > 0) timelineNavGoTo(scenes[scenes.length - 1].id);
+    });
+    document.getElementById('lite-nav-clear')?.addEventListener('click', () => {
+        const inp = document.getElementById('timeline-nav-input');
+        if (inp) { inp.value = ''; }
+        const dropdown = document.getElementById('timeline-nav-results');
+        if (dropdown) dropdown.style.display = 'none';
+        timelineNavSearch('');
     });
     document.getElementById('lite-sort-select')?.addEventListener('change', () => {
         // Re-render with new sort: if searching, re-filter; otherwise reload current folder
