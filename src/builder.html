@@ -84,19 +84,8 @@
         <button onclick="exportSRT()" style="border: 1px solid #fca211c5; color: #fca311;"
             title="Descargar Guion como Subtítulos">📝</button>
         <input type="file" id="load-json" class="hidden-file-input" accept=".json" onchange="loadProject(this)">
-        <div class="vertical-separator"></div>
-        <button onclick="openIngestModal()" class="btn-secondary" style="margin-left: 10px;">
-            📥 Ingesta
-        </button>
-        <button onclick="openAIMatchModal(selectedId)" title="Buscar con IA"
-            style="display:flex; align-items:center; gap:5px;">
-            ✨ Buscar IA
-        </button>
-        <button onclick="openMediaPoolModal()" title="Abrir Media Pool"
-            style="display:flex; align-items:center; gap:5px;">
-            🎛️ Media Pool
-        </button>
     </footer>
+
 
     <div class="modal-overlay" id="edit-modal">
         <div class="modal-content">
@@ -245,6 +234,30 @@
             <h3 style="margin:0 0 10px 0;">Seleccionar Hablante</h3>
             <div class="color-section-title">Disponibles</div>
             <div id="quick-speaker-list-container"></div>
+        </div>
+    </div>
+
+    <!-- LITE FILE PICKER MODAL -->
+    <div class="modal-overlay" id="quick-file-modal">
+        <div class="modal-content"
+            style="height: auto; max-width: 480px; max-height: 80vh; display:flex; flex-direction:column;">
+            <div class="close-modal-x" onclick="document.getElementById('quick-file-modal').style.display='none'">×
+            </div>
+            <h3 style="margin:0 0 12px 0; color:var(--accent);">🔗 Vincular Archivo Local</h3>
+
+            <input type="text" id="lite-file-search" onkeyup="filterQuickFiles()" placeholder="🔍 Buscar archivo..."
+                style="width:100%; box-sizing:border-box; background:#222; border:1px solid #444; color:#fff; padding:8px 12px; border-radius:4px; margin-bottom:10px; font-size:0.9rem;">
+
+            <div class="color-section-title" id="lite-file-count" style="margin-bottom:6px;">Disponibles</div>
+
+            <ul id="quick-file-list"
+                style="list-style:none; margin:0; padding:0; overflow-y:auto; flex:1; max-height:50vh;">
+                <li style="color:#666; padding:20px; text-align:center; font-style:italic;">Cargando archivos…</li>
+            </ul>
+
+            <div style="display:flex; justify-content:flex-end; margin-top:12px;">
+                <button onclick="document.getElementById('quick-file-modal').style.display='none'">Cancelar</button>
+            </div>
         </div>
     </div>
 

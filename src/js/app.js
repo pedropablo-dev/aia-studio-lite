@@ -148,6 +148,7 @@ let currentZoom = 1.0;
 const MAX_HISTORY = 50;
 let undoStack = [];
 let redoStack = [];
+let currentFileSceneId = null; // [LITE] ID de la escena que abrió el file picker
 
 // NOTA TÉCNICA: saveState ahora es ligero. No guarda las imágenes (MBs), solo referencias (Bytes).
 function saveState() {
@@ -792,13 +793,18 @@ function render() {
                     </div>
                 </div>
 
-                <div class="drop-zone ${imgSrc || (scene.linkedFile && /\.(wav|mp3|flac|ogg|m4a|aac)$/i.test(scene.linkedFile)) ? 'has-image' : ''}" 
+                <div class="drop-zone ${scene.linkedFile && !/\.(wav|mp3|flac|ogg|m4a|aac)$/i.test(scene.linkedFile) ? 'has-image' : (imgSrc ? 'has-image' : '')}" 
                      onclick="triggerImageUpload('${scene.id}')" ondragover="event.preventDefault()" ondrop="handleImageDrop(event, '${scene.id}')">
                     ${(scene.linkedFile && /\.(wav|mp3|flac|ogg|m4a|aac)$/i.test(scene.linkedFile)) ? `
                         <div style="width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; background:#1a1a1a;">
-                             <div style="font-size:1.8rem; margin-bottom:0;">🎵</div>
+                             <div style="font-size:1.8rem; margin-bottom:0;">\ud83c\udfb5</div>
                         </div>
                         <img src="" id="img-${scene.id}" style="display:none">
+                    ` : (scene.linkedFile && /\.(mp4|mov|mxf|avi|webm|jpg|jpeg|png|webp)$/i.test(scene.linkedFile)) ? `
+                        <img src="http://127.0.0.1:9999/thumbnail?path=${encodeURIComponent(scene.linkedFile)}&folder=${encodeURIComponent(document.getElementById('media-path-input')?.value || '')}" 
+                             id="img-${scene.id}" 
+                             style="width:100%; height:100%; object-fit:cover;"
+                             onerror="this.style.display='none'; this.previousElementSibling && (this.previousElementSibling.style.display='flex');">
                     ` : `
                         <span>Imagen</span>
                         <img src="${imgSrc}" id="img-${scene.id}">
@@ -875,19 +881,10 @@ function render() {
                     </div>
 
                     <div style="display:flex; gap:5px;">
-                        <button onclick="selectedId='${scene.id}'; render(); triggerVideoLink('${scene.id}')" title="Vincular Vídeo Real" 
+                        <button onclick="selectedId='${scene.id}'; render(); openQuickFileModal('${scene.id}')" title="Vincular Archivo Local" 
                                 style="background:#222; border:1px solid #444; color:#ccc; width:30px; height:28px; border-radius:4px; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:all 0.2s;">
                             🔗
                         </button>
-                        <button onclick="selectedId='${scene.id}'; render(); openAIMatchModal('${scene.id}')" title="Buscar con IA" 
-                                style="background:#222; border:1px solid #444; color:#ae81ff; width:30px; height:28px; border-radius:4px; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:all 0.2s;">
-                            ✨
-                        </button>
-                        <button onclick="selectedId='${scene.id}'; render(); openMediaPoolModal('${scene.id}')" title="Media Pool" 
-                                style="background:#222; border:1px solid #444; color:#fca311; width:30px; height:28px; border-radius:4px; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:all 0.2s;">
-                            🎛️
-                        </button>
-                        <input type="file" id="vid-${scene.id}" style="display:none" accept="video/*, image/*" onchange="handleVideoSelect(this, '${scene.id}')">
                     </div>
 
                     <div class="move-group">
@@ -1768,11 +1765,102 @@ document.addEventListener('keydown', (e) => {
 
 // --- FUNCIONES DEL BOTÓN DE VINCULAR MEDIA ---
 
-// 1. Esta función activa el input oculto cuando pulsas el botón 🔗
-function triggerVideoLink(id) {
-    const input = document.getElementById(`vid-${id}`);
-    if (input) input.click();
-    else console.error("No encuentro el input para la escena " + id);
+// --- [LITE] VINCULACIÓN DE ARCHIVOS VÍA API ---
+
+/**
+ * Abre el modal Lite, fetchea /lite/files y puebla la lista.
+ * @param {string} sceneId - ID de la escena que quiere vincular un archivo.
+ */
+async function openQuickFileModal(sceneId) {
+    currentFileSceneId = sceneId;
+
+    const list = document.getElementById('quick-file-list');
+    const counter = document.getElementById('lite-file-count');
+    const searchInput = document.getElementById('lite-file-search');
+
+    // Resetear UI
+    if (searchInput) searchInput.value = '';
+    list.innerHTML = '<li style="color:#666; padding:20px; text-align:center; font-style:italic;">Cargando archivos…</li>';
+    document.getElementById('quick-file-modal').style.display = 'flex';
+
+    // Read the user-configured Media Root from the modal input
+    const mediaRoot = document.getElementById('media-path-input')?.value?.trim() || '';
+    const url = 'http://localhost:9999/lite/files' + (mediaRoot ? '?folder=' + encodeURIComponent(mediaRoot) : '');
+
+    try {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        const files = data.files || [];
+
+        if (counter) counter.textContent = `${files.length} archivo${files.length !== 1 ? 's' : ''} disponible${files.length !== 1 ? 's' : ''}`;
+
+        if (files.length === 0) {
+            list.innerHTML = '<li style="color:#666; padding:20px; text-align:center; font-style:italic;">No se encontraron archivos multimedia en la ruta configurada.</li>';
+            return;
+        }
+
+        const iconMap = { video: '🎥', audio: '🎧', image: '🖼️' };
+
+        list.innerHTML = files.map(f => {
+            const icon = iconMap[f.type] || '📄';
+            const safeP = f.path.replace(/'/g, "\\'");
+            return `<li data-path="${f.path}"
+                        onclick="selectLiteFile('${safeP}')"
+                        style="
+                            display:flex; align-items:center; gap:10px;
+                            padding:10px 12px;
+                            cursor:pointer;
+                            border-bottom:1px solid #2a2a2a;
+                            transition:background 0.15s;
+                        "
+                        onmouseover="this.style.background='#2a2a2a'"
+                        onmouseout="this.style.background='transparent'">
+                    <span style="font-size:1.2rem; flex-shrink:0;">${icon}</span>
+                    <span style="flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:#eee; font-size:0.85rem;" title="${f.path}">${f.path}</span>
+                    <span style="font-size:0.7rem; color:#666; flex-shrink:0;">${f.type}</span>
+                </li>`;
+        }).join('');
+
+    } catch (err) {
+        console.error('[Lite] Error fetching /lite/files:', err);
+        list.innerHTML = `<li style="color:#ff5252; padding:20px; text-align:center;">Error al conectar con la API: ${err.message}</li>`;
+    }
+}
+
+/**
+ * Filtra la lista del modal en tiempo real según el texto del input #lite-file-search.
+ */
+function filterQuickFiles() {
+    const query = (document.getElementById('lite-file-search')?.value || '').toLowerCase();
+    const items = document.querySelectorAll('#quick-file-list li[data-path]');
+    let visible = 0;
+    items.forEach(li => {
+        const match = li.dataset.path.toLowerCase().includes(query);
+        li.style.display = match ? 'flex' : 'none';
+        if (match) visible++;
+    });
+    const counter = document.getElementById('lite-file-count');
+    if (counter) counter.textContent = `${visible} resultado${visible !== 1 ? 's' : ''}`;
+}
+
+/**
+ * Vincula el archivo seleccionado a la escena y cierra el modal.
+ * @param {string} filePath - Ruta relativa devuelta por /lite/files (forward slashes).
+ */
+function selectLiteFile(filePath) {
+    const scene = scenes.find(s => s.id === currentFileSceneId);
+    if (!scene) {
+        console.error('[Lite] No scene found with id:', currentFileSceneId);
+        return;
+    }
+    saveState();
+    scene.linkedFile = filePath;
+    scene.startTime = 0;   // Reset any previously synced timecode
+    document.getElementById('quick-file-modal').style.display = 'none';
+    currentFileSceneId = null;
+    render();
+    showToast(`🔗 Vinculado: ${filePath.split('/').pop()}`);
 }
 
 // --- FUNCIÓN HELPER PARA COPIAR NOMBRE ---

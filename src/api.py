@@ -154,54 +154,114 @@ async def get_raw_content(filename: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# .lite_cache directory for FFmpeg-generated thumbnails
+_CACHE_DIR = Path(os.path.dirname(os.path.abspath(__file__))).parent / ".lite_cache"
+_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+
+
 @app.get("/thumbnail")
-async def get_thumbnail(path: str):
+async def get_thumbnail(path: str, folder: Optional[str] = None):
+    """
+    [LITE] Returns a thumbnail for a media file.
+
+    - Images  → returned directly (FileResponse).
+    - Videos  → generates a JPEG thumbnail using FFmpeg at 00:00:01
+               and caches it in .lite_cache/ next to the project root.
+    - Audio   → 404 (no visual thumbnail).
+
+    Params:
+      path   - Relative path of the file (forward slashes, as returned by /lite/files).
+      folder - Absolute root directory that contains the file.  Falls back to
+               INPUT_DIR env var, then to utils.INPUT_DIR.
+    """
     if not path:
-        raise HTTPException(status_code=400, detail="Path required")
+        raise HTTPException(status_code=400, detail="path parameter required")
 
-    clean_path = path.replace("file:///", "").replace("file://", "")
+    # --- Resolve scan root ---
+    if folder and folder.strip():
+        scan_root = Path(folder.strip())
+    else:
+        env_dir = os.environ.get("INPUT_DIR")
+        scan_root = Path(env_dir) if env_dir else INPUT_DIR
 
-    # [MIGRATION v7.0] Flat Proxy Strategy for Recursive Files
-    safe_name = clean_path.replace("/", "_").replace("\\", "_")
-    base_name, _ = os.path.splitext(safe_name)
+    abs_path = scan_root / path
 
-    thumb_path = PROXIES_DIR / f"{base_name}.jpg"
+    if not abs_path.exists() or not abs_path.is_file():
+        raise HTTPException(status_code=404, detail=f"File not found: {path}")
 
-    if thumb_path.exists():
-        return FileResponse(thumb_path)
+    ext = abs_path.suffix.lower()
 
-    # Fallback: Try original basename logic for legacy compatibility
-    legacy_name = os.path.basename(clean_path)
-    legacy_base, _ = os.path.splitext(legacy_name)
-    legacy_path = PROXIES_DIR / f"{legacy_base}.jpg"
+    # --- Images: return directly ---
+    if ext in EXT_IMAGE:
+        return FileResponse(str(abs_path), media_type=f"image/{ext.lstrip('.')}")
 
-    if legacy_path.exists():
-        return FileResponse(legacy_path)
+    # --- Audio: no thumbnail ---
+    if ext in EXT_AUDIO:
+        raise HTTPException(status_code=404, detail="No thumbnail for audio files")
 
-    raise HTTPException(status_code=404, detail="Thumbnail not found")
+    # --- Videos: generate / return cached thumbnail ---
+    if ext in EXT_VIDEO:
+        # Build a stable, collision-free cache filename from the relative path
+        safe_name = path.replace("/", "_").replace("\\", "_")
+        cache_stem = os.path.splitext(safe_name)[0]
+        cache_path = _CACHE_DIR / f"{cache_stem}.jpg"
+
+        if cache_path.exists():
+            return FileResponse(str(cache_path), media_type="image/jpeg")
+
+        # Generate with FFmpeg
+        try:
+            cmd = [
+                "ffmpeg", "-y",
+                "-ss", "00:00:01",
+                "-i", str(abs_path),
+                "-vframes", "1",
+                "-q:v", "3",
+                str(cache_path)
+            ]
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                timeout=30
+            )
+            if result.returncode == 0 and cache_path.exists():
+                return FileResponse(str(cache_path), media_type="image/jpeg")
+            else:
+                logger.warning(f"FFmpeg thumbnail failed for '{path}': {result.stderr.decode(errors='replace')[:300]}")
+                raise HTTPException(status_code=404, detail="Thumbnail generation failed")
+        except subprocess.TimeoutExpired:
+            logger.error(f"FFmpeg timeout generating thumbnail for '{path}'")
+            raise HTTPException(status_code=504, detail="Thumbnail generation timed out")
+        except Exception as e:
+            logger.error(f"Unexpected error generating thumbnail for '{path}': {e}")
+            raise HTTPException(status_code=500, detail=str(e))
+
+    raise HTTPException(status_code=404, detail="Unsupported media type for thumbnail")
 
 
 # === CORE LITE ENDPOINT ===
 
 @app.get("/lite/files")
-async def list_lite_files():
+async def list_lite_files(folder: Optional[str] = None):
     """
-    Scans INPUT_DIR recursively and returns all media files.
+    Scans a directory recursively and returns all media files.
     Allowed: video (mp4, mov, mxf, avi, webm), audio (mp3, wav, aac),
              image (jpg, jpeg, png, webp).
     Hidden files are skipped.
     Relative paths are always returned with forward slashes.
-    """
-    input_dir_str = os.environ.get("INPUT_DIR")
 
-    # Prefer env var; fall back to the utils-imported constant
-    if input_dir_str:
-        scan_root = Path(input_dir_str)
+    Params:
+      folder - Optional absolute path provided by the frontend (user-configured
+               Media Root). Falls back to INPUT_DIR env var, then utils.INPUT_DIR.
+    """
+    if folder and folder.strip():
+        scan_root = Path(folder.strip())
     else:
-        scan_root = INPUT_DIR
+        env_dir = os.environ.get("INPUT_DIR")
+        scan_root = Path(env_dir) if env_dir else INPUT_DIR
 
     if not scan_root or not scan_root.is_dir():
-        logger.warning(f"/lite/files: INPUT_DIR '{scan_root}' is not a valid directory.")
+        logger.warning(f"/lite/files: scan_root '{scan_root}' is not a valid directory.")
         return {"status": "success", "files": []}
 
     files = []
@@ -209,22 +269,18 @@ async def list_lite_files():
         for entry in scan_root.rglob("*"):
             if not entry.is_file():
                 continue
-            # Skip hidden files (starting with a dot)
             if entry.name.startswith("."):
                 continue
-            # Only allow whitelisted extensions
             ext = entry.suffix.lower()
             if ext not in ALLOWED_EXTENSIONS:
                 continue
 
-            # Relative path, always forward slashes
             try:
                 rel_path = entry.relative_to(scan_root)
             except ValueError:
                 continue
 
-            rel_str = rel_path.as_posix()  # guaranteed forward slashes on all OS
-
+            rel_str = rel_path.as_posix()
             media_type = get_media_type(entry.name)
 
             files.append({
@@ -234,7 +290,7 @@ async def list_lite_files():
             })
 
     except Exception as e:
-        logger.error(f"Error scanning INPUT_DIR for /lite/files: {e}")
+        logger.error(f"Error scanning for /lite/files: {e}")
         raise HTTPException(status_code=500, detail=f"Error scanning media directory: {str(e)}")
 
     return {"status": "success", "files": files}
