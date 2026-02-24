@@ -2565,6 +2565,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (q) filterQuickFiles();
         else openQuickFileModal(null, currentBrowsePath);
     });
+    document.getElementById('lite-search-clear')?.addEventListener('click', () => {
+        const searchInput = document.getElementById('lite-file-search');
+        if (searchInput) { searchInput.value = ''; }
+        filterQuickFiles();
+    });
 });
 
 // ================================================================
