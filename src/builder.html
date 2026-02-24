@@ -237,29 +237,41 @@
         </div>
     </div>
 
-    <!-- LITE FILE PICKER MODAL -->
+    <!-- LITE FILE EXPLORER MODAL -->
     <div class="modal-overlay" id="quick-file-modal">
-        <div class="modal-content"
-            style="height: auto; max-width: 480px; max-height: 80vh; display:flex; flex-direction:column;">
-            <div class="close-modal-x" onclick="document.getElementById('quick-file-modal').style.display='none'">×
+        <div class="modal-content">
+            <div class="close-modal-x" onclick="closeLiteFileModal()">×</div>
+            <h3 style="margin:0 0 10px 0; color:var(--accent); font-size:1.05rem;">🗂️ Explorador de Archivos</h3>
+
+            <!-- Breadcrumb bar -->
+            <div class="file-breadcrumb" id="lite-breadcrumb">
+                <span class="crumb" onclick="openQuickFileModal(currentFileSceneId, '')">🏠 Inicio</span>
             </div>
-            <h3 style="margin:0 0 12px 0; color:var(--accent);">🔗 Vincular Archivo Local</h3>
 
-            <input type="text" id="lite-file-search" onkeyup="filterQuickFiles()" placeholder="🔍 Buscar archivo..."
-                style="width:100%; box-sizing:border-box; background:#222; border:1px solid #444; color:#fff; padding:8px 12px; border-radius:4px; margin-bottom:10px; font-size:0.9rem;">
+            <!-- Search + counter row -->
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
+                <input type="text" id="lite-file-search" oninput="filterQuickFiles()"
+                    placeholder="🔍 Buscar en toda la biblioteca..."
+                    style="flex:1; background:#1a1a1a; border:1px solid #333; color:#fff; padding:7px 12px; border-radius:4px; font-size:0.85rem;">
+                <span id="lite-file-count" style="font-size:0.75rem; color:#666; white-space:nowrap;">—</span>
+            </div>
 
-            <div class="color-section-title" id="lite-file-count" style="margin-bottom:6px;">Disponibles</div>
+            <!-- Grid wrapper -->
+            <div class="file-grid-wrapper" id="lite-grid-wrapper">
+                <div class="file-grid" id="quick-file-list">
+                    <div class="file-grid-empty">Cargando…</div>
+                </div>
+            </div>
 
-            <ul id="quick-file-list"
-                style="list-style:none; margin:0; padding:0; overflow-y:auto; flex:1; max-height:50vh;">
-                <li style="color:#666; padding:20px; text-align:center; font-style:italic;">Cargando archivos…</li>
-            </ul>
-
-            <div style="display:flex; justify-content:flex-end; margin-top:12px;">
-                <button onclick="document.getElementById('quick-file-modal').style.display='none'">Cancelar</button>
+            <!-- Footer -->
+            <div
+                style="display:flex; justify-content:flex-end; margin-top:12px; padding-top:10px; border-top:1px solid #222;">
+                <button onclick="closeLiteFileModal()">Cancelar</button>
             </div>
         </div>
     </div>
+
+
 
     <div class="modal-overlay" id="media-config-modal">
         <div class="modal-content"

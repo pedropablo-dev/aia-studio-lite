@@ -148,7 +148,8 @@ let currentZoom = 1.0;
 const MAX_HISTORY = 50;
 let undoStack = [];
 let redoStack = [];
-let currentFileSceneId = null; // [LITE] ID de la escena que abrió el file picker
+let currentFileSceneId = null;  // [LITE] ID de la escena que abrió el file picker
+let currentBrowsePath = '';     // [LITE] Subpath actual en el explorador jerárquico
 
 // NOTA TÉCNICA: saveState ahora es ligero. No guarda las imágenes (MBs), solo referencias (Bytes).
 function saveState() {
@@ -1767,81 +1768,184 @@ document.addEventListener('keydown', (e) => {
 
 // --- [LITE] VINCULACIÓN DE ARCHIVOS VÍA API ---
 
-/**
- * Abre el modal Lite, fetchea /lite/files y puebla la lista.
- * @param {string} sceneId - ID de la escena que quiere vincular un archivo.
- */
-async function openQuickFileModal(sceneId) {
-    currentFileSceneId = sceneId;
+/** Cierra el modal del explorador y limpia el estado de navegación. */
+function closeLiteFileModal() {
+    document.getElementById('quick-file-modal').style.display = 'none';
+    currentBrowsePath = '';
+    const search = document.getElementById('lite-file-search');
+    if (search) search.value = '';
+}
 
-    const list = document.getElementById('quick-file-list');
+/**
+ * Construye las URLs base con folder param.
+ * @returns {string} URL base sin trailing query chars.
+ */
+function _liteApiBase() {
+    const mediaRoot = document.getElementById('media-path-input')?.value?.trim() || '';
+    return 'http://localhost:9999/lite/files?folder=' + encodeURIComponent(mediaRoot);
+}
+
+/**
+ * Renderiza el panel de breadcrumbs para el path actual.
+ * @param {string} subpath - Ruta relativa actual (forward slashes).
+ */
+function _renderBreadcrumbs(subpath) {
+    const bar = document.getElementById('lite-breadcrumb');
+    if (!bar) return;
+
+    const parts = subpath ? subpath.split('/').filter(Boolean) : [];
+    let html = `<span class="crumb" onclick="openQuickFileModal(currentFileSceneId, '')">🏠 Inicio</span>`;
+
+    let accumulated = '';
+    parts.forEach((part, i) => {
+        accumulated += (accumulated ? '/' : '') + part;
+        const path = accumulated; // capture for closure
+        const isLast = i === parts.length - 1;
+        html += `<span class="crumb-sep">›</span>`;
+        if (isLast) {
+            html += `<span class="crumb-current">${part}</span>`;
+        } else {
+            html += `<span class="crumb" onclick="openQuickFileModal(currentFileSceneId, '${path.replace(/'/g, "\\'")}")">${part}</span>`;
+        }
+    });
+
+    bar.innerHTML = html;
+}
+
+/**
+ * Convierte la lista de ítems en tarjetas HTML para el grid.
+ * @param {Array} items
+ * @param {string} mediaRoot
+ * @returns {string} HTML string
+ */
+function _renderGridItems(items, mediaRoot) {
+    if (items.length === 0) {
+        return '<div class="file-grid-empty">No se encontraron elementos en esta carpeta.</div>';
+    }
+
+    return items.map(item => {
+        const safePath = item.path.replace(/'/g, "\\'");
+
+        if (item.type === 'folder') {
+            return `
+                <div class="file-card is-folder" data-path="${item.path}" data-name="${item.name}"
+                     onclick="openQuickFileModal(currentFileSceneId, '${safePath}')">
+                    <div class="file-icon">📁</div>
+                    <div class="file-label" title="${item.name}">${item.name}</div>
+                </div>`;
+        }
+
+        const isVideo = /\.(mp4|mov|mxf|avi|webm)$/i.test(item.name);
+        const isAudio = /\.(mp3|wav|aac)$/i.test(item.name);
+        const thumbUrl = isVideo || !isAudio
+            ? `http://127.0.0.1:9999/thumbnail?path=${encodeURIComponent(item.path)}&folder=${encodeURIComponent(mediaRoot)}`
+            : null;
+
+        const mediaEl = isAudio
+            ? `<div class="file-icon" style="height:90px; width:100%; display:flex; align-items:center; justify-content:center; background:#111; border-radius:5px; margin-bottom:7px; font-size:2.2rem;">🎧</div>`
+            : `<img src="${thumbUrl}" loading="lazy" alt="" onerror="this.style.display='none'">`;
+
+        const badge = item.type !== 'folder' ? `<span class="file-type-badge">${item.type}</span>` : '';
+
+        return `
+            <div class="file-card" data-path="${item.path}" data-name="${item.name}"
+                 onclick="selectLiteFile('${safePath}')">
+                ${badge}
+                ${mediaEl}
+                <div class="file-label" title="${item.path}">${item.name}</div>
+            </div>`;
+    }).join('');
+}
+
+/**
+ * Abre el explorador jerárquico de archivos Lite.
+ * @param {string} sceneId  - ID de la escena destino.
+ * @param {string} subpath  - Subdirectorio a mostrar (default = raíz).
+ */
+async function openQuickFileModal(sceneId, subpath = '') {
+    if (sceneId) currentFileSceneId = sceneId;
+    currentBrowsePath = subpath;
+
+    const grid = document.getElementById('quick-file-list');
     const counter = document.getElementById('lite-file-count');
     const searchInput = document.getElementById('lite-file-search');
 
-    // Resetear UI
-    if (searchInput) searchInput.value = '';
-    list.innerHTML = '<li style="color:#666; padding:20px; text-align:center; font-style:italic;">Cargando archivos…</li>';
+    // Clear search box when navigating folders (not when refreshing same level)
+    if (sceneId && searchInput) searchInput.value = '';
+
+    grid.innerHTML = '<div class="file-grid-empty">Cargando…</div>';
     document.getElementById('quick-file-modal').style.display = 'flex';
 
-    // Read the user-configured Media Root from the modal input
+    // Render breadcrumbs
+    _renderBreadcrumbs(subpath);
+
     const mediaRoot = document.getElementById('media-path-input')?.value?.trim() || '';
-    const url = 'http://localhost:9999/lite/files' + (mediaRoot ? '?folder=' + encodeURIComponent(mediaRoot) : '');
+    const url = _liteApiBase() + '&subpath=' + encodeURIComponent(subpath);
 
     try {
         const res = await fetch(url);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
-        const files = data.files || [];
+        const items = data.items || [];
 
-        if (counter) counter.textContent = `${files.length} archivo${files.length !== 1 ? 's' : ''} disponible${files.length !== 1 ? 's' : ''}`;
+        if (counter) counter.textContent = `${items.length} elemento${items.length !== 1 ? 's' : ''}`;
 
-        if (files.length === 0) {
-            list.innerHTML = '<li style="color:#666; padding:20px; text-align:center; font-style:italic;">No se encontraron archivos multimedia en la ruta configurada.</li>';
-            return;
+        // "Go up" card
+        let goUp = '';
+        if (subpath) {
+            const parent = subpath.includes('/') ? subpath.substring(0, subpath.lastIndexOf('/')) : '';
+            const safeParent = parent.replace(/'/g, "\\'");
+            goUp = `<div class="file-card is-parent" onclick="openQuickFileModal(currentFileSceneId, '${safeParent}')">
+                        <div class="file-icon">📂</div>
+                        <div class="file-label">..</div>
+                    </div>`;
         }
 
-        const iconMap = { video: '🎥', audio: '🎧', image: '🖼️' };
-
-        list.innerHTML = files.map(f => {
-            const icon = iconMap[f.type] || '📄';
-            const safeP = f.path.replace(/'/g, "\\'");
-            return `<li data-path="${f.path}"
-                        onclick="selectLiteFile('${safeP}')"
-                        style="
-                            display:flex; align-items:center; gap:10px;
-                            padding:10px 12px;
-                            cursor:pointer;
-                            border-bottom:1px solid #2a2a2a;
-                            transition:background 0.15s;
-                        "
-                        onmouseover="this.style.background='#2a2a2a'"
-                        onmouseout="this.style.background='transparent'">
-                    <span style="font-size:1.2rem; flex-shrink:0;">${icon}</span>
-                    <span style="flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:#eee; font-size:0.85rem;" title="${f.path}">${f.path}</span>
-                    <span style="font-size:0.7rem; color:#666; flex-shrink:0;">${f.type}</span>
-                </li>`;
-        }).join('');
+        grid.innerHTML = goUp + _renderGridItems(items, mediaRoot);
 
     } catch (err) {
         console.error('[Lite] Error fetching /lite/files:', err);
-        list.innerHTML = `<li style="color:#ff5252; padding:20px; text-align:center;">Error al conectar con la API: ${err.message}</li>`;
+        grid.innerHTML = `<div class="file-grid-empty" style="color:#ff5252;">Error conectando con la API: ${err.message}</div>`;
     }
 }
 
 /**
- * Filtra la lista del modal en tiempo real según el texto del input #lite-file-search.
+ * Búsqueda en toda la biblioteca (modo server-side rglob).
+ * Se activa con el input #lite-file-search.
  */
-function filterQuickFiles() {
-    const query = (document.getElementById('lite-file-search')?.value || '').toLowerCase();
-    const items = document.querySelectorAll('#quick-file-list li[data-path]');
-    let visible = 0;
-    items.forEach(li => {
-        const match = li.dataset.path.toLowerCase().includes(query);
-        li.style.display = match ? 'flex' : 'none';
-        if (match) visible++;
-    });
+async function filterQuickFiles() {
+    const query = (document.getElementById('lite-file-search')?.value || '').trim();
+    const grid = document.getElementById('quick-file-list');
     const counter = document.getElementById('lite-file-count');
-    if (counter) counter.textContent = `${visible} resultado${visible !== 1 ? 's' : ''}`;
+    const mediaRoot = document.getElementById('media-path-input')?.value?.trim() || '';
+
+    if (!query) {
+        // Empty query → go back to current browse level
+        openQuickFileModal(null, currentBrowsePath);
+        return;
+    }
+
+    grid.innerHTML = '<div class="file-grid-empty">Buscando…</div>';
+
+    // Reset breadcrumbs to show search context
+    const bar = document.getElementById('lite-breadcrumb');
+    if (bar) bar.innerHTML = `<span class="crumb" onclick="openQuickFileModal(currentFileSceneId, '')">🏠 Inicio</span><span class="crumb-sep">›</span><span class="crumb-current">🔍 "${query}"</span>`;
+
+    const url = _liteApiBase() + '&search=' + encodeURIComponent(query);
+
+    try {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        const items = data.items || [];
+
+        if (counter) counter.textContent = `${items.length} resultado${items.length !== 1 ? 's' : ''}`;
+        grid.innerHTML = _renderGridItems(items, mediaRoot);
+
+    } catch (err) {
+        console.error('[Lite] Error searching /lite/files:', err);
+        grid.innerHTML = `<div class="file-grid-empty" style="color:#ff5252;">Error en la búsqueda: ${err.message}</div>`;
+    }
 }
 
 /**

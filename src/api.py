@@ -216,7 +216,8 @@ async def get_thumbnail(path: str, folder: Optional[str] = None):
                 "-ss", "00:00:01",
                 "-i", str(abs_path),
                 "-vframes", "1",
-                "-q:v", "3",
+                "-vf", "scale=200:-1",
+                "-q:v", "5",
                 str(cache_path)
             ]
             result = subprocess.run(
@@ -242,17 +243,22 @@ async def get_thumbnail(path: str, folder: Optional[str] = None):
 # === CORE LITE ENDPOINT ===
 
 @app.get("/lite/files")
-async def list_lite_files(folder: Optional[str] = None):
+async def list_lite_files(
+    folder: Optional[str] = None,
+    subpath: str = "",
+    search: Optional[str] = None,
+):
     """
-    Scans a directory recursively and returns all media files.
-    Allowed: video (mp4, mov, mxf, avi, webm), audio (mp3, wav, aac),
-             image (jpg, jpeg, png, webp).
-    Hidden files are skipped.
-    Relative paths are always returned with forward slashes.
+    [LITE] Lists directory contents for the hierarchical file explorer.
+
+    - Default: returns only the contents of the current level (iterdir).
+    - With `search`: performs a recursive rglob scan filtered by filename.
+    - Folders are returned as items with type="folder".
 
     Params:
-      folder - Optional absolute path provided by the frontend (user-configured
-               Media Root). Falls back to INPUT_DIR env var, then utils.INPUT_DIR.
+      folder  - Absolute Media Root. Falls back to INPUT_DIR env var / utils.INPUT_DIR.
+      subpath - Relative path within the root to browse (default = root).
+      search  - If given, performs a recursive filename search in the entire tree.
     """
     if folder and folder.strip():
         scan_root = Path(folder.strip())
@@ -262,38 +268,71 @@ async def list_lite_files(folder: Optional[str] = None):
 
     if not scan_root or not scan_root.is_dir():
         logger.warning(f"/lite/files: scan_root '{scan_root}' is not a valid directory.")
-        return {"status": "success", "files": []}
+        return {"status": "success", "items": [], "current": subpath}
 
-    files = []
+    # Sanitize subpath to prevent traversal attacks
+    safe_sub = subpath.strip().lstrip("/").lstrip("\\")
+    if ".." in safe_sub.split("/") or ".." in safe_sub.split("\\"):
+        raise HTTPException(status_code=400, detail="Invalid subpath")
+
+    target = scan_root / safe_sub if safe_sub else scan_root
+
+    if not target.is_dir():
+        raise HTTPException(status_code=404, detail=f"Directory not found: {subpath}")
+
+    items = []
     try:
-        for entry in scan_root.rglob("*"):
-            if not entry.is_file():
-                continue
-            if entry.name.startswith("."):
-                continue
-            ext = entry.suffix.lower()
-            if ext not in ALLOWED_EXTENSIONS:
-                continue
+        # --- SEARCH MODE: recursive rglob filtered by filename ---
+        if search and search.strip():
+            query = search.strip().lower()
+            for entry in target.rglob("*"):
+                if not entry.is_file():
+                    continue
+                if entry.name.startswith("."):
+                    continue
+                if entry.suffix.lower() not in ALLOWED_EXTENSIONS:
+                    continue
+                if query not in entry.name.lower():
+                    continue
+                try:
+                    rel_str = entry.relative_to(scan_root).as_posix()
+                except ValueError:
+                    continue
+                items.append({
+                    "path": rel_str,
+                    "type": get_media_type(entry.name),
+                    "name": entry.name,
+                })
 
-            try:
-                rel_path = entry.relative_to(scan_root)
-            except ValueError:
-                continue
+        # --- BROWSE MODE: single-level iterdir ---
+        else:
+            entries = sorted(target.iterdir(), key=lambda e: (not e.is_dir(), e.name.lower()))
+            for entry in entries:
+                if entry.name.startswith("."):
+                    continue
+                try:
+                    rel_str = entry.relative_to(scan_root).as_posix()
+                except ValueError:
+                    continue
 
-            rel_str = rel_path.as_posix()
-            media_type = get_media_type(entry.name)
-
-            files.append({
-                "path": rel_str,
-                "type": media_type,
-                "name": entry.name,
-            })
+                if entry.is_dir():
+                    items.append({
+                        "path": rel_str,
+                        "type": "folder",
+                        "name": entry.name,
+                    })
+                elif entry.is_file() and entry.suffix.lower() in ALLOWED_EXTENSIONS:
+                    items.append({
+                        "path": rel_str,
+                        "type": get_media_type(entry.name),
+                        "name": entry.name,
+                    })
 
     except Exception as e:
         logger.error(f"Error scanning for /lite/files: {e}")
         raise HTTPException(status_code=500, detail=f"Error scanning media directory: {str(e)}")
 
-    return {"status": "success", "files": files}
+    return {"status": "success", "items": items, "current": safe_sub}
 
 
 # === RAW FILES (STAGING AREA) ===
