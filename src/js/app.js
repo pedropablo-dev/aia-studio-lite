@@ -150,9 +150,7 @@ let undoStack = [];
 let redoStack = [];
 let currentFileSceneId = null;  // [LITE] ID de la escena que abrió el file picker
 let currentBrowsePath = '';     // [LITE] Subpath actual en el explorador jerárquico
-let liteNavHistory = [];        // [LITE] Historial de rutas visitadas
-let liteNavHistoryIndex = -1;   // [LITE] Posición actual en el historial
-let _isHistoryNavigation = false; // [LITE] Flag para no grabar entradas al navegar por historial
+let liteDeepestPath = '';       // [LITE] Ruta más profunda visitada (para navegación jerárquica ►)
 
 // NOTA TÉCNICA: saveState ahora es ligero. No guarda las imágenes (MBs), solo referencias (Bytes).
 function saveState() {
@@ -1796,6 +1794,7 @@ function closeLiteFileModal() {
     liteNavHistory = [];
     liteNavHistoryIndex = -1;
     _isHistoryNavigation = false;
+    liteDeepestPath = '';
     updateHistoryButtons();
     const search = document.getElementById('lite-file-search');
     if (search) search.value = '';
@@ -1805,24 +1804,14 @@ function closeLiteFileModal() {
 function updateHistoryButtons() {
     const back = document.getElementById('btn-hist-back');
     const fwd = document.getElementById('btn-hist-forward');
-    if (back) back.disabled = (liteNavHistoryIndex <= 0);
-    if (fwd) fwd.disabled = (liteNavHistoryIndex >= liteNavHistory.length - 1);
+    if (back) back.disabled = (currentBrowsePath === '');
+    // ▶ enabled when liteDeepestPath goes deeper than currentBrowsePath
+    const prefix = currentBrowsePath === '' ? '' : currentBrowsePath + '/';
+    const canGoForward = liteDeepestPath !== '' && liteDeepestPath !== currentBrowsePath &&
+        (currentBrowsePath === '' || liteDeepestPath.startsWith(prefix));
+    if (fwd) fwd.disabled = !canGoForward;
 }
 
-/**
- * Graba un path en el historial de navegación del explorador de archivos.
- * No graba si la navegación fue disparada por los propios botones atrás/adelante.
- * @param {string} path
- */
-function recordLiteHistory(path) {
-    if (_isHistoryNavigation) { _isHistoryNavigation = false; return; }
-    if (path === liteNavHistory[liteNavHistoryIndex]) return;
-    // Eliminar el futuro (rama muerta) si navegamos desde un punto intermedio
-    liteNavHistory = liteNavHistory.slice(0, liteNavHistoryIndex + 1);
-    liteNavHistory.push(path);
-    liteNavHistoryIndex++;
-    updateHistoryButtons();
-}
 
 /** Alterna la vista Grid/Lista en el explorador de archivos. */
 function toggleLiteViewMode() {
@@ -2023,7 +2012,12 @@ async function openQuickFileModal(sceneId, subpath = '') {
         }
 
         grid.innerHTML = goUp + _renderGridItems(items, mediaRoot);
-        recordLiteHistory(currentBrowsePath);
+        // Update liteDeepestPath when entering a deeper folder
+        if (currentBrowsePath.length > liteDeepestPath.length ||
+            !liteDeepestPath.startsWith(currentBrowsePath)) {
+            liteDeepestPath = currentBrowsePath;
+        }
+        updateHistoryButtons();
 
     } catch (err) {
         console.error('[Lite] Error fetching /lite/files:', err);
@@ -2334,7 +2328,7 @@ function _onFolderDragOver(event) {
 
     const rect = container.getBoundingClientRect();
     const relativeY = event.clientY - rect.top;
-    const hitbox = rect.height * 0.25; // 25% of visible area
+    const hitbox = rect.height * 0.40; // 40% of visible area — only 20% neutral zone
     const speed = 40;
 
     clearInterval(_dragScrollInterval);
@@ -2548,18 +2542,22 @@ document.addEventListener('DOMContentLoaded', () => {
         if (dropdown) dropdown.style.display = 'none';
         timelineNavSearch('');
     });
-    // Historial de navegación del explorador de archivos
+    // Historial jerárquico del explorador de archivos
     document.getElementById('btn-hist-back')?.addEventListener('click', () => {
-        if (liteNavHistoryIndex <= 0) return;
-        liteNavHistoryIndex--;
-        _isHistoryNavigation = true;
-        openQuickFileModal(null, liteNavHistory[liteNavHistoryIndex]);
+        if (currentBrowsePath === '') return;
+        const lastSlash = currentBrowsePath.lastIndexOf('/');
+        const parentPath = lastSlash !== -1 ? currentBrowsePath.substring(0, lastSlash) : '';
+        openQuickFileModal(null, parentPath);
     });
     document.getElementById('btn-hist-forward')?.addEventListener('click', () => {
-        if (liteNavHistoryIndex >= liteNavHistory.length - 1) return;
-        liteNavHistoryIndex++;
-        _isHistoryNavigation = true;
-        openQuickFileModal(null, liteNavHistory[liteNavHistoryIndex]);
+        // Determinar la siguiente carpeta en la ruta más profunda visitada
+        if (!liteDeepestPath || liteDeepestPath === currentBrowsePath) return;
+        const prefix = currentBrowsePath === '' ? '' : currentBrowsePath + '/';
+        if (!liteDeepestPath.startsWith(prefix) && currentBrowsePath !== '') return;
+        const remainder = liteDeepestPath.slice(prefix.length);
+        const nextSegment = remainder.split('/')[0];
+        const nextPath = currentBrowsePath === '' ? nextSegment : currentBrowsePath + '/' + nextSegment;
+        openQuickFileModal(null, nextPath);
     });
     document.getElementById('lite-sort-select')?.addEventListener('change', () => {
         // Re-render with new sort: if searching, re-filter; otherwise reload current folder
