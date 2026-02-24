@@ -19,7 +19,7 @@ from pathlib import Path
 
 # [MIGRATION v7.0] Import Centralized Paths
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-import db_engine
+# [LITE] import db_engine  # REMOVED: no DB in Lite version
 from utils import INPUT_DIR, RAW_DIR, PROXIES_DIR
 
 # === LOGGING CONFIGURATION ===
@@ -48,8 +48,8 @@ app.add_middleware(
 )
 
 
-DB = None
-MONITOR_PROCESS = None
+# [LITE] DB = None  # REMOVED: no DB in Lite version
+# [LITE] MONITOR_PROCESS = None  # REMOVED: no Monitor in Lite version
 
 # CLASE FILTRO PARA SILENCIAR ENDPOINTS ESPECÍFICOS
 class EndpointFilter(logging.Filter):
@@ -112,13 +112,13 @@ async def startup_event():
     # Silenciar logs de acceso para /monitor/status
     logging.getLogger("uvicorn.access").addFilter(EndpointFilter())
     
-    global DB
-    try:
-        # DB will be migrated in Phase 3, currently relies on internal logic
-        DB = db_engine.VideoDatabase()
-        logger.info("Base de datos conectada correctamente")
-    except Exception as e:
-        logger.exception(f"Error conectando DB: {e}")
+    # [LITE] DB connection removed — no ChromaDB in Lite version
+    # global DB
+    # try:
+    #     DB = db_engine.VideoDatabase()
+    #     logger.info("Base de datos conectada correctamente")
+    # except Exception as e:
+    #     logger.exception(f"Error conectando DB: {e}")
     
     # Verify Staging Area from Utils
     if not RAW_DIR.exists():
@@ -196,7 +196,7 @@ async def get_thumbnail(path: str):
 
 @app.get("/assets")
 async def get_assets(limit: int = 50, page: int = 1, type: Optional[str] = None, sort: str = "date_desc", search: Optional[str] = None, folder: Optional[str] = None):
-    if not DB: raise HTTPException(status_code=503, detail="DB not initialized")
+    # [LITE] if not DB: raise HTTPException(status_code=503, detail="DB not initialized")
     
     # [MIGRATION v7.0] Source of Truth = Filesystem (Recursive)
     # We scan INPUT_DIR to find all available assets, then overlay DB metadata.
@@ -243,13 +243,12 @@ async def get_assets(limit: int = 50, page: int = 1, type: Optional[str] = None,
         logger.error(f"Error scanning assets: {e}")
         return []
 
-    # Get Metadata from DB (Bulk)
-    # Optimization: ideally we'd filter ID list, but getting all 5000 is locally fast enough for now
-    db_data = DB.get_all_videos(limit=5000)
+    # [LITE] Get Metadata from DB — removed in Lite version, db_map is always empty
+    # db_data = DB.get_all_videos(limit=5000)
     db_map = {}
-    if db_data and "ids" in db_data:
-        for i, id_val in enumerate(db_data["ids"]):
-            db_map[id_val] = db_data["metadatas"][i] if db_data["metadatas"] else {}
+    # if db_data and "ids" in db_data:
+    #     for i, id_val in enumerate(db_data["ids"]):
+    #         db_map[id_val] = db_data["metadatas"][i] if db_data["metadatas"] else {}
 
     # Merge FS + DB
     final_items = []
@@ -286,90 +285,29 @@ async def get_assets(limit: int = 50, page: int = 1, type: Optional[str] = None,
 
 @app.get("/search", response_model=List[SearchResult])
 async def search(query: str, min_score: float = 0.2, scope: str = "all"):
-    if not DB: raise HTTPException(status_code=503, detail="DB not initialized")
+    # [LITE] if not DB: raise HTTPException(status_code=503, detail="DB not initialized")
     final_results = []
     
     # Search logic remains largely unchanged, relying on DB paths
     # 0. FILENAME SEARCH
-    if scope in ["all", "filename"]:
-        try:
-            all_vids = DB.get_all_videos(limit=5000)
-            if all_vids and "ids" in all_vids:
-                ids = all_vids["ids"]
-                metas = all_vids["metadatas"]
-                q_lower = query.lower()
-                for i in range(len(ids)):
-                    if q_lower in ids[i].lower():
-                        meta = metas[i] if metas else {}
-                        final_results.append({
-                            "type": "filename",
-                            "filename": ids[i],
-                            "proxy_path": meta.get("path", ""),
-                            "original_path": meta.get("original_path", ""),
-                            "score": 1.0,
-                            "text": f"Coincidencia en nombre: {ids[i]}",
-                            "seconds": 0.0,
-                            "media_type": meta.get("media_type", "video")
-                        })
-        except Exception as e: logger.exception(f"Filename search error: {e}")
+    # [LITE] Filename search via DB removed — DB not available in Lite version
+    # if scope in ["all", "filename"]:
+    #     try:
+    #         all_vids = DB.get_all_videos(limit=5000)
+    #         ...
+    #     except Exception as e: logger.exception(f"Filename search error: {e}")
 
     # 1. VISUAL & 2. SEGMENTOS (Logic delegated to DB Engine)
     # ... (Keeping existing logic for brevity, assuming DB engine handles queries) ...
     # We re-implement the visual/audio search blocks to ensure no regressions
     
-    if scope in ["all", "visual"]:
-        try:
-            visual_res = DB.collection.query(query_texts=[query], n_results=10)
-            if visual_res and visual_res['ids']:
-                ids = visual_res['ids'][0]
-                metas = visual_res['metadatas'][0]
-                dists = visual_res['distances'][0]
-                for i in range(len(ids)):
-                    score = 1 - min(dists[i], 1.0)
-                    if score >= min_score:
-                        final_results.append({
-                            "type": "visual",
-                            "filename": ids[i],
-                            "proxy_path": metas[i].get("path", ""),
-                            "original_path": metas[i].get("original_path", ""),
-                            "score": score,
-                            "text": metas[i].get("vision", ""),
-                            "seconds": 0.0,
-                            "media_type": metas[i].get("media_type", "video")
-                        })
-        except Exception as e: logger.exception(f"Visual search error: {e}")
+    # [LITE] Visual search via DB.collection.query removed — no ChromaDB in Lite version
+    # if scope in ["all", "visual"]:
+    #     ...
 
-    if scope in ["all", "audio"]:
-        try:
-            if hasattr(DB, 'segment_collection'):
-                text_res = DB.segment_collection.query(query_texts=[query], n_results=15)
-                if text_res and text_res['ids']:
-                    ids = text_res['ids'][0]
-                    metas = text_res['metadatas'][0]
-                    dists = text_res['distances'][0]
-                    for i in range(len(ids)):
-                        score = 1 - min(dists[i], 1.0)
-                        if score >= min_score:
-                            meta = metas[i]
-                            secs = float(meta.get("start", meta.get("start_time", 0)))
-                            m, s = divmod(secs, 60); h, m = divmod(m, 60)
-                            time_str = "{:02d}:{:02d}:{:02d}".format(int(h), int(m), int(s))
-                            
-                            raw_proxy = meta.get("proxy_path", "")
-                            proxy_filename = os.path.basename(raw_proxy) if raw_proxy else meta.get("origin_file", "unknown")
-                            
-                            final_results.append({
-                                "type": "segment",
-                                "filename": meta.get("origin_file", "unknown"),
-                                "proxy_path": f"/proxies/{proxy_filename}",
-                                "original_path": meta.get("original_path", meta.get("proxy_path", "")),
-                                "score": score,
-                                "text": meta.get("text", ""),
-                                "start_time": time_str,
-                                "seconds": secs,
-                                "media_type": meta.get("media_type", "video")
-                            })
-        except Exception as e: logger.exception(f"Audio/Segment search error: {e}")
+    # [LITE] Audio/segment search via DB.segment_collection.query removed
+    # if scope in ["all", "audio"]:
+    #     ...
 
     final_results.sort(key=lambda x: x["score"], reverse=True)
     return final_results[:50]
@@ -829,16 +767,12 @@ def move_asset_logic(old_rel_path: str, new_rel_path: str, move_file_on_disk: bo
         abs_old = INPUT_DIR / old_rel_path
         abs_new = INPUT_DIR / new_rel_path
         
-        # 1. DB Migration
-        if DB:
-            # We assume DB ID is the relative path (forward slashes)
-            old_id = old_rel_path.replace("\\", "/")
-            new_id = new_rel_path.replace("\\", "/")
-            
-            # Check if exists in DB before trying move? 
-            # move_video_record handles "not found" gracefully.
-            DB.move_video_record(old_id, new_id, str(abs_new))
-            
+        # [LITE] 1. DB Migration removed — no DB in Lite version
+        # if DB:
+        #     old_id = old_rel_path.replace("\\", "/")
+        #     new_id = new_rel_path.replace("\\", "/")
+        #     DB.move_video_record(old_id, new_id, str(abs_new))
+
         # 2. File Move
         if move_file_on_disk:
             # Ensure parent exists
@@ -970,10 +904,10 @@ async def delete_asset(payload: AssetDeleteRequest):
         
         full_path = INPUT_DIR / rel_path
         
-        # 1. DB Deletion
-        if DB:
-            DB.delete_video_record(rel_path_id)
-            
+        # [LITE] 1. DB Deletion removed — no DB in Lite version
+        # if DB:
+        #     DB.delete_video_record(rel_path_id)
+
         # 2. FS Deletion
         if full_path.exists():
             try:
@@ -1068,59 +1002,22 @@ async def rename_folder(payload: RenameFolderRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# === MONITOR MANAGEMENT ===
+# === MONITOR MANAGEMENT === [LITE: Stubs — monitor removed] ===
 
 @app.get("/monitor/status")
 async def get_monitor_status():
-    global MONITOR_PROCESS
-    is_running = False
-    if MONITOR_PROCESS is not None:
-        if MONITOR_PROCESS.poll() is None:
-            is_running = True
-        else:
-            # Process finished on its own
-            MONITOR_PROCESS = None
-            
-    return {"running": is_running}
+    # [LITE] Monitor not available in Lite version
+    return {"running": False}
 
 @app.post("/monitor/start")
 async def start_monitor():
-    global MONITOR_PROCESS
-    if MONITOR_PROCESS is not None and MONITOR_PROCESS.poll() is None:
-        return {"success": True, "message": "Monitor already running"}
-    
-    try:
-        # Assuming src/monitor.py exists and we are in project root
-        monitor_script = os.path.join(os.getcwd(), "src", "monitor.py")
-        if not os.path.exists(monitor_script):
-             return {"success": False, "message": "src/monitor.py not found"}
-             
-        # Use sys.executable to ensure we use the same python interpreter (venv)
-        MONITOR_PROCESS = subprocess.Popen([sys.executable, monitor_script], cwd=os.getcwd())
-        logger.info(f"Monitor started with PID: {MONITOR_PROCESS.pid}")
-        return {"success": True, "message": "Monitor iniciado"}
-    except Exception as e:
-        logger.error(f"Failed to start monitor: {e}")
-        return {"success": False, "message": str(e)}
+    # [LITE] Monitor not available in Lite version
+    return {"success": False, "message": "Monitor no disponible en versión Lite"}
 
 @app.post("/monitor/stop")
 async def stop_monitor():
-    global MONITOR_PROCESS
-    if MONITOR_PROCESS is None:
-        return {"success": True, "message": "Monitor not running"}
-    
-    try:
-        MONITOR_PROCESS.terminate()
-        # Give it a moment to shut down gracefully if needed
-        MONITOR_PROCESS.wait(timeout=2)
-    except subprocess.TimeoutExpired:
-        MONITOR_PROCESS.kill()
-    except Exception as e:
-        logger.error(f"Error stopping monitor: {e}")
-        
-    MONITOR_PROCESS = None
-    logger.info("Monitor stopped")
-    return {"success": True, "message": "Monitor detenido"}
+    # [LITE] Monitor not available in Lite version
+    return {"success": False, "message": "Monitor no disponible en versión Lite"}
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=9999)
