@@ -1653,3 +1653,11 @@ footer {
 .scene-card[data-type="audio"] [style*="flex-shrink:0"] {
     color: #d500f9 !important;
 }
+
+/* History navigation buttons — disabled state */
+#btn-hist-back:disabled,
+#btn-hist-forward:disabled {
+    opacity: 0.3 !important;
+    pointer-events: none !important;
+    cursor: not-allowed !important;
+}

@@ -2328,21 +2328,21 @@ function _onFolderDragOver(event) {
     event.dataTransfer.dropEffect = 'move';
     event.currentTarget.style.borderColor = 'var(--accent)';
 
-    // Auto-scroll logic targeting the main scrollable container
+    // Auto-scroll: dynamic geometry — activates within 25% of container height from each edge
     const container = document.getElementById('quick-file-modal').querySelector('.modal-content');
     if (!container) return;
 
     const rect = container.getBoundingClientRect();
-    const y = event.clientY - rect.top;
-    const threshold = 250; // pixels from edge to trigger scroll
-    const speed = 30;
+    const relativeY = event.clientY - rect.top;
+    const hitbox = rect.height * 0.25; // 25% of visible area
+    const speed = 40;
 
     clearInterval(_dragScrollInterval);
 
-    if (y < threshold) {
+    if (relativeY < hitbox) {
         // scroll up
         _dragScrollInterval = setInterval(() => { if (container.scrollTop > 0) container.scrollTop -= speed; }, 20);
-    } else if (y > rect.height - threshold) {
+    } else if (relativeY > rect.height - hitbox) {
         // scroll down
         _dragScrollInterval = setInterval(() => { container.scrollTop += speed; }, 20);
     }
