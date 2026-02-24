@@ -2486,6 +2486,12 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('lite-nav-end')?.addEventListener('click', () => {
         if (scenes.length > 0) timelineNavGoTo(scenes[scenes.length - 1].id);
     });
+    document.getElementById('lite-sort-select')?.addEventListener('change', () => {
+        // Re-render with new sort: if searching, re-filter; otherwise reload current folder
+        const q = document.getElementById('lite-file-search')?.value?.trim();
+        if (q) filterQuickFiles();
+        else openQuickFileModal(null, currentBrowsePath);
+    });
 });
 
 // ================================================================

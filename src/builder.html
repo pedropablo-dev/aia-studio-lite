@@ -288,6 +288,11 @@
                 <button onclick="toggleLiteViewMode()" title="Alternar Vista (Grid/Lista)"
                     style="background:#222; border:1px solid #444; color:#ccc; padding:6px 10px; border-radius:4px; cursor:pointer;">⊞
                     / ≡</button>
+                <select id="lite-sort-select" class="lite-select"
+                    style="background:#222; border:1px solid #444; color:#aaa; padding:6px 8px; border-radius:4px; font-size:0.8rem; cursor:pointer; flex-shrink:0;">
+                    <option value="name">Ordenar por Nombre</option>
+                    <option value="type">Ordenar por Tipo</option>
+                </select>
                 <input type="text" id="lite-file-search" oninput="filterQuickFiles()"
                     placeholder="🔍 Buscar en toda la biblioteca..."
                     style="flex:1; background:#1a1a1a; border:1px solid #333; color:#fff; padding:7px 12px; border-radius:4px; font-size:0.85rem;">
