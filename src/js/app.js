@@ -2478,6 +2478,15 @@ document.addEventListener('click', (e) => {
     }
 });
 
+// Botones |< y >| del timeline navigator
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('lite-nav-start')?.addEventListener('click', () => {
+        if (scenes.length > 0) timelineNavGoTo(scenes[0].id);
+    });
+    document.getElementById('lite-nav-end')?.addEventListener('click', () => {
+        if (scenes.length > 0) timelineNavGoTo(scenes[scenes.length - 1].id);
+    });
+});
 
 // ================================================================
 // GESTIÓN DE CARPETAS (LITE)
