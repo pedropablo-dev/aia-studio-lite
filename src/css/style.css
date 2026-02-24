@@ -1452,3 +1452,75 @@ footer {
     margin-left: auto;
     flex-shrink: 0;
 }
+
+/* ============================================================
+   VIBRANT MEDIA PALETTE (Final Polish)
+   ============================================================ */
+:root {
+    --color-video:  #00ff41;
+    --color-image:  #00d4ff;
+    --color-audio:  #bc13fe;
+}
+
+/* Replace flat type-badge backgrounds with vibrant glow */
+.file-card[data-type="video"] .file-type-badge {
+    background: rgba(0,255,65,0.15);
+    color: var(--color-video);
+    border: 1px solid rgba(0,255,65,0.4);
+    box-shadow: 0 0 6px rgba(0,255,65,0.3);
+}
+.file-card[data-type="image"] .file-type-badge {
+    background: rgba(0,212,255,0.15);
+    color: var(--color-image);
+    border: 1px solid rgba(0,212,255,0.4);
+    box-shadow: 0 0 6px rgba(0,212,255,0.3);
+}
+.file-card[data-type="audio"] .file-type-badge {
+    background: rgba(188,19,254,0.15);
+    color: var(--color-audio);
+    border: 1px solid rgba(188,19,254,0.4);
+    box-shadow: 0 0 6px rgba(188,19,254,0.3);
+}
+
+/* Vibrant hover glow on card border */
+.file-card[data-type="video"]:hover  { border-color: var(--color-video); box-shadow: 0 0 10px rgba(0,255,65,0.25); }
+.file-card[data-type="image"]:hover  { border-color: var(--color-image); box-shadow: 0 0 10px rgba(0,212,255,0.25); }
+.file-card[data-type="audio"]:hover  { border-color: var(--color-audio); box-shadow: 0 0 10px rgba(188,19,254,0.25); }
+
+/* Label colors on hover */
+.file-card[data-type="video"]:hover .file-label { color: var(--color-video); }
+.file-card[data-type="image"]:hover .file-label { color: var(--color-image); }
+.file-card[data-type="audio"]:hover .file-label { color: var(--color-audio); }
+
+/* ============================================================
+   TIMELINE NAVIGATOR — Nav results dropdown
+   ============================================================ */
+#timeline-nav-results .nav-result-item {
+    padding: 8px 12px;
+    cursor: pointer;
+    font-size: 0.82rem;
+    color: #ccc;
+    border-bottom: 1px solid #1a1a1a;
+    transition: background 0.12s;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+#timeline-nav-results .nav-result-item:hover { background: #1e2a44; color: #fff; }
+#timeline-nav-results .nav-result-item b { color: var(--accent); }
+
+/* Scene highlight flash */
+@keyframes sceneHighlight {
+    0%   { outline: 3px solid var(--accent); box-shadow: 0 0 20px rgba(41,121,255,0.6); }
+    60%  { outline: 3px solid var(--accent); box-shadow: 0 0 20px rgba(41,121,255,0.6); }
+    100% { outline: none; box-shadow: none; }
+}
+.scene-card.nav-highlight { animation: sceneHighlight 1.4s ease-out forwards; }
+
+/* btn-danger */
+.btn-danger {
+    background: #c62828;
+    color: #fff;
+    border: 1px solid #922020;
+}
+.btn-danger:hover { background: #e53935; }

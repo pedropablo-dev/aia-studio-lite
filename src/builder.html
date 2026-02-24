@@ -60,6 +60,37 @@
         <div id="timeline-container"></div>
     </div>
 
+    <!-- TIMELINE NAVIGATOR BAR -->
+    <div id="timeline-nav-bar" style="
+        position:fixed; bottom:52px; left:50%; transform:translateX(-50%);
+        display:flex; align-items:center; gap:6px;
+        background:rgba(15,15,20,0.92); border:1px solid #2a2a2a;
+        border-radius:24px; padding:5px 12px;
+        backdrop-filter:blur(10px); z-index:200;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.6);">
+        <span style="font-size:0.7rem; color:#555; letter-spacing:1px; font-weight:600;">IR A</span>
+        <input type="text" id="timeline-nav-input" placeholder="Escena # o texto…"
+            oninput="timelineNavSearch(this.value)" onkeydown="if(event.key==='Enter') timelineNavJump()" style="background:transparent; border:none; color:#ccc; font-size:0.82rem;
+                      width:150px; outline:none; padding:2px 4px;">
+        <button onclick="timelineNavJump()" title="Ir a escena o resultado"
+            style="background:none; border:none; color:var(--accent); cursor:pointer; font-size:1rem; padding:0 4px;">⏎</button>
+        <div id="timeline-nav-results"
+            style="display:none; position:absolute; bottom:38px; left:12px; right:12px;
+             background:#111; border:1px solid #2a2a2a; border-radius:8px; max-height:200px; overflow-y:auto; z-index:201;"></div>
+    </div>
+
+    <!-- CUSTOM SYSTEM DIALOG (replaces alert/confirm/prompt) -->
+    <div class="modal-overlay" id="sys-dialog-overlay" style="display:none; z-index:9999;">
+        <div class="modal-content" style="max-width:400px; height:auto; padding:24px;">
+            <div id="sys-dialog-icon" style="font-size:2rem; text-align:center; margin-bottom:8px;"></div>
+            <h3 id="sys-dialog-title" style="margin:0 0 8px 0; font-size:1rem; text-align:center; color:#fff;"></h3>
+            <p id="sys-dialog-message" style="font-size:0.85rem; color:#aaa; text-align:center; margin:0 0 16px 0;"></p>
+            <input type="text" id="sys-dialog-input" style="display:none; width:100%; box-sizing:border-box; background:#1a1a1a; border:1px solid #333;
+                          color:#fff; padding:8px 12px; border-radius:4px; font-size:0.9rem; margin-bottom:14px;">
+            <div style="display:flex; gap:8px; justify-content:center;" id="sys-dialog-btns"></div>
+        </div>
+    </div>
+
     <footer>
         <button onclick="openShortcutsModal()" title="Atajos de teclado">⌨️</button>
         <div style="width: 1px; background: #444; margin: 0 10px;"></div>
@@ -268,7 +299,9 @@
 
             <!-- Footer -->
             <div
-                style="display:flex; justify-content:flex-end; margin-top:12px; padding-top:10px; border-top:1px solid #222;">
+                style="display:flex; justify-content:space-between; align-items:center; margin-top:12px; padding-top:10px; border-top:1px solid #222;">
+                <button onclick="liteCreateFolder()" title="Crear nueva carpeta en el directorio actual"
+                    style="background:#1a2a1a; border:1px solid #2a4a2a; color:#a5d6a7;">📁 Nueva Carpeta</button>
                 <button onclick="closeLiteFileModal()">Cancelar</button>
             </div>
         </div>

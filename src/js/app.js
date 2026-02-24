@@ -1863,7 +1863,10 @@ function _renderGridItems(items, mediaRoot) {
                      ondragover="_onFolderDragOver(event)"
                      ondragleave="_onFolderDragLeave(event)"
                      ondrop="_onFolderDrop(event, '${safePath}')">
-                    <div class="file-icon">📁</div>
+                    <div class="file-card-actions" onclick="event.stopPropagation()">
+                        <button title="Eliminar carpeta" onclick="liteDeleteFolder('${safePath}')">&#x1F5D1;</button>
+                    </div>
+                    <div class="file-icon">&#x1F4C1;</div>
                     <div class="file-label" title="${item.name}">${item.name}</div>
                 </div>`;
         }
@@ -2171,6 +2174,239 @@ function _onFolderDrop(event, folderPath) {
     if (src.startsWith(folderPath + '/') || src === folderPath) return;
     liteMoveFileTo(src, folderPath);
     _liteDraggedPath = null;
+}
+
+
+// ================================================================
+// SISTEMA DE DIÁLOGOS CUSTOM (reemplaza confirm/prompt/alert)
+// ================================================================
+
+/**
+ * Shows a custom async dialog. Returns a Promise that resolves with
+ * { confirmed: bool, value: string|null } when the user responds.
+ *
+ * @param {Object} opts
+ * @param {string}  opts.title
+ * @param {string}  opts.message
+ * @param {string}  [opts.icon='❓']
+ * @param {string}  [opts.type='confirm']   - 'confirm' | 'prompt' | 'alert'
+ * @param {string}  [opts.defaultValue='']  - Initial value for prompt inputs
+ * @param {string}  [opts.confirmLabel='Aceptar']
+ * @param {string}  [opts.cancelLabel='Cancelar']
+ * @param {string}  [opts.confirmClass='btn-accent']  - CSS class for confirm button
+ */
+function sysDialog({ title = '', message = '', icon = '❓', type = 'confirm',
+    defaultValue = '', confirmLabel = 'Aceptar',
+    cancelLabel = 'Cancelar', confirmClass = 'btn-accent' } = {}) {
+    return new Promise(resolve => {
+        const overlay = document.getElementById('sys-dialog-overlay');
+        const iconEl = document.getElementById('sys-dialog-icon');
+        const titleEl = document.getElementById('sys-dialog-title');
+        const msgEl = document.getElementById('sys-dialog-message');
+        const inputEl = document.getElementById('sys-dialog-input');
+        const btnsEl = document.getElementById('sys-dialog-btns');
+
+        iconEl.textContent = icon;
+        titleEl.textContent = title;
+        msgEl.innerHTML = message;
+
+        // Input visibility
+        inputEl.style.display = (type === 'prompt') ? 'block' : 'none';
+        if (type === 'prompt') {
+            inputEl.value = defaultValue;
+            setTimeout(() => inputEl.focus(), 80);
+        }
+
+        // Build buttons
+        btnsEl.innerHTML = '';
+
+        const close = (confirmed, val) => {
+            overlay.style.display = 'none';
+            resolve({ confirmed, value: val });
+        };
+
+        if (type !== 'alert') {
+            const cancelBtn = document.createElement('button');
+            cancelBtn.textContent = cancelLabel;
+            cancelBtn.style.cssText = 'padding:7px 18px; background:#222; border:1px solid #444; color:#ccc; border-radius:4px; cursor:pointer;';
+            cancelBtn.onclick = () => close(false, null);
+            btnsEl.appendChild(cancelBtn);
+        }
+
+        const confirmBtn = document.createElement('button');
+        confirmBtn.textContent = confirmLabel;
+        confirmBtn.className = confirmClass;
+        confirmBtn.style.cssText = 'padding:7px 18px; border-radius:4px; cursor:pointer; font-weight:600;';
+        confirmBtn.onclick = () => close(true, type === 'prompt' ? inputEl.value.trim() : null);
+
+        // Enter on input also confirms
+        inputEl.onkeydown = (e) => { if (e.key === 'Enter') confirmBtn.click(); };
+
+        btnsEl.appendChild(confirmBtn);
+        overlay.style.display = 'flex';
+    });
+}
+
+
+// ================================================================
+// NAVEGADOR DE TIMELINE
+// ================================================================
+
+let _navResults = [];
+let _navIndex = -1;
+
+/**
+ * Fills the dropdown with scenes matching the query (number or text in script/title).
+ */
+function timelineNavSearch(query) {
+    const dropdown = document.getElementById('timeline-nav-results');
+    if (!query || !query.trim()) {
+        dropdown.style.display = 'none';
+        _navResults = [];
+        return;
+    }
+
+    const q = query.trim().toLowerCase();
+    const byNum = parseInt(q, 10);
+
+    _navResults = scenes.filter((s, i) => {
+        if (!isNaN(byNum)) return (i + 1) === byNum;
+        return (s.title || '').toLowerCase().includes(q) ||
+            (s.script || '').toLowerCase().includes(q);
+    });
+
+    if (_navResults.length === 0) {
+        dropdown.style.display = 'none';
+        return;
+    }
+
+    dropdown.innerHTML = _navResults.map((s, i) => {
+        const num = scenes.indexOf(s) + 1;
+        const preview = (s.script || s.title || '').substring(0, 60);
+        return `<div class="nav-result-item" onclick="timelineNavGoTo('${s.id}')">
+            <b>#${num}</b> ${s.title || '(sin título)'} <span style="color:#555;">— ${preview}…</span>
+        </div>`;
+    }).join('');
+
+    dropdown.style.display = 'block';
+}
+
+/**
+ * Jumps to a scene: either the first result in the dropdown, or if the input is a number
+ * jump directly to scene #N.
+ */
+function timelineNavJump() {
+    const input = document.getElementById('timeline-nav-input');
+    const q = (input.value || '').trim();
+    if (!q) return;
+
+    const byNum = parseInt(q, 10);
+    let target = null;
+    if (!isNaN(byNum) && byNum >= 1 && byNum <= scenes.length) {
+        target = scenes[byNum - 1];
+    } else if (_navResults.length > 0) {
+        target = _navResults[0];
+    }
+
+    if (target) {
+        timelineNavGoTo(target.id);
+        document.getElementById('timeline-nav-results').style.display = 'none';
+        input.value = '';
+    }
+}
+
+/**
+ * Scrolls to a scene card by ID and briefly highlights it.
+ * @param {string} sceneId
+ */
+function timelineNavGoTo(sceneId) {
+    const card = document.querySelector(`.scene-card[data-id="${sceneId}"]`);
+    if (!card) return;
+
+    card.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+    card.classList.remove('nav-highlight');
+    // Force reflow so animation replays
+    void card.offsetWidth;
+    card.classList.add('nav-highlight');
+    card.addEventListener('animationend', () => card.classList.remove('nav-highlight'), { once: true });
+
+    // Also select the scene
+    if (typeof selectScene === 'function') selectScene(sceneId);
+}
+
+// Close nav dropdown on click outside
+document.addEventListener('click', (e) => {
+    const dropdown = document.getElementById('timeline-nav-results');
+    const bar = document.getElementById('timeline-nav-bar');
+    if (dropdown && bar && !bar.contains(e.target)) {
+        dropdown.style.display = 'none';
+    }
+});
+
+
+// ================================================================
+// GESTIÓN DE CARPETAS (LITE)
+// ================================================================
+
+/**
+ * Muestra un prompt custom para crear una nueva carpeta en el path actual.
+ */
+async function liteCreateFolder() {
+    const { confirmed, value } = await sysDialog({
+        icon: '📁',
+        title: 'Nueva Carpeta',
+        message: 'Introduce el nombre de la nueva carpeta:',
+        type: 'prompt',
+        defaultValue: 'Nueva Carpeta',
+        confirmLabel: 'Crear',
+        confirmClass: 'btn-accent'
+    });
+
+    if (!confirmed || !value) return;
+
+    // Build the full relative path (current browse path + new name)
+    const newDir = currentBrowsePath ? `${currentBrowsePath}/${value}` : value;
+    const mediaRoot = document.getElementById('media-path-input')?.value?.trim() || '';
+    if (!mediaRoot) { showToast('❌ Configura el Media Root primero'); return; }
+
+    try {
+        await _litePost('/lite/folders/create', { folder: mediaRoot, new_dir: newDir });
+        showToast(`📁 Carpeta creada: ${value}`);
+        openQuickFileModal(null, currentBrowsePath);
+    } catch (err) {
+        showToast(`❌ Error al crear carpeta: ${err.message}`);
+        console.error('[Lite] Create folder error:', err);
+    }
+}
+
+/**
+ * Elimina una carpeta y su contenido con confirmación custom.
+ * @param {string} folderPath - Ruta relativa al Media Root
+ */
+async function liteDeleteFolder(folderPath) {
+    const name = folderPath.split('/').pop();
+    const { confirmed } = await sysDialog({
+        icon: '⚠️',
+        title: '¿Eliminar carpeta?',
+        message: `Se eliminará permanentemente <b>"${name}"</b> y <b>todo su contenido</b>.<br>Esta acción no se puede deshacer.`,
+        type: 'confirm',
+        confirmLabel: 'Eliminar',
+        confirmClass: 'btn-danger'
+    });
+
+    if (!confirmed) return;
+
+    const mediaRoot = document.getElementById('media-path-input')?.value?.trim() || '';
+    if (!mediaRoot) { showToast('❌ Configura el Media Root primero'); return; }
+
+    try {
+        await _litePost('/lite/folders/delete', { folder: mediaRoot, dir_path: folderPath });
+        showToast(`🗑️ Carpeta eliminada: ${name}`);
+        openQuickFileModal(null, currentBrowsePath);
+    } catch (err) {
+        showToast(`❌ Error al eliminar carpeta: ${err.message}`);
+        console.error('[Lite] Delete folder error:', err);
+    }
 }
 
 

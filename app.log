@@ -4055,3 +4055,9 @@ ConnectionResetError: [WinError 10054] Se ha forzado la interrupción de una con
 2026-02-24 14:33:05,501 [INFO] [Lite] Renamed 'max/PARA_PRUEBAS_CRUD.mp4' -> 'max/PARA_PRUEBAS_CRUD_2.mp4'
 2026-02-24 14:34:39,408 [INFO] [Lite] Cache evicted: max_PARA_PRUEBAS_CRUD_2.jpg
 2026-02-24 14:34:39,409 [INFO] [Lite] Moved 'max/PARA_PRUEBAS_CRUD_2.mp4' -> 'max/PRUEBAS/PARA_PRUEBAS_CRUD_2.mp4'
+2026-02-24 15:21:40,649 [INFO] [Lite] Folder deleted: 'max/PRUEBAS'
+2026-02-24 15:22:25,433 [INFO] [Lite] Folder created: 'max/Nueva Carpeta de pruieba'
+2026-02-24 15:23:53,262 [INFO] [Lite] Cache evicted: max_MAX_PRUEBA_CRUD.jpg
+2026-02-24 15:23:53,262 [INFO] [Lite] Moved 'max/MAX_PRUEBA_CRUD.mp4' -> 'max/PRUEBAS_2/MAX_PRUEBA_CRUD.mp4'
+2026-02-24 15:24:18,796 [INFO] [Lite] Cache evicted: max_PRUEBAS_2_MAX_PRUEBA_CRUD.jpg
+2026-02-24 15:24:18,796 [INFO] [Lite] Deleted 'max/PRUEBAS_2/MAX_PRUEBA_CRUD.mp4'

@@ -122,6 +122,14 @@ class LiteDeleteRequest(BaseModel):
     folder: str          # Absolute Media Root path from UI
     file_path: str       # Relative path of the file to delete
 
+class LiteFolderCreateRequest(BaseModel):
+    folder: str          # Absolute Media Root (user-configured root)
+    new_dir: str         # Relative path for the new folder to create
+
+class LiteFolderDeleteRequest(BaseModel):
+    folder: str          # Absolute Media Root
+    dir_path: str        # Relative path of the folder to delete
+
 
 # === STARTUP ===
 
@@ -517,6 +525,89 @@ async def lite_move_file(payload: LiteMoveRequest):
     logger.info(f"[Lite] Moved '{old_rel}' -> '{new_rel}'")
     return {"success": True, "old_path": old_rel, "new_path": new_rel}
 
+
+@app.post("/lite/folders/create")
+async def lite_create_folder(payload: LiteFolderCreateRequest):
+    """
+    [LITE] Creates a new directory inside the Media Root.
+    Security: validated with _validate_lite_path (is_relative_to check).
+    """
+    if not payload.folder or not payload.folder.strip():
+        raise HTTPException(status_code=400, detail="Media Root (folder) is required")
+
+    root = Path(payload.folder.strip()).resolve()
+    try:
+        root.relative_to(_SW_ROOT)
+        raise HTTPException(status_code=403, detail="Write operations not allowed within the application directory")
+    except ValueError:
+        pass
+
+    if not root.is_dir():
+        raise HTTPException(status_code=400, detail=f"Media Root does not exist: {payload.folder}")
+
+    clean_rel = payload.new_dir.strip().lstrip("/").lstrip("\\")
+    if ".." in clean_rel.replace("\\", "/").split("/"):
+        raise HTTPException(status_code=400, detail="Path traversal detected in new_dir")
+
+    new_dir_path = (root / clean_rel).resolve()
+    if not new_dir_path.is_relative_to(root):
+        raise HTTPException(status_code=403, detail="new_dir escapes the Media Root")
+
+    if new_dir_path.exists():
+        raise HTTPException(status_code=409, detail=f"'{clean_rel}' already exists")
+
+    try:
+        new_dir_path.mkdir(parents=True, exist_ok=False)
+    except Exception as e:
+        logger.error(f"[Lite] Folder create failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to create folder: {e}")
+
+    rel_str = new_dir_path.relative_to(root).as_posix()
+    logger.info(f"[Lite] Folder created: '{rel_str}'")
+    return {"success": True, "created": rel_str}
+
+
+@app.post("/lite/folders/delete")
+async def lite_delete_folder(payload: LiteFolderDeleteRequest):
+    """
+    [LITE] Deletes a directory and all its contents inside the Media Root.
+    Security: validated with is_relative_to. Cannot delete the root itself.
+    """
+    if not payload.folder or not payload.folder.strip():
+        raise HTTPException(status_code=400, detail="Media Root (folder) is required")
+
+    root = Path(payload.folder.strip()).resolve()
+    try:
+        root.relative_to(_SW_ROOT)
+        raise HTTPException(status_code=403, detail="Write operations not allowed within the application directory")
+    except ValueError:
+        pass
+
+    if not root.is_dir():
+        raise HTTPException(status_code=400, detail=f"Media Root does not exist: {payload.folder}")
+
+    clean_rel = payload.dir_path.strip().lstrip("/").lstrip("\\")
+    if not clean_rel:
+        raise HTTPException(status_code=400, detail="Cannot delete the Media Root itself")
+    if ".." in clean_rel.replace("\\", "/").split("/"):
+        raise HTTPException(status_code=400, detail="Path traversal detected in dir_path")
+
+    target_dir = (root / clean_rel).resolve()
+    if not target_dir.is_relative_to(root):
+        raise HTTPException(status_code=403, detail="dir_path escapes the Media Root")
+    if not target_dir.exists():
+        raise HTTPException(status_code=404, detail="Folder not found")
+    if not target_dir.is_dir():
+        raise HTTPException(status_code=400, detail="Target is not a folder")
+
+    try:
+        shutil.rmtree(target_dir)
+    except Exception as e:
+        logger.error(f"[Lite] Folder delete failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to delete folder: {e}")
+
+    logger.info(f"[Lite] Folder deleted: '{clean_rel}'")
+    return {"success": True, "deleted": clean_rel}
 
 
 @app.get("/raw-files")
