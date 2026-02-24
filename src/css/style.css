@@ -1342,3 +1342,64 @@ footer {
     font-style: italic;
     font-size: 0.9rem;
 }
+
+/* ============================================================
+   LITE VIEW MODE & SEMANTIC COLORS
+   ============================================================ */
+
+/* List View Override */
+#quick-file-list.list-view {
+    display: flex;
+    flex-direction: column;
+}
+
+#quick-file-list.list-view .file-card {
+    flex-direction: row;
+    height: 44px;
+    min-height: 44px;
+    padding: 4px 12px;
+    align-items: center;
+    justify-content: flex-start;
+    text-align: left;
+    gap: 12px;
+}
+
+#quick-file-list.list-view .file-card img,
+#quick-file-list.list-view .file-card.is-folder .file-icon,
+#quick-file-list.list-view .file-card .file-icon {
+    width: 48px;
+    height: 34px;
+    line-height: 34px;
+    font-size: 1.4rem;
+    margin-bottom: 0;
+    flex-shrink: 0;
+}
+
+#quick-file-list.list-view .file-card.is-parent .file-icon {
+    font-size: 1.2rem;
+    line-height: 34px;
+    height: 34px;
+    margin-bottom: 0;
+}
+
+#quick-file-list.list-view .file-card .file-label {
+    flex: 1;
+    font-size: 0.85rem;
+    text-align: left;
+}
+
+#quick-file-list.list-view .file-card .file-type-badge {
+    position: static;
+    display: inline-block;
+}
+
+/* Semantic Colors by Media Type */
+.file-card[data-type="video"] .file-type-badge { background: #1b5e20; color: #a5d6a7; }
+.file-card[data-type="image"] .file-type-badge { background: #01579b; color: #81d4fa; }
+.file-card[data-type="audio"] .file-type-badge { background: #4a148c; color: #ce93d8; }
+
+.file-card.is-parent:hover .file-label { color: #fff; }
+.file-card.is-folder:hover .file-label { color: #5fadf7; text-decoration: underline; }
+.file-card[data-type="video"]:hover .file-label { color: #a5d6a7; }
+.file-card[data-type="image"]:hover .file-label { color: #81d4fa; }
+.file-card[data-type="audio"]:hover .file-label { color: #ce93d8; }

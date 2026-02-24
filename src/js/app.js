@@ -700,8 +700,12 @@ function render() {
         // --- ETIQUETA INTELIGENTE V3 (Full Width + Ellipsis Real) ---
 
         // 1. Detectar tipo y color
-        const isImage = scene.linkedFile && /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(scene.linkedFile);
-        const linkColor = isImage ? '#40c4ff' : '#00e676';
+        let linkColor = '#888'; // Default
+        if (scene.linkedFile) {
+            if (/\.(mp4|mov|mxf|avi|webm)$/i.test(scene.linkedFile)) linkColor = '#a5d6a7'; // Verde video
+            else if (/\.(jpg|jpeg|png|webp|gif|bmp)$/i.test(scene.linkedFile)) linkColor = '#81d4fa'; // Azul imagen
+            else if (/\.(mp3|wav|aac|flac|ogg|m4a)$/i.test(scene.linkedFile)) linkColor = '#ce93d8'; // Violeta audio
+        }
         const safeFileName = scene.linkedFile ? scene.linkedFile.replace(/'/g, "\\'") : "";
 
         // 2. Contenido condicional
@@ -1731,15 +1735,20 @@ document.addEventListener('keydown', (e) => {
     const activeTag = document.activeElement.tagName;
     const isTyping = (activeTag === 'INPUT' || activeTag === 'TEXTAREA');
 
-    // 1. NUEVA ESCENA: Shift + Enter (Funciona SIEMPRE)
-    if (e.shiftKey && e.key === 'Enter') {
+    // MODO EDICIÓN: Aislar atajos globales para no pisar el salto de línea nativo (Shift+Enter)
+    if (isTyping) {
+        // Permitir atajos globales SOLO si involucran Alt o Ctrl
+        if (!e.altKey && !e.ctrlKey) return;
+    }
+
+    // 1. NUEVA ESCENA: Alt + Enter
+    if (e.altKey && e.key === 'Enter') {
         e.preventDefault();
         addScene();
         return;
     }
 
-    // --- LOS SIGUIENTES SOLO FUNCIONAN SI NO ESTÁS ESCRIBIENDO TEXTO ---
-    if (isTyping) return;
+    // --- LOS SIGUIENTES YA ESTÁN PROTEGIDOS POR EL RETURN PREVIO ---
 
     // 2. BORRAR: Tecla Supr (Delete) o Backspace
     if (e.key === 'Delete' || e.key === 'Backspace') {
@@ -1774,6 +1783,26 @@ function closeLiteFileModal() {
     currentBrowsePath = '';
     const search = document.getElementById('lite-file-search');
     if (search) search.value = '';
+}
+
+/** Alterna la vista Grid/Lista en el explorador de archivos. */
+function toggleLiteViewMode() {
+    const list = document.getElementById('quick-file-list');
+    if (!list) return;
+    list.classList.toggle('list-view');
+    const mode = list.classList.contains('list-view') ? 'list' : 'grid';
+    localStorage.setItem('liteViewMode', mode);
+}
+
+/** Inicializa la vista persistida. */
+function initLiteViewMode() {
+    const list = document.getElementById('quick-file-list');
+    const saved = localStorage.getItem('liteViewMode');
+    if (list && saved === 'list') {
+        list.classList.add('list-view');
+    } else if (list) {
+        list.classList.remove('list-view');
+    }
 }
 
 /**
@@ -1848,7 +1877,7 @@ function _renderGridItems(items, mediaRoot) {
         const badge = item.type !== 'folder' ? `<span class="file-type-badge">${item.type}</span>` : '';
 
         return `
-            <div class="file-card" data-path="${item.path}" data-name="${item.name}"
+            <div class="file-card" data-path="${item.path}" data-name="${item.name}" data-type="${item.type}"
                  onclick="selectLiteFile('${safePath}')">
                 ${badge}
                 ${mediaEl}
@@ -1878,6 +1907,7 @@ async function openQuickFileModal(sceneId, subpath = '') {
 
     // Render breadcrumbs
     _renderBreadcrumbs(subpath);
+    initLiteViewMode();
 
     const mediaRoot = document.getElementById('media-path-input')?.value?.trim() || '';
     const url = _liteApiBase() + '&subpath=' + encodeURIComponent(subpath);
