@@ -701,11 +701,16 @@ function render() {
 
         // 1. Detectar tipo y color
         let linkColor = '#888'; // Default
+        let fileType = '';      // Para data-type en la tarjeta
         if (scene.linkedFile) {
-            if (/\.(mp4|mov|mxf|avi|webm)$/i.test(scene.linkedFile)) linkColor = '#a5d6a7'; // Verde video
-            else if (/\.(jpg|jpeg|png|webp|gif|bmp)$/i.test(scene.linkedFile)) linkColor = '#81d4fa'; // Azul imagen
-            else if (/\.(mp3|wav|aac|flac|ogg|m4a)$/i.test(scene.linkedFile)) linkColor = '#ce93d8'; // Violeta audio
+            const _ext = scene.linkedFile.split('.').pop().toLowerCase();
+            if (['mp4', 'mov', 'avi', 'mkv', 'mxf', 'webm'].includes(_ext)) { linkColor = '#a5d6a7'; fileType = 'video'; }
+            else if (['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp'].includes(_ext)) { linkColor = '#81d4fa'; fileType = 'image'; }
+            else if (['mp3', 'wav', 'aac', 'flac', 'ogg', 'm4a'].includes(_ext)) { linkColor = '#ce93d8'; fileType = 'audio'; }
         }
+        // Aplicar data-type a la tarjeta para que CSS pueda colorear el nombre
+        if (fileType) card.dataset.type = fileType;
+        else delete card.dataset.type;
         const safeFileName = scene.linkedFile ? scene.linkedFile.replace(/'/g, "\\'") : "";
 
         // 2. Contenido condicional
@@ -728,7 +733,7 @@ function render() {
                         
                         <span style="color:${linkColor}; flex-shrink:0;">🔗</span>
                         
-                        <span style="
+                        <span class="linked-file-name" style="
                             color:${linkColor}; 
                             white-space:nowrap; 
                             overflow:hidden; 

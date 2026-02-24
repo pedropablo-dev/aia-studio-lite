@@ -1227,6 +1227,7 @@ footer {
     font-size: 0.82rem;
     color: #888;
 }
+
 .file-breadcrumb .crumb {
     cursor: pointer;
     color: var(--accent);
@@ -1234,9 +1235,21 @@ footer {
     border-radius: 4px;
     transition: background 0.15s;
 }
-.file-breadcrumb .crumb:hover { background: #1e2a44; }
-.file-breadcrumb .crumb-sep { color: #444; user-select: none; }
-.file-breadcrumb .crumb-current { color: #888; font-style: italic; cursor: default; }
+
+.file-breadcrumb .crumb:hover {
+    background: #1e2a44;
+}
+
+.file-breadcrumb .crumb-sep {
+    color: #444;
+    user-select: none;
+}
+
+.file-breadcrumb .crumb-current {
+    color: #888;
+    font-style: italic;
+    cursor: default;
+}
 
 /* Scrollable grid container */
 .file-grid-wrapper {
@@ -1269,6 +1282,7 @@ footer {
     position: relative;
     overflow: hidden;
 }
+
 .file-card:hover {
     border-color: var(--accent);
     background: #202020;
@@ -1307,7 +1321,10 @@ footer {
     text-overflow: ellipsis;
     line-height: 1.2;
 }
-.file-card.is-folder .file-label { color: #5fadf7; }
+
+.file-card.is-folder .file-label {
+    color: #5fadf7;
+}
 
 /* Type badge */
 .file-card .file-type-badge {
@@ -1315,7 +1332,7 @@ footer {
     top: 5px;
     right: 5px;
     font-size: 0.6rem;
-    background: rgba(0,0,0,0.65);
+    background: rgba(0, 0, 0, 0.65);
     color: #888;
     padding: 1px 5px;
     border-radius: 3px;
@@ -1328,6 +1345,7 @@ footer {
     border-color: #3a3a3a;
     justify-content: center;
 }
+
 .file-card.is-parent .file-icon {
     font-size: 2rem;
     margin-bottom: 6px;
@@ -1394,15 +1412,41 @@ footer {
 }
 
 /* Semantic Colors by Media Type */
-.file-card[data-type="video"] .file-type-badge { background: #1b5e20; color: #a5d6a7; }
-.file-card[data-type="image"] .file-type-badge { background: #01579b; color: #81d4fa; }
-.file-card[data-type="audio"] .file-type-badge { background: #4a148c; color: #ce93d8; }
+.file-card[data-type="video"] .file-type-badge {
+    background: #1b5e20;
+    color: #a5d6a7;
+}
 
-.file-card.is-parent:hover .file-label { color: #fff; }
-.file-card.is-folder:hover .file-label { color: #5fadf7; text-decoration: underline; }
-.file-card[data-type="video"]:hover .file-label { color: #a5d6a7; }
-.file-card[data-type="image"]:hover .file-label { color: #81d4fa; }
-.file-card[data-type="audio"]:hover .file-label { color: #ce93d8; }
+.file-card[data-type="image"] .file-type-badge {
+    background: #01579b;
+    color: #81d4fa;
+}
+
+.file-card[data-type="audio"] .file-type-badge {
+    background: #4a148c;
+    color: #ce93d8;
+}
+
+.file-card.is-parent:hover .file-label {
+    color: #fff;
+}
+
+.file-card.is-folder:hover .file-label {
+    color: #5fadf7;
+    text-decoration: underline;
+}
+
+.file-card[data-type="video"]:hover .file-label {
+    color: #a5d6a7;
+}
+
+.file-card[data-type="image"]:hover .file-label {
+    color: #81d4fa;
+}
+
+.file-card[data-type="audio"]:hover .file-label {
+    color: #ce93d8;
+}
 
 /* ============================================================
    LITE FILE CARD — ACTION BUTTONS (FASE B)
@@ -1457,40 +1501,61 @@ footer {
    VIBRANT MEDIA PALETTE (Final Polish)
    ============================================================ */
 :root {
-    --color-video:  #00ff41;
-    --color-image:  #00d4ff;
-    --color-audio:  #bc13fe;
+    --color-video: #00ff41;
+    --color-image: #00d4ff;
+    --color-audio: #bc13fe;
 }
 
 /* Replace flat type-badge backgrounds with vibrant glow */
 .file-card[data-type="video"] .file-type-badge {
-    background: rgba(0,255,65,0.15);
+    background: rgba(0, 255, 65, 0.15);
     color: var(--color-video);
-    border: 1px solid rgba(0,255,65,0.4);
-    box-shadow: 0 0 6px rgba(0,255,65,0.3);
+    border: 1px solid rgba(0, 255, 65, 0.4);
+    box-shadow: 0 0 6px rgba(0, 255, 65, 0.3);
 }
+
 .file-card[data-type="image"] .file-type-badge {
-    background: rgba(0,212,255,0.15);
+    background: rgba(0, 212, 255, 0.15);
     color: var(--color-image);
-    border: 1px solid rgba(0,212,255,0.4);
-    box-shadow: 0 0 6px rgba(0,212,255,0.3);
+    border: 1px solid rgba(0, 212, 255, 0.4);
+    box-shadow: 0 0 6px rgba(0, 212, 255, 0.3);
 }
+
 .file-card[data-type="audio"] .file-type-badge {
-    background: rgba(188,19,254,0.15);
+    background: rgba(188, 19, 254, 0.15);
     color: var(--color-audio);
-    border: 1px solid rgba(188,19,254,0.4);
-    box-shadow: 0 0 6px rgba(188,19,254,0.3);
+    border: 1px solid rgba(188, 19, 254, 0.4);
+    box-shadow: 0 0 6px rgba(188, 19, 254, 0.3);
 }
 
 /* Vibrant hover glow on card border */
-.file-card[data-type="video"]:hover  { border-color: var(--color-video); box-shadow: 0 0 10px rgba(0,255,65,0.25); }
-.file-card[data-type="image"]:hover  { border-color: var(--color-image); box-shadow: 0 0 10px rgba(0,212,255,0.25); }
-.file-card[data-type="audio"]:hover  { border-color: var(--color-audio); box-shadow: 0 0 10px rgba(188,19,254,0.25); }
+.file-card[data-type="video"]:hover {
+    border-color: var(--color-video);
+    box-shadow: 0 0 10px rgba(0, 255, 65, 0.25);
+}
+
+.file-card[data-type="image"]:hover {
+    border-color: var(--color-image);
+    box-shadow: 0 0 10px rgba(0, 212, 255, 0.25);
+}
+
+.file-card[data-type="audio"]:hover {
+    border-color: var(--color-audio);
+    box-shadow: 0 0 10px rgba(188, 19, 254, 0.25);
+}
 
 /* Label colors on hover */
-.file-card[data-type="video"]:hover .file-label { color: var(--color-video); }
-.file-card[data-type="image"]:hover .file-label { color: var(--color-image); }
-.file-card[data-type="audio"]:hover .file-label { color: var(--color-audio); }
+.file-card[data-type="video"]:hover .file-label {
+    color: var(--color-video);
+}
+
+.file-card[data-type="image"]:hover .file-label {
+    color: var(--color-image);
+}
+
+.file-card[data-type="audio"]:hover .file-label {
+    color: var(--color-audio);
+}
 
 /* ============================================================
    TIMELINE NAVIGATOR — Nav results dropdown
@@ -1506,16 +1571,37 @@ footer {
     overflow: hidden;
     text-overflow: ellipsis;
 }
-#timeline-nav-results .nav-result-item:hover { background: #1e2a44; color: #fff; }
-#timeline-nav-results .nav-result-item b { color: var(--accent); }
+
+#timeline-nav-results .nav-result-item:hover {
+    background: #1e2a44;
+    color: #fff;
+}
+
+#timeline-nav-results .nav-result-item b {
+    color: var(--accent);
+}
 
 /* Scene highlight flash */
 @keyframes sceneHighlight {
-    0%   { outline: 3px solid var(--accent); box-shadow: 0 0 20px rgba(41,121,255,0.6); }
-    60%  { outline: 3px solid var(--accent); box-shadow: 0 0 20px rgba(41,121,255,0.6); }
-    100% { outline: none; box-shadow: none; }
+    0% {
+        outline: 3px solid var(--accent);
+        box-shadow: 0 0 20px rgba(41, 121, 255, 0.6);
+    }
+
+    60% {
+        outline: 3px solid var(--accent);
+        box-shadow: 0 0 20px rgba(41, 121, 255, 0.6);
+    }
+
+    100% {
+        outline: none;
+        box-shadow: none;
+    }
 }
-.scene-card.nav-highlight { animation: sceneHighlight 1.4s ease-out forwards; }
+
+.scene-card.nav-highlight {
+    animation: sceneHighlight 1.4s ease-out forwards;
+}
 
 /* btn-danger */
 .btn-danger {
@@ -1523,14 +1609,47 @@ footer {
     color: #fff;
     border: 1px solid #922020;
 }
-.btn-danger:hover { background: #e53935; }
+
+.btn-danger:hover {
+    background: #e53935;
+}
 
 /* Opaque backgrounds for badges */
-.file-card[data-type="video"] .file-type-badge { background: #004411; }
-.file-card[data-type="image"] .file-type-badge { background: #003344; }
-.file-card[data-type="audio"] .file-type-badge { background: #330044; }
+.file-card[data-type="video"] .file-type-badge {
+    background: #004411;
+}
 
-/* Timeline linked file labels colors */
-.scene-card[data-file-type="video"] .linked-file-name { color: var(--color-video); border-color: rgba(0,255,65,0.4); background: rgba(0,255,65,0.05); }
-.scene-card[data-file-type="image"] .linked-file-name { color: var(--color-image); border-color: rgba(0,212,255,0.4); background: rgba(0,212,255,0.05); }
-.scene-card[data-file-type="audio"] .linked-file-name { color: var(--color-audio); border-color: rgba(188,19,254,0.4); background: rgba(188,19,254,0.05); }
+.file-card[data-type="image"] .file-type-badge {
+    background: #003344;
+}
+
+.file-card[data-type="audio"] .file-type-badge {
+    background: #330044;
+}
+
+/* Timeline linked-file label — vibrant neon colors by data-type */
+.scene-card[data-type="video"] .linked-file-name {
+    color: #00ff41 !important;
+}
+
+.scene-card[data-type="image"] .linked-file-name {
+    color: #00d4ff !important;
+}
+
+.scene-card[data-type="audio"] .linked-file-name {
+    color: #bc13fe !important;
+}
+
+/* also colour the chain icon */
+.scene-card[data-type="video"] .linked-file-name~span,
+.scene-card[data-type="video"] [style*="flex-shrink:0"] {
+    color: #00ff41 !important;
+}
+
+.scene-card[data-type="image"] [style*="flex-shrink:0"] {
+    color: #00d4ff !important;
+}
+
+.scene-card[data-type="audio"] [style*="flex-shrink:0"] {
+    color: #bc13fe !important;
+}
