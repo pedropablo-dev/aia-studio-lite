@@ -1921,6 +1921,24 @@ function _renderGridItems(items, mediaRoot) {
  */
 async function openQuickFileModal(sceneId, subpath = '') {
     if (sceneId) currentFileSceneId = sceneId;
+
+    // --- APERTURA CONTEXTUAL ---
+    // Si se abre desde una tarjeta (sceneId real) sin subpath explícito,
+    // navegar directamente a la carpeta del archivo ya vinculado.
+    // GUARD: solo cuando el modal está CERRADO; si ya está abierto respetamos
+    // el subpath recibido (navegación interna, botón "..") sin sobrescribirlo.
+    const _modal = document.getElementById('quick-file-modal');
+    const _isModalOpen = _modal && _modal.style.display === 'flex';
+    if (sceneId && subpath === '' && !_isModalOpen) {
+        const linkedScene = scenes.find(s => s.id === sceneId);
+        if (linkedScene && linkedScene.linkedFile) {
+            const lastSlash = linkedScene.linkedFile.lastIndexOf('/');
+            subpath = lastSlash !== -1
+                ? linkedScene.linkedFile.substring(0, lastSlash)
+                : '';
+        }
+    }
+
     currentBrowsePath = subpath;
 
     const grid = document.getElementById('quick-file-list');
