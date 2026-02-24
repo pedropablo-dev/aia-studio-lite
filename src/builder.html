@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AIA Studio</title>
+    <link rel="icon" type="image/x-icon" href="img/favicon.ico">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+
+    <header>
+        <div class="header-left-block" style="flex-direction: row; align-items: center;">
+            <div style="display:flex; flex-direction:column;">
+                <h1>AIA Studio <span style="font-size:0.7em; opacity:0.5; font-weight:normal;">v6.6</span></h1>
+                <div style="font-size: 0.8rem; color: #777;">
+                    <span id="scene-count">0</span> Escenas | Total: <span id="total-time"
+                        style="color:var(--text-color); font-weight:bold;">0s</span>
+                </div>
+            </div>
+
+            <input type="text" id="project-title-input" class="project-title-input" value="Nuevo Proyecto"
+                placeholder="Nombre del Proyecto..." oninput="updateProjectTitle(this.value)" onfocus="this.select()">
+        </div>
+
+        <div class="header-history-controls">
+            <button class="history-btn" onclick="undo()" title="Deshacer (Ctrl+Z)">↩</button>
+            <button class="history-btn" onclick="redo()" title="Rehacer (Ctrl+Y)">↪</button>
+        </div>
+
+        <div class="vertical-separator"></div>
+
+        <div class="header-checklist-container" id="global-checklist-container">
+        </div>
+        <button class="config-gear-btn" onclick="openChecklistConfig()" title="Configurar Estados">⚙️</button>
+
+        <div class="vertical-separator"></div>
+
+        <div class="zoom-controls">
+            <button class="view-btn" onclick="focusSelection()" title="Centrar tarjeta seleccionada">CENTRAR</button>
+            <div style="width:1px; height:20px; background:#444; margin:0 5px;"></div>
+            <button class="view-btn" onclick="fitAll()" title="Ver todas las tarjetas">FIT ZOOM</button>
+            <button class="view-btn" onclick="resetView()" title="Vista trabajo (0.8x)">RESTAURAR</button>
+            <div style="width:1px; height:20px; background:#444; margin:0 5px;"></div>
+
+            <span style="font-size:0.7rem; opacity:0.6; font-weight:bold; letter-spacing:1px;">ZOOM</span>
+            <input type="range" id="zoom-slider" min="0.1" max="1.5" step="0.05" value="1"
+                oninput="manualZoom(this.value)" style="width: 70px;">
+            <span id="zoom-display">100%</span>
+        </div>
+
+        <div style="width:1px; height:20px; background:#444; margin:0 15px;"></div>
+        <button class="view-btn" onclick="resetProject()" title="Borrar todo y empezar de cero"
+            style="color:#ff5252; border-color:#553333;">✨ NUEVO</button>
+    </header>
+
+    <div id="viewport" onclick="clearSelection(event)">
+        <div id="timeline-container"></div>
+    </div>
+
+    <footer>
+        <button onclick="openShortcutsModal()" title="Atajos de teclado">⌨️</button>
+        <div style="width: 1px; background: #444; margin: 0 10px;"></div>
+        <button class="btn-accent" onclick="addScene()">+ AÑADIR ESCENA</button>
+        <div style="width: 1px; background: #444; margin: 0 10px;"></div>
+        <button onclick="openColorConfig()">🎞️ Tipo Visual</button>
+        <button onclick="openSectionConfig()">🚥 Secciones</button>
+        <button onclick="openSpeakerConfig()">🗣️ Hablantes</button>
+        <button onclick="openTechConfig()">🎥 Técnica</button>
+        <div style="width: 1px; background: #444; margin: 0 10px;"></div>
+        <button onclick="exportTXT()">📄 Copiar Diálogo</button>
+        <button onclick="exportMD()">⬇️ Markdown</button>
+        <button onclick="saveProject()">💾 Guardar</button>
+        <button onclick="document.getElementById('load-json').click()">📂 Cargar</button>
+        <div style="width: 1px; background: #444; margin: 0 10px;"></div>
+        <button onclick="openMediaConfig()" style="border: 1px solid #fca211c5; color: #fca311;"
+            title="Configurar Ruta de Archivos">📁</button>
+        <button onclick="exportDaVinci()" style="border: 1px solid #fca211c5; color: #fca311;"
+            title="Exportar XML para DaVinci Resolve">🎬</button>
+        <button onclick="exportMarkersEDL()" style="border: 1px solid #fca211c5; color: #fca311;"
+            title="Importar como Marcadores de Timeline">📍</button>
+        <button onclick="exportSRT()" style="border: 1px solid #fca211c5; color: #fca311;"
+            title="Descargar Guion como Subtítulos">📝</button>
+        <input type="file" id="load-json" class="hidden-file-input" accept=".json" onchange="loadProject(this)">
+        <div class="vertical-separator"></div>
+        <button onclick="openIngestModal()" class="btn-secondary" style="margin-left: 10px;">
+            📥 Ingesta
+        </button>
+        <button onclick="openAIMatchModal(selectedId)" title="Buscar con IA"
+            style="display:flex; align-items:center; gap:5px;">
+            ✨ Buscar IA
+        </button>
+        <button onclick="openMediaPoolModal()" title="Abrir Media Pool"
+            style="display:flex; align-items:center; gap:5px;">
+            🎛️ Media Pool
+        </button>
+    </footer>
+
+    <div class="modal-overlay" id="edit-modal">
+        <div class="modal-content">
+            <div class="close-modal-x" onclick="closeModal(false)">×</div>
+            <h3 style="margin:0; color:var(--accent);">Editor de Diálogo - Escena <span id="modal-scene-num"></span>
+            </h3>
+            <textarea id="modal-text" class="modal-textarea" placeholder="Escribe tu guion aquí..."></textarea>
+            <div style="display:flex; justify-content:flex-end; gap:10px;">
+                <button onclick="closeModal(false)">Cancelar</button>
+                <button class="btn-accent" onclick="closeModal(true)">GUARDAR</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="color-config-modal">
+        <div class="modal-content" style="height: auto; max-width: 450px; max-height: 90vh; overflow-y: auto;">
+            <div class="close-modal-x" onclick="document.getElementById('color-config-modal').style.display='none'">×
+            </div>
+            <h3 style="margin:0; color:var(--accent);">Configurar Tipos Visuales</h3>
+            <p style="font-size:0.8rem; color:#aaa; margin-top:0;">Define los tipos visuales por defecto para tus
+                escenas.</p>
+            <div id="color-rows-container"></div>
+            <button class="add-row-btn" onclick="addConfigItem('color')">+ Agregar Color</button>
+            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+                <button onclick="document.getElementById('color-config-modal').style.display='none'">Cancelar</button>
+                <button class="btn-accent" onclick="saveColorConfig()">Aplicar y Guardar</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="section-config-modal">
+        <div class="modal-content" style="height: auto; max-width: 450px; max-height: 90vh; overflow-y: auto;">
+            <div class="close-modal-x" onclick="document.getElementById('section-config-modal').style.display='none'">×
+            </div>
+            <h3 style="margin:0; color:var(--accent);">Configurar Secciones</h3>
+            <p style="font-size:0.8rem; color:#aaa; margin-top:0;">Define las secciones de tus escenas.</p>
+            <div id="section-rows-container"></div>
+            <button class="add-row-btn" onclick="addConfigItem('section')">+ Agregar Sección</button>
+            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+                <button onclick="document.getElementById('section-config-modal').style.display='none'">Cancelar</button>
+                <button class="btn-accent" onclick="saveSectionConfig()">Aplicar y Guardar</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="speaker-config-modal">
+        <div class="modal-content" style="height: auto; max-width: 450px; max-height: 90vh; overflow-y: auto;">
+            <div class="close-modal-x" onclick="document.getElementById('speaker-config-modal').style.display='none'">×
+            </div>
+            <h3 style="margin:0; color:var(--accent);">Configurar Hablantes</h3>
+            <p style="font-size:0.8rem; color:#aaa; margin-top:0;">Define los interlocutores.</p>
+            <div id="speaker-rows-container"></div>
+            <button class="add-row-btn" onclick="addConfigItem('speaker')">+ Agregar Hablante</button>
+            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+                <button onclick="document.getElementById('speaker-config-modal').style.display='none'">Cancelar</button>
+                <button class="btn-accent" onclick="saveSpeakerConfig()">Aplicar y Guardar</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="tech-config-modal">
+        <div class="modal-content" style="height: 80%; max-width: 700px; max-height: 90vh;">
+            <div class="close-modal-x" onclick="document.getElementById('tech-config-modal').style.display='none'">×
+            </div>
+            <h3 style="margin:0; color:var(--accent);">Configurar Técnica</h3>
+            <p style="font-size:0.8rem; color:#aaa; margin-top:0;">Personaliza las listas de planos y movimientos.</p>
+
+            <div class="tech-columns-wrapper">
+                <div class="tech-column">
+                    <h4>Tipos de Plano</h4>
+                    <div id="shot-rows-container" class="tech-list-scroll"></div>
+                    <button class="add-row-btn" onclick="addTechItem('shot')">+ Plano</button>
+                </div>
+
+                <div style="width:1px; background:#333; height:100%;"></div>
+
+                <div class="tech-column">
+                    <h4>Movimientos de Cámara</h4>
+                    <div id="move-rows-container" class="tech-list-scroll"></div>
+                    <button class="add-row-btn" onclick="addTechItem('move')">+ Movimiento</button>
+                </div>
+            </div>
+
+            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+                <button onclick="document.getElementById('tech-config-modal').style.display='none'">Cancelar</button>
+                <button class="btn-accent" onclick="saveTechConfig()">Aplicar y Guardar</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="checklist-config-modal">
+        <div class="modal-content" style="height: auto; max-width: 400px; max-height: 90vh; overflow-y: auto;">
+            <div class="close-modal-x" onclick="document.getElementById('checklist-config-modal').style.display='none'">
+                ×</div>
+            <h3 style="margin:0; color:var(--accent);">Configurar Estados</h3>
+            <p style="font-size:0.8rem; color:#aaa; margin-top:0;">Define los pasos de tu proyecto.</p>
+
+            <div id="checklist-rows-container"></div>
+            <button class="add-row-btn" onclick="addChecklistRow()">+ Agregar Estado</button>
+
+            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+                <button
+                    onclick="document.getElementById('checklist-config-modal').style.display='none'">Cancelar</button>
+                <button class="btn-accent" onclick="saveChecklistConfig()">Aplicar y Guardar</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="quick-color-modal">
+        <div class="modal-content" style="height: auto; max-width: 320px; max-height: 80vh; overflow-y: auto;">
+            <div class="close-modal-x" onclick="document.getElementById('quick-color-modal').style.display='none'">×
+            </div>
+            <h3 style="margin:0 0 10px 0;">Seleccionar Color</h3>
+            <div class="color-section-title">Presets</div>
+            <div id="quick-presets-container"></div>
+            <div class="color-section-title">Recientes / Custom</div>
+            <div id="quick-recent-container"></div>
+            <div style="margin-top: 10px; padding-top:10px; border-top:1px solid #333;">
+                <div class="custom-color-wrapper">
+                    <button class="color-grid-btn">
+                        <div class="swatch"
+                            style="background:conic-gradient(red, yellow, lime, aqua, blue, magenta, red)"></div>
+                        <span>Nuevo Color Personalizado...</span>
+                    </button>
+                    <input type="color" onchange="applyCustomColor(this.value)"
+                        style="position: absolute; top:0; left:0; width:100%; height:100%; opacity:0; cursor:pointer;">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="quick-section-modal">
+        <div class="modal-content" style="height: auto; max-width: 320px; max-height: 80vh; overflow-y: auto;">
+            <div class="close-modal-x" onclick="document.getElementById('quick-section-modal').style.display='none'">×
+            </div>
+            <h3 style="margin:0 0 10px 0;">Seleccionar Sección</h3>
+            <div class="color-section-title">Disponibles</div>
+            <div id="quick-section-list-container"></div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="quick-speaker-modal">
+        <div class="modal-content" style="height: auto; max-width: 320px; max-height: 80vh; overflow-y: auto;">
+            <div class="close-modal-x" onclick="document.getElementById('quick-speaker-modal').style.display='none'">×
+            </div>
+            <h3 style="margin:0 0 10px 0;">Seleccionar Hablante</h3>
+            <div class="color-section-title">Disponibles</div>
+            <div id="quick-speaker-list-container"></div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="media-config-modal">
+        <div class="modal-content"
+            style="height: auto; max-width: 420px; border: 1px solid #333; box-shadow: 0 20px 50px rgba(0,0,0,0.9);">
+            <div class="close-modal-x" onclick="document.getElementById('media-config-modal').style.display='none'">×
+            </div>
+
+            <div
+                style="display:flex; align-items:flex-start; gap:12px; margin-bottom:20px; padding-bottom:15px; border-bottom:1px solid #333;">
+                <div style="font-size:1.4rem; line-height: 1;">📂</div>
+                <div>
+                    <h3 style="margin:0; color:var(--text-color); font-size:1.1rem; line-height: 1.2;">Ruta de Archivos
+                    </h3>
+                    <p style="font-size:0.8rem; color:#666; margin:5px 0 0 0;">Vinculación automática para DaVinci
+                        Resolve</p>
+                </div>
+            </div>
+
+            <div style="margin-bottom:15px;">
+                <label
+                    style="font-size:0.75rem; color:#888; display:block; margin-bottom:6px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px;">Carpeta
+                    de Brutos</label>
+                <input type="text" id="media-path-input" placeholder="Ej: D:/Videos/Proyecto1/"
+                    style="width:100%; box-sizing:border-box; background:#0a0a0a; border:1px solid #333; color:#4fc3f7; padding:12px; border-radius:6px; font-family:'Consolas', monospace; font-size:0.85rem; transition:border-color 0.2s;">
+            </div>
+
+            <div style="margin-bottom:25px;">
+                <label
+                    style="font-size:0.75rem; color:#888; display:block; margin-bottom:6px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px;">Tipo
+                    de Archivo</label>
+                <div style="position:relative; width: 180px;"> <select id="media-ext-input"
+                        style="width:100%; background:#222; border:1px solid #444; color:#fff; padding:8px 12px; border-radius:6px; appearance:none; cursor:pointer;">
+                        <option value=".mp4">Video (.mp4)</option>
+                        <option value=".mov">Video (.mov)</option>
+                        <option value=".mxf">Video Pro (.mxf)</option>
+                        <option value=".jpg">Imagen (.jpg)</option>
+                        <option value=".png">Imagen (.png)</option>
+                    </select>
+                    <div
+                        style="position:absolute; right:10px; top:50%; transform:translateY(-50%); pointer-events:none; font-size:0.7rem; color:#888;">
+                        ▼</div>
+                </div>
+            </div>
+
+            <div
+                style="background:rgba(41, 121, 255, 0.1); padding:12px; border-radius:6px; font-size:0.8rem; color:#add8e6; margin-bottom:25px; border-left: 3px solid var(--accent); line-height:1.4;">
+                <strong>Importante:</strong> Para que funcione, tus archivos deben llamarse igual que el número de
+                escena: <em style="color:#fff;">1.mp4, 2.mp4, 3.mp4...</em>
+            </div>
+
+            <div style="display:flex; justify-content:flex-end;">
+                <button class="btn-accent" onclick="document.getElementById('media-config-modal').style.display='none'"
+                    style="padding: 10px 30px; border-radius:6px; font-size:0.9rem; letter-spacing:1px; box-shadow: 0 4px 15px rgba(41, 121, 255, 0.3); transition: transform 0.1s;">
+                    LISTO
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast">Notificación</div>
+
+    <!-- AI MATCH MODAL HTML -->
+    <div class="modal-overlay" id="ai-match-modal">
+        <div class="modal-content">
+            <span class="close-modal-x" onclick="closeAIMatchModal()">&times;</span>
+            <div style="display:flex; gap:10px; flex-direction:column; margin-bottom:15px;">
+                <h2 style="margin:0; color:var(--accent);">🔍 AI Semantic Search</h2>
+                <div style="display:flex; gap:10px; align-items:center;">
+                    <input type="text" id="ai-search-input"
+                        placeholder="Describe la escena (ej: 'Atardecer en la playa')..." class="modal-textarea"
+                        style="height:50px; flex:1;" onkeydown="if(event.key==='Enter') searchAI()">
+                    <button class="btn-afx" onclick="searchAI()">Buscar</button>
+                </div>
+
+                <!-- NEW: Precision Control -->
+                <div
+                    style="display:flex; align-items:center; gap:15px; background:#222; padding:10px; border-radius:4px; border:1px solid #333;">
+                    <label style="color:#aaa; font-size:0.85rem; width:160px;">Precisión (Threshold)</label>
+                    <input type="range" id="precision-slider" min="0" max="100" value="20"
+                        style="flex:1; cursor:pointer;"
+                        oninput="document.getElementById('prec-val').innerText = this.value + '%'">
+                    <span id="prec-val"
+                        style="color:var(--accent); font-weight:bold; font-size:0.9rem; width:40px; text-align:right;">20%</span>
+                </div>
+
+                <!-- SCOPE FILTERS -->
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <span style="color:#aaa; font-size:0.85rem; padding-left:5px;">Buscar en:</span>
+                    <div style="display:flex;">
+                        <button id="scope-btn-all" class="filter-btn" onclick="updateSearchScope('all')"
+                            style="border-radius:4px 0 0 4px; border:1px solid var(--accent); background:#333;">Todo</button>
+                        <button id="scope-btn-visual" class="filter-btn" onclick="updateSearchScope('visual')"
+                            style="border-radius:0; border:1px solid #444; border-left:none;">Visual</button>
+                        <button id="scope-btn-audio" class="filter-btn" onclick="updateSearchScope('audio')"
+                            style="border-radius:0; border:1px solid #444; border-left:none;">Audio</button>
+                        <button id="scope-btn-filename" class="filter-btn" onclick="updateSearchScope('filename')"
+                            style="border-radius:0 4px 4px 0; border:1px solid #444; border-left:none;">Nombre</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="ai-results-container"
+                style="height:500px; overflow-y:scroll !important; display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); grid-auto-rows:min-content; gap:15px; padding:15px;">
+                <!-- Result Cards -->
+            </div>
+        </div>
+    </div>
+    <!-- MEDIA POOL MODAL (MASTER-DETAIL LAYOUT - 3 PANE) -->
+    <div class="modal-overlay" id="media-pool-modal">
+        <div class="modal-content"
+            style="width: 95vw; height: 90vh; max-width: none; display: flex; flex-direction: column; overflow: hidden;">
+            <span class="close-modal-x" onclick="closeMediaPoolModal()">&times;</span>
+
+            <!-- Header -->
+            <div style="border-bottom: 1px solid #333; padding-bottom: 15px; margin-bottom: 15px;">
+                <h2 style="margin: 0; color: var(--accent);">🎛️ Media Pool</h2>
+                <p style="margin: 5px 0 0 0; font-size: 0.85rem; color: #888;">Biblioteca de assets indexados por IA</p>
+            </div>
+
+            <!-- Toolbar -->
+            <div style="display: flex; gap: 15px; margin-bottom: 15px; flex-wrap: wrap; align-items: center;">
+                <!-- Search -->
+                <div style="position: relative; flex: 1; min-width: 200px; max-width: 300px;">
+                    <input type="text" id="pool-search" placeholder="🔍 Buscar assets..."
+                        style="width: 100%; background: #222; border: 1px solid #444; color: #fff; padding: 8px 32px 8px 12px; border-radius: 4px;"
+                        oninput="onPoolSearchInput()">
+                    <button onclick="document.getElementById('pool-search').value=''; loadPoolAssets();"
+                        style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: transparent; border: none; color: #888; cursor: pointer; font-size: 1.1rem; padding: 0;"
+                        title="Limpiar búsqueda">×</button>
+                </div>
+
+                <!-- Filters -->
+                <div style="display: flex; gap: 0; margin-left: auto;">
+                    <button id="btn-filter-all" class="filter-btn" onclick="updatePoolFilter(null)"
+                        style="border-radius: 4px 0 0 4px; border: 1px solid var(--accent); background: #333;">Todos</button>
+                    <button id="btn-filter-video" class="filter-btn" onclick="updatePoolFilter('video')"
+                        style="border-radius: 0 0 0 0; border: 1px solid var(--accent); background: #333;">Vídeo</button>
+                    <button id="btn-filter-audio" class="filter-btn" onclick="updatePoolFilter('audio')"
+                        style="border-radius: 0 0 0 0; border: 1px solid var(--accent); background: #333;">Audio</button>
+                    <button id="btn-filter-image" class="filter-btn" onclick="updatePoolFilter('image')"
+                        style="border-radius: 0 4px 4px 0; border: 1px solid var(--accent); background: #333;">Imagen</button>
+                </div>
+
+                <select onchange="updatePoolSort(this.value)"
+                    style="background: #222; border: 1px solid #444; color: #fff; padding: 8px; border-radius: 4px;">
+                    <option value="date_desc">📅 Recientes</option>
+                    <option value="name_asc">🔤 Nombre (A-Z)</option>
+                </select>
+            </div>
+
+            <!-- 3 PANE LAYOUT -->
+            <div style="flex: 1; display: flex; gap: 20px; overflow: hidden; height: 100%;">
+
+                <!-- Pane 1: FOLDER TREE (Left) -->
+                <aside id="folder-tree-panel"
+                    style="width: 280px; display: flex; flex-direction: column; background: #151515; border: 1px solid #333; border-radius: 8px; flex-shrink: 0;">
+                    <div
+                        style="padding: 10px; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-weight: bold; color: #fff;">📂 Carpetas</span>
+                        <button onclick="createFolder()"
+                            style="background: none; border: none; color: var(--accent); cursor: pointer; font-size: 1.2rem; padding: 0;"
+                            title="Crear Carpeta">+</button>
+                    </div>
+                    <div id="folder-tree-list" style="flex: 1; overflow-y: auto; padding: 5px;">
+                        <!-- Tree Items Rendered Here -->
+                        <div style="color: #666; padding: 10px; text-align: center;">Cargando...</div>
+                    </div>
+                </aside>
+
+                <!-- Pane 2: ASSET GRID (Center) -->
+                <section
+                    style="flex: 1; display: flex; flex-direction: column; overflow: hidden; border: 1px solid #333; border-radius: 8px; background: #1a1a1a;">
+                    <div id="media-pool-grid"
+                        style="flex: 1; overflow-y: auto; padding: 10px; display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; align-content: start;">
+                        <div style="color: #666; text-align: center; padding: 40px; grid-column: 1/-1;">Cargando
+                            assets...</div>
+                    </div>
+                </section>
+
+                <!-- Pane 3: INSPECTOR (Right) -->
+                <aside
+                    style="width: 350px; display: flex; flex-direction: column; gap: 15px; overflow-y: auto; border: 1px solid #333; border-radius: 8px; background: #1a1a1a; padding: 15px; flex-shrink: 0;">
+                    <div id="pool-inspector">
+                        <div style="color: #666; text-align: center; padding: 40px; font-style: italic;">Selecciona un
+                            asset para inspeccionar</div>
+                    </div>
+                </aside>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- INGEST STUDIO MODAL -->
+    <div class="modal-overlay" id="ingest-modal">
+        <div class="modal-content"
+            style="width: 95vw; height: 90vh; max-width: none; display: flex; flex-direction: column; overflow: hidden; background: var(--card-bg);">
+            <span class="close-modal-x" onclick="closeIngestModal()">×</span>
+
+            <!-- Header -->
+            <div style="border-bottom: 1px solid #333; padding-bottom: 15px; margin-bottom: 15px;">
+                <h2 style="margin: 0; color: var(--accent);">📥 Ingest Studio</h2>
+                <p style="margin: 5px 0 0 0; font-size: 0.85rem; color: #888;">Gestiona y prepara archivos antes del
+                    procesamiento IA</p>
+            </div>
+
+            <!-- Toolbar -->
+            <div style="display: flex; gap: 15px; align-items: center; margin-bottom: 15px; flex-wrap: wrap;">
+                <!-- Group 1: Search -->
+                <div style="position: relative; flex: 1; min-width: 200px; max-width: 300px;">
+                    <input type="text" id="ingest-search" placeholder="🔍 Buscar archivos..."
+                        style="width: 100%; background: #222; border: 1px solid #444; color: #fff; padding: 8px 32px 8px 12px; border-radius: 4px;"
+                        oninput="onIngestSearchInput()">
+                    <button onclick="document.getElementById('ingest-search').value=''; loadRawFiles(true);"
+                        style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: transparent; border: none; color: #888; cursor: pointer; font-size: 1.1rem; padding: 0;"
+                        title="Limpiar búsqueda">×</button>
+                </div>
+
+                <!-- Group 2: View Modes -->
+                <div style="display: flex; gap: 0; margin-left: auto;">
+                    <button id="view-list-btn" onclick="toggleIngestView('list')"
+                        style="border-radius: 4px 0 0 4px; border: 1px solid var(--accent); background: #333; color: #fff; padding: 8px 12px; cursor: pointer;"
+                        title="Vista Lista"> Ξ </button>
+                    <button id="view-grid-btn" onclick="toggleIngestView('grid')"
+                        style="border-radius: 0 4px 4px 0; border: 1px solid #444; background: #222; color: #fff; padding: 8px 12px; cursor: pointer;"
+                        title="Vista Miniaturas">田</button>
+                </div>
+
+                <button onclick="loadRawFiles(true)"
+                    style="background: #333; border: 1px solid #444; color: #fff; padding: 8px 12px; border-radius: 4px; cursor: pointer;"
+                    title="Recargar lista de archivos">🔄</button>
+
+                <!-- Group 3: Filters (Joined Group) -->
+                <div style="display: flex; gap: 0;">
+                    <button id="ingest-filter-all" class="filter-btn" onclick="updateIngestFilter('all')"
+                        style="border-radius: 4px 0 0 4px; border: 1px solid var(--accent); background: #333;">Todos</button>
+                    <button id="ingest-filter-video" class="filter-btn" onclick="updateIngestFilter('video')"
+                        style="border-radius: 0; border: 1px solid #444; ">Vídeo</button>
+                    <button id="ingest-filter-audio" class="filter-btn" onclick="updateIngestFilter('audio')"
+                        style="border-radius: 0; border: 1px solid #444; ">Audio</button>
+                    <button id="ingest-filter-image" class="filter-btn" onclick="updateIngestFilter('image')"
+                        style="border-radius: 0 4px 4px 0; border: 1px solid #444; ">Imagen</button>
+                </div>
+
+                <select id="ingest-sort" onchange="onIngestSortChange()"
+                    style="background: #222; border: 1px solid #444; color: #fff; padding: 8px; border-radius: 4px;">
+                    <option value="date_desc">📅 Más recientes</option>
+                    <option value="date_asc">📅 Más antiguos</option>
+                    <option value="name_asc">🔤 A-Z</option>
+                    <option value="name_desc">🔤 Z-A</option>
+                </select>
+
+                <!-- Sanitize Button -->
+                <button id="ingest-sanitize-btn" style="display:none; margin-left: 10px;" class="btn-warning"
+                    onclick="sanitizeRawFiles()">🛡️ Sanitizar Todo</button>
+            </div>
+
+            <!-- Main Layout (3-Pane) -->
+            <div style="flex: 1; display: flex; gap: 20px; overflow: hidden; padding-bottom: 10px;">
+
+                <!-- Pane 1: Folders (Left) -->
+                <aside
+                    style="width: 280px; display: flex; flex-direction: column; background: #151515; border: 1px solid #333; border-radius: 8px; flex-shrink: 0;">
+                    <div
+                        style="padding: 10px; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-weight: bold; color: #fff;">📂 Explorador</span>
+                        <button onclick="createIngestFolder()"
+                            style="background:transparent; border:none; color:var(--accent); cursor:pointer; font-size:1.1rem;"
+                            title="Nueva Carpeta">➕</button>
+                    </div>
+                    <!-- Placeholder for folder tree logic -->
+                    <div id="ingest-folder-tree"
+                        style="flex: 1; overflow-y: auto; padding: 5px; color: #666; font-style: italic; text-align: center; padding-top: 20px;">
+                        (Árbol de directorios próximamente)
+                    </div>
+                </aside>
+
+                <!-- Pane 2: Files (Center) -->
+                <div
+                    style="flex: 1; border: 1px solid #333; background: #1a1a1a; border-radius: 8px; overflow-y: auto; position: relative; display: flex; flex-direction: column;">
+                    <div id="ingest-file-list" style="flex: 1; overflow-y: auto; padding: 10px;">
+                        <div style="color: #666; text-align: center; padding: 40px;">Cargando archivos...</div>
+                    </div>
+                </div>
+
+                <!-- Pane 3: Inspector (Right) -->
+                <div
+                    style="width: 350px; flex-shrink: 0; border: 1px solid #333; background: #1a1a1a; border-radius: 8px; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px;">
+                    <div id="ingest-inspector">
+                        <div style="color: #666; text-align: center; padding: 40px; font-style: italic;">Selecciona un
+                            archivo para inspeccionar</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div
+                style="display: flex; justify-content: space-between; align-items: center; margin-top: auto; padding-top: 15px; border-top: 1px solid #333;">
+
+                <div>
+                    <button onclick="deleteSelectedFiles()"
+                        style="background: var(--danger); border: none; color: #fff; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: bold;">
+                        🗑️ Eliminar Seleccionados
+                    </button>
+                </div>
+
+                <div style="display:flex; align-items:center; gap:20px;">
+
+                    <div
+                        style="display:flex; align-items:center; gap:12px; padding-right:15px; border-right:1px solid #444;">
+                        <div style="font-size:0.75rem; color:#aaa; font-weight:600; letter-spacing:1px;">MONITOR</div>
+
+                        <label class="switch" style="position:relative; display:inline-block; width:34px; height:20px;">
+                            <input type="checkbox" id="monitor-toggle" onchange="toggleMonitor(this.checked)">
+                            <span class="slider round"
+                                style="position:absolute; cursor:pointer; top:0; left:0; right:0; bottom:0; background-color:#ccc; transition:.4s; border-radius:34px;"></span>
+                            <style>
+                                .switch input {
+                                    opacity: 0;
+                                    width: 0;
+                                    height: 0;
+                                }
+
+                                .slider:before {
+                                    position: absolute;
+                                    content: "";
+                                    height: 14px;
+                                    width: 14px;
+                                    left: 3px;
+                                    bottom: 3px;
+                                    background-color: white;
+                                    transition: .4s;
+                                    border-radius: 50%;
+                                }
+
+                                input:checked+.slider {
+                                    background-color: var(--accent);
+                                }
+
+                                input:checked+.slider:before {
+                                    transform: translateX(13px);
+                                }
+                            </style>
+                        </label>
+
+                        <div id="monitor-status-led" title="Estado: Desconocido"
+                            style="width:10px; height:10px; border-radius:50%; background-color:#555; box-shadow: 0 0 5px rgba(0,0,0,0.5); transition:all 0.3s;">
+                        </div>
+                    </div>
+                    <button id="process-files-btn" onclick="processSelectedFiles()" class="btn-accent"
+                        style="padding: 10px 30px; border-radius: 4px; font-weight: bold; font-size: 1rem;">
+                        🚀 Procesar Selección
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .ingest-file-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            background: #222;
+            border: 1px solid #333;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .ingest-file-item:hover {
+            background: #2a2a2a;
+            border-color: #555;
+        }
+
+        .ingest-file-item.selected {
+            background: #1a2a3a;
+            border-color: var(--accent);
+        }
+
+        .ingest-file-icon {
+            font-size: 1.5rem;
+            width: 30px;
+            text-align: center;
+        }
+
+        .ingest-file-details {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .ingest-file-name {
+            font-weight: bold;
+            color: #fff;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .ingest-file-size {
+            font-size: 0.8rem;
+            color: #888;
+        }
+
+        /* Grid Mode */
+        #ingest-file-list.grid-mode {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 12px;
+            align-content: start;
+        }
+
+        .grid-card {
+            background: #252525;
+            border-radius: 6px;
+            overflow: hidden;
+            height: 180px;
+            display: flex;
+            flex-direction: column;
+            border: 2px solid transparent;
+            transition: all 0.2s;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .grid-card:hover {
+            border-color: #555;
+        }
+
+        .grid-card.selected {
+            border-color: var(--accent);
+            background: #2a3a4a;
+        }
+
+        .grid-card input[type="checkbox"] {
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            z-index: 10;
+            transform: scale(1.2);
+        }
+
+        .grid-card-media {
+            height: 120px;
+            background: #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .grid-card-media img,
+        .grid-card-media video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            pointer-events: none;
+        }
+
+        .grid-card-info {
+            padding: 6px 8px;
+            font-size: 0.75rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 4px;
+        }
+
+        .grid-card-info span {
+            flex: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            color: #fff;
+        }
+
+        .grid-thumb {
+            width: 100%;
+            height: 120px;
+            object-fit: cover;
+        }
+
+        .btn-grid-action {
+            background: var(--accent);
+            border: none;
+            color: #fff;
+            padding: 4px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.75rem;
+            flex-shrink: 0;
+        }
+
+        .btn-grid-action:hover {
+            background: #1565c0;
+        }
+
+        /* TOGGLE SWITCH CSS */
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 40px;
+            height: 20px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #444;
+            transition: .4s;
+            border-radius: 34px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 14px;
+            width: 14px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked+.slider {
+            background-color: var(--accent);
+        }
+
+        input:checked+.slider:before {
+            transform: translateX(15px);
+        }
+    </style>
+
+    <!-- Ingest Studio functions moved to js/app.js with pagination support -->
+    <script src="js/app.js"></script>
+
+    <!-- Context Menu -->
+    <div id="asset-context-menu" class="context-menu hidden">
+        <ul>
+            <li id="ctx-rename">✏️ Renombrar</li>
+            <li id="ctx-sanitize">🛡️ Sanitizar</li>
+            <li id="ctx-delete" class="text-danger">🗑️ Eliminar</li>
+        </ul>
+    </div>
+
+    <!-- KEYBOARD SHORTCUTS MODAL -->
+    <div class="modal-overlay" id="shortcuts-modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="close-modal-x" onclick="closeShortcutsModal()">×</div>
+            <h3 style="margin:0 0 20px 0; color:var(--accent);">⌨️ Atajos de Teclado</h3>
+            <div id="shortcuts-list-container" style="overflow-y: auto; max-height: 60vh;">
+            </div>
+        </div>
+    </div>
+    <!-- Custom Modal Overlay -->
+    <div id="custom-modal-overlay" class="modal-overlay hidden">
+        <div class="modal-box">
+            <h3 id="modal-title">Título</h3>
+            <p id="modal-message">Mensaje...</p>
+            <input type="text" id="modal-input" class="hidden" autocomplete="off">
+            <div class="modal-actions">
+                <button id="modal-btn-cancel" class="btn-secondary">Cancelar</button>
+                <button id="modal-btn-confirm" class="btn-primary">Aceptar</button>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

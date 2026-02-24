@@ -1,0 +1,40 @@
+venv/
+__pycache__/
+.vscode/
+Thumbs.db
+db_storage/
+input/
+output/
+proxies/
+*.mp4
+*.mov
+*.wav
+*.jpg
+*.png
+.env
+models/
+*.pt
+*.bin
+*.pth
+# --- Ingestión y Staging ---
+brutos/
+
+# --- Nuevos formatos de Audio/Imagen/Video ---
+*.mp3
+*.m4a
+*.flac
+*.aac
+*.wav
+*.ogg
+*.mkv
+*.avi
+*.mxf
+*.webm
+*.webp
+*.jpeg
+*.bmp
+*.tiff
+
+# --- Sistema ---
+.DS_Store
+Thumbs.db
