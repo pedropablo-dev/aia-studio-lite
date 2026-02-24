@@ -5038,7 +5038,7 @@ function openShortcutsModal() {
         {
             title: "🎬 Gestión de Escenas",
             shortcuts: [
-                { keys: ["Shift", "Enter"], desc: "Nueva Escena (Siempre activo)" },
+                { keys: ["Alt", "Enter"], desc: "Nueva Escena (Siempre activo)" },
                 { keys: ["Ctrl", "D"], desc: "Duplicar Escena Seleccionada" },
                 { keys: ["Supr"], desc: "Eliminar Escena" },
                 { keys: ["←", "→"], desc: "Moverse entre escenas (si implementado)" }

@@ -12,23 +12,26 @@ Health check.
 
 ---
 
-### Lite Core
+### Lite File Explorer
 
 #### `GET /lite/files`
-Scans a directory recursively and returns all media files (video, audio, image).
+Lists directory contents for the hierarchical file explorer.
 - **Query Parameters**:
-  - `folder` (str, optional): Absolute path to scan. Falls back to `INPUT_DIR` env var → `utils.INPUT_DIR`.
+  - `folder` (str, optional): Absolute path to the Media Root. Falls back to `INPUT_DIR` env var → `utils.INPUT_DIR`.
+  - `subpath` (str, optional): Relative subdirectory to list. Default `""` (root). Only one level is listed per call.
+  - `search` (str, optional): If provided, performs a recursive `rglob` search across the entire tree, filtering by filename.
 - **Response**:
   ```json
   {
     "status": "success",
-    "files": [
-      {"path": "subfolder/clip.mp4", "type": "video", "name": "clip.mp4"},
-      {"path": "photo.jpg", "type": "image", "name": "photo.jpg"}
+    "items": [
+      {"name": "subfolder", "type": "folder"},
+      {"name": "clip.mp4", "type": "video", "path": "subfolder/clip.mp4"},
+      {"name": "photo.jpg", "type": "image", "path": "photo.jpg"}
     ]
   }
   ```
-- **Notes**: Hidden files (`.`) are skipped. Paths use forward slashes on all OS.
+- **Notes**: Hidden files (`.`) are skipped. Paths use forward slashes. Folder items have `type: "folder"`.
 
 #### `GET /thumbnail`
 Returns a thumbnail for a media file.
@@ -46,7 +49,40 @@ Returns a thumbnail for a media file.
 
 ---
 
-### Staging Area
+### Lite File Write Operations
+
+All write endpoints validate path confinement via `_validate_lite_path()` — prevents path traversal, escaping the Media Root, and writes to the software directory.
+
+#### `POST /lite/files/rename`
+Renames a media file.
+- **Body**: `{ "folder": "...", "old_path": "rel/file.mp4", "new_name": "new_name.mp4" }`
+- **Side-effects**: Evicts old thumbnail cache entry.
+
+#### `POST /lite/files/delete`
+Permanently deletes a media file.
+- **Body**: `{ "folder": "...", "file_path": "rel/file.mp4" }`
+- **Side-effects**: Evicts thumbnail cache entry.
+
+#### `POST /lite/files/move`
+Moves a media file to a different subdirectory.
+- **Body**: `{ "folder": "...", "file_path": "rel/file.mp4", "target_directory": "dest/folder" }`
+- **Side-effects**: Evicts old cache entry.
+
+#### `POST /lite/folders/create`
+Creates a new subdirectory.
+- **Body**: `{ "folder": "...", "new_dir": "relative/new_folder" }`
+
+#### `POST /lite/folders/delete`
+Recursively deletes a directory and all its contents. Cannot delete root.
+- **Body**: `{ "folder": "...", "dir_path": "relative/folder" }`
+
+#### `POST /lite/folders/rename`
+Renames a directory. Updates linked file references prefix.
+- **Body**: `{ "folder": "...", "old_dir_path": "old/name", "new_name": "new_name" }`
+
+---
+
+### Staging Area (Ingest)
 
 #### `GET /raw-files`
 Lists files in the staging area (`brutos/`) with server-side pagination.
@@ -88,19 +124,26 @@ Recursively deletes a folder. Prevents deleting root.
 
 ---
 
-### Asset Management
+### Asset Management (Input Directory)
 
 #### `POST /assets/move`
 Moves assets between folders within `input/`.
 
 #### `POST /assets/rename`
-Renames an asset file.
+Renames an asset file. Handles proxy file renaming.
 
 #### `POST /assets/delete`
-Deletes an asset file.
+Deletes an asset file and its associated proxies.
+
+#### `POST /assets/rename-folder`
+Renames a folder and updates proxy files for all contained assets.
 
 ---
 
 ## Security
 - **CORS**: Restricted to `localhost:9999`, `127.0.0.1:9999`, and `null` (for `file://`).
 - **Path Traversal**: `sanitize_filename` blocks `..` and absolute path injection.
+- **Lite Write Guard**: `_validate_lite_path()` ensures all write operations are confined within the Media Root and never touch the software installation directory.
+
+#### `GET /proxy/{file_path:path}`
+Serves proxy files from the proxy directory.
