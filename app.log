@@ -4061,3 +4061,10 @@ ConnectionResetError: [WinError 10054] Se ha forzado la interrupción de una con
 2026-02-24 15:23:53,262 [INFO] [Lite] Moved 'max/MAX_PRUEBA_CRUD.mp4' -> 'max/PRUEBAS_2/MAX_PRUEBA_CRUD.mp4'
 2026-02-24 15:24:18,796 [INFO] [Lite] Cache evicted: max_PRUEBAS_2_MAX_PRUEBA_CRUD.jpg
 2026-02-24 15:24:18,796 [INFO] [Lite] Deleted 'max/PRUEBAS_2/MAX_PRUEBA_CRUD.mp4'
+2026-02-24 15:32:46,285 [INFO] [Lite] Folder created: 'lorena/Nueva Carpeta'
+2026-02-24 15:32:51,787 [INFO] [Lite] Folder deleted: 'lorena/Nueva Carpeta'
+2026-02-24 15:33:55,216 [INFO] [Lite] Folder created: 'lorena/Nueva Carpeta'
+2026-02-24 16:44:01,748 [INFO] [Lite] Folder deleted: 'max/PRUEBAS_2'
+2026-02-24 16:46:49,129 [INFO] [Lite] Cache evicted: max_VIDEO PARA TEST.jpg
+2026-02-24 16:46:49,129 [INFO] [Lite] Moved 'max/VIDEO PARA TEST.mp4' -> 'max/Nueva Carpeta de pruieba/VIDEO PARA TEST.mp4'
+2026-02-24 16:47:23,860 [INFO] [Lite] Folder renamed: 'max/Nueva Carpeta de pruieba' -> 'max/TEST'

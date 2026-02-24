@@ -1524,3 +1524,13 @@ footer {
     border: 1px solid #922020;
 }
 .btn-danger:hover { background: #e53935; }
+
+/* Opaque backgrounds for badges */
+.file-card[data-type="video"] .file-type-badge { background: #004411; }
+.file-card[data-type="image"] .file-type-badge { background: #003344; }
+.file-card[data-type="audio"] .file-type-badge { background: #330044; }
+
+/* Timeline linked file labels colors */
+.scene-card[data-file-type="video"] .linked-file-name { color: var(--color-video); border-color: rgba(0,255,65,0.4); background: rgba(0,255,65,0.05); }
+.scene-card[data-file-type="image"] .linked-file-name { color: var(--color-image); border-color: rgba(0,212,255,0.4); background: rgba(0,212,255,0.05); }
+.scene-card[data-file-type="audio"] .linked-file-name { color: var(--color-audio); border-color: rgba(188,19,254,0.4); background: rgba(188,19,254,0.05); }

@@ -130,6 +130,10 @@ class LiteFolderDeleteRequest(BaseModel):
     folder: str          # Absolute Media Root
     dir_path: str        # Relative path of the folder to delete
 
+class LiteFolderRenameRequest(BaseModel):
+    folder: str
+    old_dir_path: str
+    new_name: str
 
 # === STARTUP ===
 
@@ -608,6 +612,58 @@ async def lite_delete_folder(payload: LiteFolderDeleteRequest):
 
     logger.info(f"[Lite] Folder deleted: '{clean_rel}'")
     return {"success": True, "deleted": clean_rel}
+
+
+@app.post("/lite/folders/rename")
+async def lite_rename_folder(payload: LiteFolderRenameRequest):
+    """
+    [LITE] Renames a directory inside the Media Root.
+    Security: validated with is_relative_to. Cannot rename the root itself.
+    """
+    if not payload.folder or not payload.folder.strip():
+        raise HTTPException(status_code=400, detail="Media Root (folder) is required")
+
+    root = Path(payload.folder.strip()).resolve()
+    try:
+        root.relative_to(_SW_ROOT)
+        raise HTTPException(status_code=403, detail="Write operations not allowed within the application directory")
+    except ValueError:
+        pass
+
+    if not root.is_dir():
+        raise HTTPException(status_code=400, detail=f"Media Root does not exist: {payload.folder}")
+
+    old_rel = payload.old_dir_path.strip().lstrip("/").lstrip("\\")
+    if not old_rel:
+        raise HTTPException(status_code=400, detail="Cannot rename the Media Root itself")
+    if ".." in old_rel.replace("\\", "/").split("/"):
+        raise HTTPException(status_code=400, detail="Path traversal detected in old_dir_path")
+
+    target_dir = (root / old_rel).resolve()
+    if not target_dir.is_relative_to(root):
+        raise HTTPException(status_code=403, detail="old_dir_path escapes the Media Root")
+    if not target_dir.exists():
+        raise HTTPException(status_code=404, detail="Folder not found")
+    if not target_dir.is_dir():
+        raise HTTPException(status_code=400, detail="Target is not a folder")
+
+    new_name = payload.new_name.strip()
+    if not new_name or "/" in new_name or "\\" in new_name:
+        raise HTTPException(status_code=400, detail="new_name must be a plain folder name (no separators)")
+
+    new_dir_path = target_dir.parent / new_name
+    if new_dir_path.exists():
+        raise HTTPException(status_code=409, detail=f"'{new_name}' already exists in this location")
+        
+    try:
+        target_dir.rename(new_dir_path)
+    except Exception as e:
+        logger.error(f"[Lite] Folder rename failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to rename folder: {e}")
+
+    new_rel_str = new_dir_path.relative_to(root).as_posix()
+    logger.info(f"[Lite] Folder renamed: '{old_rel}' -> '{new_rel_str}'")
+    return {"success": True, "old_path": old_rel, "new_path": new_rel_str}
 
 
 @app.get("/raw-files")

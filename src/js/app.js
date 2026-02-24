@@ -1369,11 +1369,14 @@ function manualBackup() {
 }
 
 async function resetProject() {
-    const confirmed = await Modal.confirm(
-        "⚠️ ¿Reiniciar Proyecto?",
-        "¿Estás seguro de que quieres BORRAR todo el proyecto y empezar de cero?\n\nEsta acción eliminará el autoguardado y no se puede deshacer.",
-        true
-    );
+    const { confirmed } = await sysDialog({
+        icon: '⚠️',
+        title: '¿Reiniciar Proyecto?',
+        message: '¿Estás seguro de que quieres BORRAR todo el proyecto y empezar de cero?<br><br>Esta acción eliminará el autoguardado y no se puede deshacer.',
+        type: 'confirm',
+        confirmLabel: 'Borrar todo',
+        confirmClass: 'btn-danger'
+    });
 
     if (confirmed) {
         // 1. Limpiar SafeStorage Slots & Metadata
@@ -1864,6 +1867,7 @@ function _renderGridItems(items, mediaRoot) {
                      ondragleave="_onFolderDragLeave(event)"
                      ondrop="_onFolderDrop(event, '${safePath}')">
                     <div class="file-card-actions" onclick="event.stopPropagation()">
+                        <button title="Renombrar carpeta" onclick="liteRenameFolder('${safePath}')">✏️</button>
                         <button title="Eliminar carpeta" onclick="liteDeleteFolder('${safePath}')">&#x1F5D1;</button>
                     </div>
                     <div class="file-icon">&#x1F4C1;</div>
@@ -1935,7 +1939,21 @@ async function openQuickFileModal(sceneId, subpath = '') {
         const res = await fetch(url);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
-        const items = data.items || [];
+        let items = data.items || [];
+
+        // Apply sorting
+        const sortVal = document.getElementById('lite-sort-select')?.value || 'name';
+        items.sort((a, b) => {
+            if (a.type === 'folder' && b.type !== 'folder') return -1;
+            if (a.type !== 'folder' && b.type === 'folder') return 1;
+            if (sortVal === 'name') return a.name.localeCompare(b.name);
+            if (sortVal === 'type') {
+                if (a.type === b.type) return a.name.localeCompare(b.name);
+                return a.type.localeCompare(b.type);
+            }
+            return 0;
+        });
+
 
         if (counter) counter.textContent = `${items.length} elemento${items.length !== 1 ? 's' : ''}`;
 
@@ -1986,7 +2004,21 @@ async function filterQuickFiles() {
         const res = await fetch(url);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
-        const items = data.items || [];
+        let items = data.items || [];
+
+        // Apply sorting to search results too
+        const sortVal = document.getElementById('lite-sort-select')?.value || 'name';
+        items.sort((a, b) => {
+            if (a.type === 'folder' && b.type !== 'folder') return -1;
+            if (a.type !== 'folder' && b.type === 'folder') return 1;
+            if (sortVal === 'name') return a.name.localeCompare(b.name);
+            if (sortVal === 'type') {
+                if (a.type === b.type) return a.name.localeCompare(b.name);
+                return a.type.localeCompare(b.type);
+            }
+            return 0;
+        });
+
 
         if (counter) counter.textContent = `${items.length} resultado${items.length !== 1 ? 's' : ''}`;
         grid.innerHTML = _renderGridItems(items, mediaRoot);
@@ -2068,7 +2100,15 @@ function _syncLinkedFile(oldPath, newPath) {
  */
 async function liteDeleteFile(filePath) {
     const name = filePath.split('/').pop();
-    if (!confirm(`⚠️ ¿Eliminar permanentemente "${name}" del disco?\nEsta acción no se puede deshacer.`)) return;
+    const { confirmed } = await sysDialog({
+        icon: '⚠️',
+        title: '¿Eliminar archivo?',
+        message: `¿Eliminar permanentemente <b>"${name}"</b> del disco?<br>Esta acción no se puede deshacer.`,
+        type: 'confirm',
+        confirmLabel: 'Eliminar',
+        confirmClass: 'btn-danger'
+    });
+    if (!confirmed) return;
 
     const mediaRoot = document.getElementById('media-path-input')?.value?.trim() || '';
     if (!mediaRoot) { showToast('❌ Configura el Media Root primero'); return; }
@@ -2091,12 +2131,27 @@ async function liteDeleteFile(filePath) {
 async function liteRenameFile(filePath) {
     const oldName = filePath.split('/').pop();
     const ext = oldName.includes('.') ? '.' + oldName.split('.').pop() : '';
-    const newName = prompt(`✏️ Nuevo nombre para "${oldName}":`, oldName);
-    if (!newName || newName.trim() === oldName) return;
+
+    const { confirmed, value: newName } = await sysDialog({
+        icon: '✏️',
+        title: 'Renombrar Archivo',
+        message: `Introduce el nuevo nombre para <b>"${oldName}"</b>:`,
+        type: 'prompt',
+        defaultValue: oldName,
+        confirmLabel: 'Renombrar',
+        confirmClass: 'btn-accent'
+    });
+
+    if (!confirmed || !newName || newName.trim() === oldName) return;
 
     // Enforce same extension on client side for UX feedback
     if (!newName.trim().toLowerCase().endsWith(ext.toLowerCase())) {
-        alert(`⚠️ El nombre debe mantener la extensión "${ext}"`);
+        await sysDialog({
+            icon: '❌',
+            title: 'Extensión Inválida',
+            message: `El nombre debe mantener la extensión <b>"${ext}"</b>`,
+            type: 'alert'
+        });
         return;
     }
 
@@ -2117,6 +2172,62 @@ async function liteRenameFile(filePath) {
         console.error('[Lite] Rename error:', err);
     }
 }
+
+/**
+ * Renombra una carpeta en el servidor y sincroniza todos los archivos hijos vinculados.
+ * @param {string} oldDirPath - Ruta relativa al Media Root
+ */
+async function liteRenameFolder(oldDirPath) {
+    const oldName = oldDirPath.split('/').pop();
+
+    const { confirmed, value: newName } = await sysDialog({
+        icon: '✏️',
+        title: 'Renombrar Carpeta',
+        message: `Introduce el nuevo nombre para <b>"${oldName}"</b>:`,
+        type: 'prompt',
+        defaultValue: oldName,
+        confirmLabel: 'Renombrar',
+        confirmClass: 'btn-accent'
+    });
+
+    if (!confirmed || !newName || newName.trim() === oldName) return;
+
+    const mediaRoot = document.getElementById('media-path-input')?.value?.trim() || '';
+    if (!mediaRoot) { showToast('❌ Configura el Media Root primero'); return; }
+
+    try {
+        const data = await _litePost('/lite/folders/rename', {
+            folder: mediaRoot,
+            old_dir_path: oldDirPath,
+            new_name: newName.trim()
+        });
+
+        // Sincronizar todos los archivos dentro de la carpeta renombrada
+        const oldPrefix = data.old_path + "/";
+        const newPrefix = data.new_path + "/";
+        let changed = false;
+
+        scenes.forEach(scene => {
+            if (scene.linkedFile && scene.linkedFile.startsWith(oldPrefix)) {
+                scene.linkedFile = newPrefix + scene.linkedFile.slice(oldPrefix.length);
+                changed = true;
+            }
+        });
+
+        if (changed) {
+            saveState();
+            render();
+            showToast(`🔄 Vínculos sincronizados tras renombrar carpeta`);
+        }
+
+        showToast(`✏️ Carpeta renombrada a: ${newName.trim()}`);
+        openQuickFileModal(null, currentBrowsePath); // Refresh grid
+    } catch (err) {
+        showToast(`❌ Error al renombrar carpeta: ${err.message}`);
+        console.error('[Lite] Rename folder error:', err);
+    }
+}
+
 
 /**
  * Mueve un archivo a una carpeta destino (usado por Drag & Drop y la API).
@@ -2155,18 +2266,41 @@ function _onFileDragStart(event, filePath) {
     event.dataTransfer.setData('text/plain', filePath);
 }
 
+let _dragScrollInterval = null;
+
 function _onFolderDragOver(event) {
     event.preventDefault();
     event.dataTransfer.dropEffect = 'move';
     event.currentTarget.style.borderColor = 'var(--accent)';
+
+    // Auto-scroll logic targeting the main scrollable container
+    const container = document.getElementById('quick-file-modal').querySelector('.modal-content');
+    if (!container) return;
+
+    const rect = container.getBoundingClientRect();
+    const y = event.clientY - rect.top;
+    const threshold = 50; // pixels from edge to trigger scroll
+    const speed = 15;
+
+    clearInterval(_dragScrollInterval);
+
+    if (y < threshold) {
+        // scroll up
+        _dragScrollInterval = setInterval(() => { if (container.scrollTop > 0) container.scrollTop -= speed; }, 20);
+    } else if (y > rect.height - threshold) {
+        // scroll down
+        _dragScrollInterval = setInterval(() => { container.scrollTop += speed; }, 20);
+    }
 }
 
 function _onFolderDragLeave(event) {
     event.currentTarget.style.borderColor = '';
+    clearInterval(_dragScrollInterval);
 }
 
 function _onFolderDrop(event, folderPath) {
     event.preventDefault();
+    clearInterval(_dragScrollInterval);
     event.currentTarget.style.borderColor = '';
     const src = _liteDraggedPath || event.dataTransfer.getData('text/plain');
     if (!src || src === folderPath) return;
@@ -2175,6 +2309,7 @@ function _onFolderDrop(event, folderPath) {
     liteMoveFileTo(src, folderPath);
     _liteDraggedPath = null;
 }
+
 
 
 // ================================================================
@@ -4861,3 +4996,14 @@ document.addEventListener('keydown', (e) => {
         closeShortcutsModal();
     }
 });
+
+/**
+ * Applies the current selected sort order by quickly re-fetching the current level.
+ */
+function liteSortFiles(value) {
+    if (document.getElementById('lite-file-search')?.value.trim()) {
+        filterQuickFiles();
+    } else {
+        openQuickFileModal(currentFileSceneId, currentBrowsePath);
+    }
+}
