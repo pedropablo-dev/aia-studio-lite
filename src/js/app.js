@@ -1855,36 +1855,52 @@ function _renderGridItems(items, mediaRoot) {
     return items.map(item => {
         const safePath = item.path.replace(/'/g, "\\'");
 
+        // ── FOLDER CARD ─────────────────────────────────────────────
         if (item.type === 'folder') {
             return `
                 <div class="file-card is-folder" data-path="${item.path}" data-name="${item.name}"
-                     onclick="openQuickFileModal(currentFileSceneId, '${safePath}')">
+                     onclick="openQuickFileModal(currentFileSceneId, '${safePath}')"
+                     ondragover="_onFolderDragOver(event)"
+                     ondragleave="_onFolderDragLeave(event)"
+                     ondrop="_onFolderDrop(event, '${safePath}')">
                     <div class="file-icon">📁</div>
                     <div class="file-label" title="${item.name}">${item.name}</div>
                 </div>`;
         }
 
+        // ── MEDIA FILE CARD ─────────────────────────────────────────
         const isVideo = /\.(mp4|mov|mxf|avi|webm)$/i.test(item.name);
         const isAudio = /\.(mp3|wav|aac)$/i.test(item.name);
-        const thumbUrl = isVideo || !isAudio
+        const thumbUrl = (isVideo || !isAudio)
             ? `http://127.0.0.1:9999/thumbnail?path=${encodeURIComponent(item.path)}&folder=${encodeURIComponent(mediaRoot)}`
             : null;
 
         const mediaEl = isAudio
-            ? `<div class="file-icon" style="height:90px; width:100%; display:flex; align-items:center; justify-content:center; background:#111; border-radius:5px; margin-bottom:7px; font-size:2.2rem;">🎧</div>`
+            ? `<div class="file-icon" style="height:90px;width:100%;display:flex;align-items:center;justify-content:center;background:#111;border-radius:5px;margin-bottom:7px;font-size:2.2rem;">🎧</div>`
             : `<img src="${thumbUrl}" loading="lazy" alt="" onerror="this.style.display='none'">`;
 
-        const badge = item.type !== 'folder' ? `<span class="file-type-badge">${item.type}</span>` : '';
+        const badge = `<span class="file-type-badge">${item.type}</span>`;
+
+        // Action buttons — stopPropagation so clicks don't open the file
+        const actions = `
+            <div class="file-card-actions" onclick="event.stopPropagation()">
+                <button title="Renombrar" onclick="liteRenameFile('${safePath}')">✏️</button>
+                <button title="Eliminar" onclick="liteDeleteFile('${safePath}')">🗑️</button>
+            </div>`;
 
         return `
             <div class="file-card" data-path="${item.path}" data-name="${item.name}" data-type="${item.type}"
+                 draggable="true"
+                 ondragstart="_onFileDragStart(event, '${safePath}')"
                  onclick="selectLiteFile('${safePath}')">
                 ${badge}
+                ${actions}
                 ${mediaEl}
                 <div class="file-label" title="${item.path}">${item.name}</div>
             </div>`;
     }).join('');
 }
+
 
 /**
  * Abre el explorador jerárquico de archivos Lite.
@@ -1997,7 +2013,167 @@ function selectLiteFile(filePath) {
     showToast(`🔗 Vinculado: ${filePath.split('/').pop()}`);
 }
 
-// --- FUNCIÓN HELPER PARA COPIAR NOMBRE ---
+// ================================================================
+// [LITE] FASE B — GESTIÓN DE ARCHIVOS (Renombrar, Borrar, Mover)
+// ================================================================
+
+/**
+ * Helper genérico de POST a la API de escritura Lite.
+ * @param {string} endpoint - e.g. '/lite/files/delete'
+ * @param {Object} body     - Payload JSON
+ * @returns {Promise<Object>} Data parsed JSON or throws Error with detail message
+ */
+async function _litePost(endpoint, body) {
+    const res = await fetch('http://localhost:9999' + endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+    });
+    const data = await res.json();
+    if (!res.ok) {
+        throw new Error(data.detail || `HTTP ${res.status}`);
+    }
+    return data;
+}
+
+/**
+ * Actualiza reactivamente todas las escenas que tengan el path antiguo como linkedFile.
+ * Llama a saveState() + render() solo si hubo cambios reales.
+ * @param {string} oldPath
+ * @param {string|null} newPath - null indica que el archivo fue eliminado (vacía el vínculo)
+ */
+function _syncLinkedFile(oldPath, newPath) {
+    let changed = false;
+    scenes.forEach(scene => {
+        if (scene.linkedFile === oldPath) {
+            scene.linkedFile = newPath || '';
+            if (!newPath) scene.startTime = 0;
+            changed = true;
+        }
+    });
+    if (changed) {
+        saveState();
+        render();
+        const action = newPath ? `🔄 Vínculo actualizado: ${newPath.split('/').pop()}` : `🔗 Vínculo eliminado`;
+        showToast(action);
+    }
+}
+
+/**
+ * Elimina un archivo de disco con confirmación del usuario.
+ * @param {string} filePath  - Ruta relativa al Media Root
+ */
+async function liteDeleteFile(filePath) {
+    const name = filePath.split('/').pop();
+    if (!confirm(`⚠️ ¿Eliminar permanentemente "${name}" del disco?\nEsta acción no se puede deshacer.`)) return;
+
+    const mediaRoot = document.getElementById('media-path-input')?.value?.trim() || '';
+    if (!mediaRoot) { showToast('❌ Configura el Media Root primero'); return; }
+
+    try {
+        await _litePost('/lite/files/delete', { folder: mediaRoot, file_path: filePath });
+        showToast(`🗑️ Eliminado: ${name}`);
+        _syncLinkedFile(filePath, null);
+        openQuickFileModal(null, currentBrowsePath); // Refresh grid
+    } catch (err) {
+        showToast(`❌ Error al eliminar: ${err.message}`);
+        console.error('[Lite] Delete error:', err);
+    }
+}
+
+/**
+ * Renombra un archivo de disco con un prompt de nombre nuevo.
+ * @param {string} filePath - Ruta relativa al Media Root
+ */
+async function liteRenameFile(filePath) {
+    const oldName = filePath.split('/').pop();
+    const ext = oldName.includes('.') ? '.' + oldName.split('.').pop() : '';
+    const newName = prompt(`✏️ Nuevo nombre para "${oldName}":`, oldName);
+    if (!newName || newName.trim() === oldName) return;
+
+    // Enforce same extension on client side for UX feedback
+    if (!newName.trim().toLowerCase().endsWith(ext.toLowerCase())) {
+        alert(`⚠️ El nombre debe mantener la extensión "${ext}"`);
+        return;
+    }
+
+    const mediaRoot = document.getElementById('media-path-input')?.value?.trim() || '';
+    if (!mediaRoot) { showToast('❌ Configura el Media Root primero'); return; }
+
+    try {
+        const data = await _litePost('/lite/files/rename', {
+            folder: mediaRoot,
+            old_path: filePath,
+            new_name: newName.trim()
+        });
+        showToast(`✏️ Renombrado: ${newName.trim()}`);
+        _syncLinkedFile(data.old_path, data.new_path);
+        openQuickFileModal(null, currentBrowsePath); // Refresh grid
+    } catch (err) {
+        showToast(`❌ Error al renombrar: ${err.message}`);
+        console.error('[Lite] Rename error:', err);
+    }
+}
+
+/**
+ * Mueve un archivo a una carpeta destino (usado por Drag & Drop y la API).
+ * @param {string} filePath       - Ruta relativa del archivo origen
+ * @param {string} targetDirectory - Ruta relativa de la carpeta destino
+ */
+async function liteMoveFileTo(filePath, targetDirectory) {
+    const mediaRoot = document.getElementById('media-path-input')?.value?.trim() || '';
+    if (!mediaRoot) { showToast('❌ Configura el Media Root primero'); return; }
+
+    try {
+        const data = await _litePost('/lite/files/move', {
+            folder: mediaRoot,
+            file_path: filePath,
+            target_directory: targetDirectory
+        });
+        showToast(`📦 Movido: ${data.new_path.split('/').pop()}`);
+        _syncLinkedFile(data.old_path, data.new_path);
+        openQuickFileModal(null, currentBrowsePath); // Refresh grid
+    } catch (err) {
+        showToast(`❌ Error al mover: ${err.message}`);
+        console.error('[Lite] Move error:', err);
+    }
+}
+
+// ================================================================
+// [LITE] DRAG & DROP — Handlers globales
+// ================================================================
+
+/** Almacena el path del archivo que se está arrastrando */
+let _liteDraggedPath = null;
+
+function _onFileDragStart(event, filePath) {
+    _liteDraggedPath = filePath;
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', filePath);
+}
+
+function _onFolderDragOver(event) {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+    event.currentTarget.style.borderColor = 'var(--accent)';
+}
+
+function _onFolderDragLeave(event) {
+    event.currentTarget.style.borderColor = '';
+}
+
+function _onFolderDrop(event, folderPath) {
+    event.preventDefault();
+    event.currentTarget.style.borderColor = '';
+    const src = _liteDraggedPath || event.dataTransfer.getData('text/plain');
+    if (!src || src === folderPath) return;
+    // Don't move a folder into itself
+    if (src.startsWith(folderPath + '/') || src === folderPath) return;
+    liteMoveFileTo(src, folderPath);
+    _liteDraggedPath = null;
+}
+
+
 function copyLinkedText(text) {
     // Evitar que el clic se propague (si fuera necesario)
     if (!text) return;

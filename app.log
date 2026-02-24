@@ -4051,3 +4051,7 @@ ConnectionResetError: [WinError 10054] Se ha forzado la interrupción de una con
 
 2026-02-24 11:00:22,172 [INFO] Load pretrained SentenceTransformer: BAAI/bge-m3
 2026-02-24 11:00:27,135 [INFO] Base de datos conectada correctamente
+2026-02-24 14:33:05,501 [INFO] [Lite] Cache evicted: max_PARA_PRUEBAS_CRUD.jpg
+2026-02-24 14:33:05,501 [INFO] [Lite] Renamed 'max/PARA_PRUEBAS_CRUD.mp4' -> 'max/PARA_PRUEBAS_CRUD_2.mp4'
+2026-02-24 14:34:39,408 [INFO] [Lite] Cache evicted: max_PARA_PRUEBAS_CRUD_2.jpg
+2026-02-24 14:34:39,409 [INFO] [Lite] Moved 'max/PARA_PRUEBAS_CRUD_2.mp4' -> 'max/PRUEBAS/PARA_PRUEBAS_CRUD_2.mp4'

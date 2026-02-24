@@ -1403,3 +1403,52 @@ footer {
 .file-card[data-type="video"]:hover .file-label { color: #a5d6a7; }
 .file-card[data-type="image"]:hover .file-label { color: #81d4fa; }
 .file-card[data-type="audio"]:hover .file-label { color: #ce93d8; }
+
+/* ============================================================
+   LITE FILE CARD — ACTION BUTTONS (FASE B)
+   ============================================================ */
+
+/* Action overlay: hidden by default, shown on card hover */
+.file-card-actions {
+    display: none;
+    position: absolute;
+    top: 4px;
+    left: 4px;
+    gap: 4px;
+    z-index: 10;
+}
+
+.file-card:hover .file-card-actions {
+    display: flex;
+}
+
+.file-card-actions button {
+    background: rgba(0, 0, 0, 0.72);
+    border: 1px solid #444;
+    color: #ccc;
+    border-radius: 4px;
+    width: 26px;
+    height: 26px;
+    font-size: 0.75rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s, border-color 0.15s;
+    padding: 0;
+    line-height: 1;
+}
+
+.file-card-actions button:hover {
+    background: rgba(30, 42, 68, 0.95);
+    border-color: var(--accent);
+    color: #fff;
+}
+
+/* In list-view, actions are always inline (not absolute overlay) */
+#quick-file-list.list-view .file-card-actions {
+    position: static;
+    display: flex;
+    margin-left: auto;
+    flex-shrink: 0;
+}

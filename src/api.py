@@ -107,6 +107,21 @@ class AssetRenameRequest(BaseModel):
 class AssetDeleteRequest(BaseModel):
     path: str
 
+# --- LITE FILE MANAGER MODELS ---
+class LiteRenameRequest(BaseModel):
+    folder: str          # Absolute Media Root path from UI
+    old_path: str        # Relative path of the file to rename
+    new_name: str        # New filename (no path separators)
+
+class LiteMoveRequest(BaseModel):
+    folder: str          # Absolute Media Root path from UI
+    file_path: str       # Relative path of the file to move
+    target_directory: str # Relative path of target folder
+
+class LiteDeleteRequest(BaseModel):
+    folder: str          # Absolute Media Root path from UI
+    file_path: str       # Relative path of the file to delete
+
 
 # === STARTUP ===
 
@@ -335,7 +350,174 @@ async def list_lite_files(
     return {"status": "success", "items": items, "current": safe_sub}
 
 
-# === RAW FILES (STAGING AREA) ===
+# === LITE FILE WRITE ENDPOINTS ===
+
+# software root — nothing under this path may be touched
+_SW_ROOT = Path(os.path.dirname(os.path.abspath(__file__))).parent.resolve()
+
+
+def _validate_lite_path(folder: str, rel_path: str) -> tuple[Path, Path]:
+    """
+    Security helper for Lite write operations.
+    Returns (root_path, target_path) both resolved.
+    Raises HTTPException 400/403 on any violation.
+    """
+    if not folder or not folder.strip():
+        raise HTTPException(status_code=400, detail="Media Root (folder) is required for write operations")
+
+    root = Path(folder.strip()).resolve()
+
+    # Block writing to software directory
+    try:
+        root.relative_to(_SW_ROOT)
+        raise HTTPException(
+            status_code=403,
+            detail="Write operations are not allowed within the application directory"
+        )
+    except ValueError:
+        pass  # Good — root is NOT a subdirectory of _SW_ROOT
+
+    if not root.is_dir():
+        raise HTTPException(status_code=400, detail=f"Media Root does not exist: {folder}")
+
+    # Sanitize relative path: strip leading slashes/backslashes, reject traversal
+    clean_rel = rel_path.strip().lstrip("/").lstrip("\\")
+    if ".." in clean_rel.replace("\\", "/").split("/"):
+        raise HTTPException(status_code=400, detail="Path traversal detected in file_path")
+
+    target = (root / clean_rel).resolve()
+
+    if not target.is_relative_to(root):
+        raise HTTPException(status_code=403, detail="Path escapes the configured Media Root")
+
+    return root, target
+
+
+def _delete_cache_entry(rel_path: str) -> None:
+    """Remove a cached thumbnail for the given relative path (if it exists)."""
+    safe_name = rel_path.replace("/", "_").replace("\\", "_")
+    cache_stem = os.path.splitext(safe_name)[0]
+    cache_path = _CACHE_DIR / f"{cache_stem}.jpg"
+    if cache_path.exists():
+        try:
+            cache_path.unlink()
+            logger.info(f"[Lite] Cache evicted: {cache_path.name}")
+        except Exception as e:
+            logger.warning(f"[Lite] Could not delete cache entry {cache_path}: {e}")
+
+
+@app.post("/lite/files/rename")
+async def lite_rename_file(payload: LiteRenameRequest):
+    """
+    [LITE] Renames a media file inside the Media Root.
+    Security: validates path confinement with _validate_lite_path.
+    Cache: evicts old thumbnail entry automatically.
+    """
+    root, target = _validate_lite_path(payload.folder, payload.old_path)
+
+    if not target.exists():
+        raise HTTPException(status_code=404, detail="File not found")
+    if not target.is_file():
+        raise HTTPException(status_code=400, detail="Target is not a file")
+
+    # Validate new_name: no path separators, same extension
+    new_name = payload.new_name.strip()
+    if not new_name or "/" in new_name or "\\" in new_name:
+        raise HTTPException(status_code=400, detail="new_name must be a plain filename (no separators)")
+    if target.suffix.lower() != Path(new_name).suffix.lower():
+        raise HTTPException(status_code=400, detail="Cannot change file extension during rename")
+
+    new_path = target.parent / new_name
+    if new_path.exists():
+        raise HTTPException(status_code=409, detail=f"'{new_name}' already exists in this folder")
+
+    old_rel = payload.old_path.strip().lstrip("/").lstrip("\\")
+    try:
+        new_path = new_path.resolve()
+        if not new_path.is_relative_to(root):
+            raise HTTPException(status_code=403, detail="Resulting path escapes the Media Root")
+        target.rename(new_path)
+    except Exception as e:
+        logger.error(f"[Lite] Rename failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Rename failed: {e}")
+
+    new_rel = new_path.relative_to(root).as_posix()
+    _delete_cache_entry(old_rel)
+
+    logger.info(f"[Lite] Renamed '{old_rel}' -> '{new_rel}'")
+    return {"success": True, "old_path": old_rel, "new_path": new_rel}
+
+
+@app.post("/lite/files/delete")
+async def lite_delete_file(payload: LiteDeleteRequest):
+    """
+    [LITE] Permanently deletes a media file inside the Media Root.
+    Security: validates path confinement with _validate_lite_path.
+    Cache: evicts thumbnail entry automatically.
+    """
+    root, target = _validate_lite_path(payload.folder, payload.file_path)
+
+    if not target.exists():
+        raise HTTPException(status_code=404, detail="File not found")
+    if not target.is_file():
+        raise HTTPException(status_code=400, detail="Target is not a file — use folder endpoints to delete folders")
+
+    rel_path = payload.file_path.strip().lstrip("/").lstrip("\\")
+    try:
+        target.unlink()
+    except Exception as e:
+        logger.error(f"[Lite] Delete failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Delete failed: {e}")
+
+    _delete_cache_entry(rel_path)
+
+    logger.info(f"[Lite] Deleted '{rel_path}'")
+    return {"success": True, "deleted_path": rel_path}
+
+
+@app.post("/lite/files/move")
+async def lite_move_file(payload: LiteMoveRequest):
+    """
+    [LITE] Moves a media file to a different subdirectory inside the Media Root.
+    Security: both source and destination must be confined within the Media Root.
+    Cache: evicts old thumbnail entry and registers new one path.
+    """
+    root, source = _validate_lite_path(payload.folder, payload.file_path)
+
+    if not source.exists():
+        raise HTTPException(status_code=404, detail="Source file not found")
+    if not source.is_file():
+        raise HTTPException(status_code=400, detail="Source is not a file")
+
+    # Validate destination directory
+    dest_dir_rel = payload.target_directory.strip().lstrip("/").lstrip("\\")
+    if ".." in dest_dir_rel.replace("\\", "/").split("/"):
+        raise HTTPException(status_code=400, detail="Path traversal detected in target_directory")
+
+    dest_dir = (root / dest_dir_rel).resolve()
+    if not dest_dir.is_relative_to(root):
+        raise HTTPException(status_code=403, detail="Target directory escapes the Media Root")
+    if not dest_dir.is_dir():
+        raise HTTPException(status_code=404, detail="Target directory does not exist")
+
+    dest_file = dest_dir / source.name
+    if dest_file.exists():
+        raise HTTPException(status_code=409, detail=f"'{source.name}' already exists in the target folder")
+
+    old_rel = payload.file_path.strip().lstrip("/").lstrip("\\")
+    try:
+        source.rename(dest_file)
+    except Exception as e:
+        logger.error(f"[Lite] Move failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Move failed: {e}")
+
+    new_rel = dest_file.relative_to(root).as_posix()
+    _delete_cache_entry(old_rel)
+
+    logger.info(f"[Lite] Moved '{old_rel}' -> '{new_rel}'")
+    return {"success": True, "old_path": old_rel, "new_path": new_rel}
+
+
 
 @app.get("/raw-files")
 async def list_raw_files(sort: str = "date_desc", page: int = 1, limit: int = 50, filter_type: Optional[str] = None, search: Optional[str] = None, folder: Optional[str] = None):
