@@ -2219,7 +2219,7 @@ async function filterQuickFiles() {
 
     if (!query) {
         // Empty query → go back to current browse level
-        openQuickFileModal(null, currentBrowsePath);
+        openQuickFileModal(currentFileSceneId, currentBrowsePath);
         return;
     }
 
@@ -2357,7 +2357,7 @@ async function liteDeleteFile(filePath) {
         await _litePost('/lite/files/delete', { folder: mediaRoot, file_path: filePath });
         showToast(`🗑️ Eliminado: ${name}`);
         _syncLinkedFile(filePath, null);
-        openQuickFileModal(null, currentBrowsePath); // Refresh grid
+        openQuickFileModal(currentFileSceneId, currentBrowsePath); // Refresh grid
     } catch (err) {
         showToast(`❌ Error al eliminar: ${err.message}`);
         console.error('[Lite] Delete error:', err);
@@ -2406,7 +2406,7 @@ async function liteRenameFile(filePath) {
         });
         showToast(`✏️ Renombrado: ${newName.trim()}`);
         _syncLinkedFile(data.old_path, data.new_path);
-        openQuickFileModal(null, currentBrowsePath); // Refresh grid
+        openQuickFileModal(currentFileSceneId, currentBrowsePath); // Refresh grid
     } catch (err) {
         showToast(`❌ Error al renombrar: ${err.message}`);
         console.error('[Lite] Rename error:', err);
@@ -2461,7 +2461,7 @@ async function liteRenameFolder(oldDirPath) {
         }
 
         showToast(`✏️ Carpeta renombrada a: ${newName.trim()}`);
-        openQuickFileModal(null, currentBrowsePath); // Refresh grid
+        openQuickFileModal(currentFileSceneId, currentBrowsePath); // Refresh grid
     } catch (err) {
         showToast(`❌ Error al renombrar carpeta: ${err.message}`);
         console.error('[Lite] Rename folder error:', err);
@@ -2486,7 +2486,7 @@ async function liteMoveFileTo(filePath, targetDirectory) {
         });
         showToast(`📦 Movido: ${data.new_path.split('/').pop()}`);
         _syncLinkedFile(data.old_path, data.new_path);
-        openQuickFileModal(null, currentBrowsePath); // Refresh grid
+        openQuickFileModal(currentFileSceneId, currentBrowsePath); // Refresh grid
     } catch (err) {
         showToast(`❌ Error al mover: ${err.message}`);
         console.error('[Lite] Move error:', err);
@@ -2764,13 +2764,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const remainder = liteDeepestPath.slice(prefix.length);
         const nextSegment = remainder.split('/')[0];
         const nextPath = currentBrowsePath === '' ? nextSegment : currentBrowsePath + '/' + nextSegment;
-        openQuickFileModal(null, nextPath);
+        openQuickFileModal(currentFileSceneId, nextPath);
     });
     document.getElementById('lite-sort-select')?.addEventListener('change', () => {
         // Re-render with new sort: if searching, re-filter; otherwise reload current folder
         const q = document.getElementById('lite-file-search')?.value?.trim();
         if (q) filterQuickFiles();
-        else openQuickFileModal(null, currentBrowsePath);
+        else openQuickFileModal(currentFileSceneId, currentBrowsePath);
     });
     document.getElementById('lite-search-clear')?.addEventListener('click', () => {
         const searchInput = document.getElementById('lite-file-search');
@@ -2807,7 +2807,7 @@ async function liteCreateFolder() {
     try {
         await _litePost('/lite/folders/create', { folder: mediaRoot, new_dir: newDir });
         showToast(`📁 Carpeta creada: ${value}`);
-        openQuickFileModal(null, currentBrowsePath);
+        openQuickFileModal(currentFileSceneId, currentBrowsePath);
     } catch (err) {
         showToast(`❌ Error al crear carpeta: ${err.message}`);
         console.error('[Lite] Create folder error:', err);
@@ -2837,7 +2837,7 @@ async function liteDeleteFolder(folderPath) {
     try {
         await _litePost('/lite/folders/delete', { folder: mediaRoot, dir_path: folderPath });
         showToast(`🗑️ Carpeta eliminada: ${name}`);
-        openQuickFileModal(null, currentBrowsePath);
+        openQuickFileModal(currentFileSceneId, currentBrowsePath);
     } catch (err) {
         showToast(`❌ Error al eliminar carpeta: ${err.message}`);
         console.error('[Lite] Delete folder error:', err);

@@ -4081,3 +4081,16 @@ ConnectionResetError: [WinError 10054] Se ha forzado la interrupción de una con
 2026-02-25 18:59:15,426 [INFO] [Lite] Cache evicted: lorena_Nueva Carpeta_lorena-casa-baila-elegante.jpg
 2026-02-25 18:59:15,426 [INFO] [Lite] Moved 'lorena/Nueva Carpeta/lorena-casa-baila-elegante.mp4' -> 'lorena/lorena-casa-baila-elegante.mp4'
 2026-02-25 19:00:09,970 [INFO] [Lite] Folder deleted: 'lorena/Nueva Carpeta'
+2026-02-25 19:25:01,542 [INFO] [Lite] Folder created: 'lorena/Nueva Carpeta prueba'
+2026-02-25 19:25:04,497 [INFO] [Lite] Cache evicted: lorena_lorena-casa-baila-elegante.jpg
+2026-02-25 19:25:04,497 [INFO] [Lite] Moved 'lorena/lorena-casa-baila-elegante.mp4' -> 'lorena/Nueva Carpeta prueba/lorena-casa-baila-elegante.mp4'
+2026-02-25 19:25:36,318 [INFO] [Lite] Cache evicted: lorena_Nueva Carpeta prueba_lorena-casa-baila-elegante.jpg
+2026-02-25 19:25:36,318 [INFO] [Lite] Moved 'lorena/Nueva Carpeta prueba/lorena-casa-baila-elegante.mp4' -> 'lorena/lorena-casa-baila-elegante.mp4'
+2026-02-25 19:26:05,781 [INFO] [Lite] Folder deleted: 'lorena/Nueva Carpeta prueba'
+2026-02-25 19:30:20,581 [INFO] [Lite] Folder created: 'lorena/Nueva Carpeta'
+2026-02-25 19:36:55,423 [INFO] [Lite] Folder deleted: 'lorena/Nueva Carpeta'
+2026-02-25 19:36:59,897 [INFO] [Lite] Folder created: 'lorena/Nueva Carpeta'
+2026-02-25 19:37:28,478 [INFO] [Lite] Cache evicted: lorena_lorena-casa-baila-elegante.jpg
+2026-02-25 19:37:28,478 [INFO] [Lite] Moved 'lorena/lorena-casa-baila-elegante.mp4' -> 'lorena/Nueva Carpeta/lorena-casa-baila-elegante.mp4'
+2026-02-25 19:37:30,949 [INFO] [Lite] Cache evicted: lorena_Nueva Carpeta_lorena-casa-baila-elegante.jpg
+2026-02-25 19:37:30,950 [INFO] [Lite] Moved 'lorena/Nueva Carpeta/lorena-casa-baila-elegante.mp4' -> 'lorena/lorena-casa-baila-elegante.mp4'
