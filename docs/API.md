@@ -4,14 +4,6 @@
 
 ## Endpoints
 
-### System
-
-#### `GET /ping`
-Health check.
-- **Response**: `{"status": "ok", "message": "AIA API Online"}`
-
----
-
 ### Lite File Explorer
 
 #### `GET /lite/files`
@@ -25,10 +17,11 @@ Lists directory contents for the hierarchical file explorer.
   {
     "status": "success",
     "items": [
-      {"name": "subfolder", "type": "folder"},
+      {"name": "subfolder", "type": "folder", "path": "subfolder"},
       {"name": "clip.mp4", "type": "video", "path": "subfolder/clip.mp4"},
       {"name": "photo.jpg", "type": "image", "path": "photo.jpg"}
-    ]
+    ],
+    "current": ""
   }
   ```
 - **Notes**: Hidden files (`.`) are skipped. Paths use forward slashes. Folder items have `type: "folder"`.
@@ -41,9 +34,10 @@ Returns a thumbnail for a media file.
 - **Behavior**:
   | Type | Action |
   |------|--------|
-  | Image (`.jpg`, `.png`, `.webp`) | Returned directly via `FileResponse` |
-  | Video (`.mp4`, `.mov`, `.mxf`…) | FFmpeg extracts frame at `00:00:01`, caches as JPEG in `.lite_cache/`, returns cached file |
+  | Image (`.jpg`, `.jpeg`, `.png`, `.webp`) | Returned directly via `FileResponse` |
+  | Video (`.mp4`, `.mov`, `.mxf`, `.avi`, `.webm`) | FFmpeg extracts frame at `00:00:01` at native resolution with `-q:v 2`, caches as JPEG in `.lite_cache/`, returns cached file |
   | Audio (`.mp3`, `.wav`, `.aac`) | Returns `404` |
+- **FFmpeg Settings**: Native resolution (no scale filter), quality `-q:v 2`, 30s timeout.
 - **Cache**: `.lite_cache/` directory at project root. Filenames are flattened (`/` → `_`).
 - **Errors**: 400 (missing path), 404 (file not found / audio / generation failed), 504 (FFmpeg timeout).
 
@@ -56,6 +50,7 @@ All write endpoints validate path confinement via `_validate_lite_path()` — pr
 #### `POST /lite/files/rename`
 Renames a media file.
 - **Body**: `{ "folder": "...", "old_path": "rel/file.mp4", "new_name": "new_name.mp4" }`
+- **Validation**: Extension must match. No path separators in `new_name`.
 - **Side-effects**: Evicts old thumbnail cache entry.
 
 #### `POST /lite/files/delete`
@@ -77,8 +72,18 @@ Recursively deletes a directory and all its contents. Cannot delete root.
 - **Body**: `{ "folder": "...", "dir_path": "relative/folder" }`
 
 #### `POST /lite/folders/rename`
-Renames a directory. Updates linked file references prefix.
+Renames a directory.
 - **Body**: `{ "folder": "...", "old_dir_path": "old/name", "new_name": "new_name" }`
+
+---
+
+### Static File Serving
+
+#### `GET /proxies/{file_path:path}`
+Serves proxy files from the proxy directory. Supports both exact and flattened filename lookups.
+
+#### `GET /raw-content/{filename:path}`
+Streams a file from staging for preview. URL-decodes `%20` for space support.
 
 ---
 
@@ -100,14 +105,11 @@ Permanently deletes a file from staging.
 #### `POST /raw-files/sanitize`
 Batch sanitizes all filenames in staging (lowercase, underscores, collision handling).
 
-#### `GET /raw-content/{filename}`
-Streams a file from staging for preview. URL-decodes `%20` for space support.
-
 #### `POST /ingest/trim`
-Lossless FFmpeg trim (`-c copy`). Blocking operation.
+Lossless FFmpeg trim (`-c copy`). Blocking operation. 5-minute timeout.
 
 #### `POST /ingest/move`
-Moves files from staging (`brutos/`) to input (`input/`).
+Moves files from staging (`brutos/`) to input (`input/`). Flattens filenames.
 
 ---
 
@@ -117,25 +119,25 @@ Moves files from staging (`brutos/`) to input (`input/`).
 Lists subdirectories. `?source=input` (default) or `?source=raw`.
 
 #### `POST /folders`
-Creates a new directory (auto-sanitized name).
+Creates a new directory (auto-sanitized name). `?source=input|raw`.
 
 #### `DELETE /folders`
-Recursively deletes a folder. Prevents deleting root.
+Recursively deletes a folder. Prevents deleting root. `?source=input|raw`.
 
 ---
 
 ### Asset Management (Input Directory)
 
 #### `POST /assets/move`
-Moves assets between folders within `input/`.
+Moves assets between folders within `input/`. Updates proxy files.
 
 #### `POST /assets/rename`
-Renames an asset file. Handles proxy file renaming.
+Renames an asset file. Extension must match. Updates proxy references.
 
-#### `POST /assets/delete`
-Deletes an asset file and its associated proxies.
+#### `DELETE /assets`
+Deletes an asset file and its associated proxies (flattened + legacy lookup).
 
-#### `POST /assets/rename-folder`
+#### `POST /folders/rename`
 Renames a folder and updates proxy files for all contained assets.
 
 ---
@@ -143,7 +145,4 @@ Renames a folder and updates proxy files for all contained assets.
 ## Security
 - **CORS**: Restricted to `localhost:9999`, `127.0.0.1:9999`, and `null` (for `file://`).
 - **Path Traversal**: `sanitize_filename` blocks `..` and absolute path injection.
-- **Lite Write Guard**: `_validate_lite_path()` ensures all write operations are confined within the Media Root and never touch the software installation directory.
-
-#### `GET /proxy/{file_path:path}`
-Serves proxy files from the proxy directory.
+- **Lite Write Guard**: `_validate_lite_path()` ensures all write operations are confined within the Media Root and never touch the software installation directory (`_SW_ROOT`).

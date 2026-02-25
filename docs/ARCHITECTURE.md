@@ -11,13 +11,15 @@ User → browser opens builder.html (file:// or served via FastAPI)
          ├─ Timeline (app.js)
          │    ├─ Scene CRUD, Undo/Redo, SafeStorage (A/B Slot)
          │    ├─ 🔗 Lite File Explorer → hierarchical browse via GET /lite/files
-         │    │    ├─ CRUD: rename, delete, move, create/delete folders
+         │    │    ├─ CRUD: rename, delete, move, create/delete/rename folders
          │    │    ├─ Drag & Drop with dynamic auto-scroll (40% hitbox)
          │    │    └─ Depth-memory navigation (liteDeepestPath)
          │    ├─ Thumbnails → <img src="/thumbnail?path=...&folder=...">
          │    ├─ 🎨 Neon file-type coloring via data-type CSS attributes
          │    ├─ 🔍 Timeline Navigator → search, jump, |< >| buttons
-         │    └─ 🗨️ sysDialog() → async custom dialogs (confirm/prompt/alert)
+         │    ├─ 🚩 Timeline Outline Sidebar → scrollable card list (Ctrl+Enter toggle)
+         │    ├─ 🗨️ sysDialog() → async custom dialogs (confirm/prompt/alert)
+         │    └─ 🗨️ Modal.confirm/prompt/alert → secondary async dialog system
          │
          ├─ Ingest Studio (app.js)
          │    ├─ IngestStore (state management pattern)
@@ -32,7 +34,7 @@ User → browser opens builder.html (file:// or served via FastAPI)
               ├─ GET  /lite/files        — hierarchical directory listing + recursive search
               ├─ POST /lite/files/*      — rename, delete, move files
               ├─ POST /lite/folders/*    — create, delete, rename folders
-              ├─ GET  /thumbnail         — image passthrough or FFmpeg frame extraction
+              ├─ GET  /thumbnail         — image passthrough or FFmpeg frame extraction (native res, -q:v 2)
               ├─ GET  /raw-files         — staging area listing (paginated)
               ├─ POST /ingest/*          — trim, move to input
               ├─ Folder CRUD             — /folders (input & raw)
@@ -46,7 +48,7 @@ User → browser opens builder.html (file:// or served via FastAPI)
 
 ## Thumbnail Cache (`.lite_cache/`)
 - **Location**: Project root → `.lite_cache/` (auto-created).
-- **Strategy**: When `/thumbnail` receives a video path, it checks for a cached JPEG. If not found, FFmpeg extracts a single frame at `00:00:01` and stores it with a flattened filename (slashes → underscores).
+- **Strategy**: When `/thumbnail` receives a video path, it checks for a cached JPEG. If not found, FFmpeg extracts a single frame at `00:00:01` at **native resolution** with quality `-q:v 2` and stores it with a flattened filename (slashes → underscores).
 - **Images**: Served directly without caching.
 - **Audio**: Returns 404 (no visual thumbnail).
 - **Cache Invalidation**: Lite write endpoints (`rename`, `delete`, `move`) automatically evict stale cache entries via `_delete_cache_entry()`.
@@ -57,14 +59,27 @@ User → browser opens builder.html (file:// or served via FastAPI)
 - **Manual Backup**: `Ctrl+S` forces an immediate commit + downloadable JSON.
 - **Undo/Redo**: In-memory stack (max 50 states), excludes image data.
 
-## Custom Dialog System (`sysDialog`)
-All native `alert()`, `confirm()`, and `prompt()` calls have been replaced by `sysDialog()`, an async Promise-based modal rendered into `#sys-dialog-overlay` in `builder.html`. It supports `confirm`, `prompt`, and `alert` modes with custom icons, labels, and button classes.
+## Dialog Systems
+The frontend uses **two coexisting** dialog systems:
+
+### `sysDialog()` (Primary)
+Async Promise-based modal rendered into `#sys-dialog-overlay` in `builder.html`. Supports `confirm`, `prompt`, and `alert` modes with custom icons, labels, and button classes. Used by the Lite File Explorer for all CRUD confirmation dialogs.
+
+### `Modal.confirm/prompt/alert` (Secondary)
+Object-based dialog system using `#modal-overlay`. Supports `confirm`, `prompt`, and `alert` modes. Used by Ingest Studio and other modules for confirmation and input dialogs.
+
+## Timeline Outline Sidebar
+- **Toggle**: 🚩 Esquema button in footer, or `Ctrl+Enter` keyboard shortcut.
+- **Behavior**: Fixed sidebar sliding from the right. Renders a scrollable list of all scene cards with thumbnail, section color, title, linked file name (neon-colored by type), and script preview.
+- **Reactivity**: Re-renders on every `render()` call if open. `timelineNavGoTo(sceneId)` sets `selectedId` and calls `render()`.
 
 ## File-Type Color System
 Scene cards in the timeline emit a `data-type` attribute (`video`, `image`, `audio`) based on the linked file extension. CSS rules in `style.css` apply neon colors:
 - **Video**: `#00ff41` (electric green)
 - **Image**: `#00d4ff` (cyan blue)
 - **Audio**: `#d500f9` (electric magenta)
+
+The Timeline Outline sidebar uses softer variants for inline spans: `#a5d6a7` (video), `#81d4fa` (image), `#ce93d8` (audio).
 
 ## Naming Convention
 | Allowed | Example |

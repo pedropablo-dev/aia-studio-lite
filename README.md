@@ -7,12 +7,13 @@
 - 📂 **Hierarchical File Explorer**: Browse, link, rename, delete, and drag-and-drop media files into folders via the Lite File Modal backed by `/lite/files` and `/lite/files/*` API endpoints.
 - 🔗 **Contextual Open**: When opening the explorer from a card with a linked file, the modal navigates directly to the file's parent folder.
 - ◀▶ **Depth-Memory Navigation**: Hierarchical back/forward buttons powered by `liteDeepestPath` — no history stack, pure tree traversal.
-- 🖼️ **Auto-Thumbnails**: FFmpeg generates JPEG thumbnails on-the-fly for videos, cached in `.lite_cache/`. Images served directly.
+- 🖼️ **Auto-Thumbnails**: FFmpeg generates JPEG thumbnails on-the-fly for videos at native resolution (`-q:v 2`), cached in `.lite_cache/`. Images served directly.
 - 🎨 **Neon File-Type Colors**: Linked file names in the timeline use vibrant neon tinting — green for video, blue for image, magenta for audio — via CSS `data-type` attribute selectors.
-- 🗨️ **Custom Async Dialogs**: `sysDialog()` replaces all native `alert`/`confirm`/`prompt` with styled, Promise-based modal dialogs.
+- 🚩 **Timeline Outline**: Sidebar panel listing all scenes with thumbnails, sections, titles, and script previews. Toggled via `Ctrl+Enter` or footer button.
+- 🗨️ **Custom Async Dialogs**: `sysDialog()` and `Modal.*` replace all native `alert`/`confirm`/`prompt` with styled, Promise-based modal dialogs.
 - 🔍 **Timeline Navigator**: Fixed search bar with scene search, `|<` / `>|` start/end buttons, and a clear button.
 - 💾 **SafeStorage**: Atomic A/B slot persistence with Manual Backup (`Ctrl+S`).
-- ⌨️ **Keyboard Shortcuts**: `Alt+Enter` (new scene), `Ctrl+Z/Y` (Undo/Redo), `Ctrl+S` (Backup), `Shift+?` (Shortcuts modal).
+- ⌨️ **Keyboard Shortcuts**: `Alt+Enter` (new scene), `Ctrl+Z/Y` (Undo/Redo), `Ctrl+S` (Backup), `Ctrl+Enter` (Outline), `Shift+?` (Shortcuts modal).
 - 📦 **Ingest Studio**: Staging area module with pagination, filtering, trim, search, and folder tree navigation.
 - 🗄️ **Media Pool**: Browse and link files from the `input/` library with folder trees and drag-and-drop.
 
