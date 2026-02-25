@@ -9,7 +9,7 @@ src/
 ├── css/
 │   └── style.css     # All CSS (dark theme, neon colors, outline panel, disabled states)
 └── js/
-    └── app.js        # All JavaScript logic (~5180 lines)
+    └── app.js        # All JavaScript logic (~5400+ lines)
 ```
 
 ## UI Structure
@@ -38,7 +38,7 @@ Fixed at the bottom of the viewport. Contains:
 - `⏎` button → jump to match.
 - `✕` button (`#lite-nav-clear`) → clear search and hide dropdown.
 - Dropdown results panel (`#timeline-nav-results`) appears below with clickable matches.
-- `timelineNavGoTo(sceneId)` scrolls to the card, highlights it, sets `selectedId`, and calls `render()`.
+- `timelineNavGoTo(sceneId)` scrolls to the card, highlights it, and sets `selectedId`. Selection highlighting uses **Zero-Flicker** direct DOM class toggling (no full `render()` call).
 
 ### Timeline Outline Sidebar (`#timeline-outline-sidebar`)
 Slide-in panel from the right edge. Toggled via:
@@ -46,19 +46,25 @@ Slide-in panel from the right edge. Toggled via:
 - **Ctrl+Enter** (⌘+Enter on Mac) keyboard shortcut.
 
 Each item displays:
-- **Thumbnail**: From `tempThumbnail`, `imageBank`, or 🎬 fallback.
+- **Thumbnail** (priority order):
+  1. `linkedFile` → `/thumbnail` API (video/image) or 🎵 icon (audio).
+  2. `tempThumbnail` → direct URL.
+  3. `imageId` + `blobCache` → Base64 converted to lightweight Blob URL via `URL.createObjectURL()`.
+  4. Fallback → 🎬 icon.
 - **Section strip**: Colored bar with section name.
 - **Title line**: Scene number + title.
 - **Color + File**: Scene color dot + color name + linked file (neon-colored by type, bold).
 - **Script preview**: First line of script/description.
 
-Active item (matching `selectedId`) is highlighted and auto-scrolled into view. Clicking an item calls `timelineNavGoTo()`.
+Active item (matching `selectedId`) is highlighted via **Zero-Flicker** class toggle and auto-scrolled into view with `scrollIntoView({ block: 'center', behavior: 'smooth' })`. Clicking an item calls `timelineNavGoTo()`.
 
 ### Footer
 - **⌨️ Shortcuts**: Opens the keyboard shortcuts modal.
 - **+ Nueva Escena**: Creates a new scene card (`Alt+Enter`).
 - **Config Buttons**: Tipo Visual, Secciones, Hablantes, Técnica.
-- **Export**: Copiar Diálogo, Markdown, Guardar JSON, Cargar JSON.
+- **Export**: 📄 Diálogos (.txt), ⬇️ Guion (.md) — both open the unified Export V3 modal with speaker checkboxes.
+- **💾 Guardar** / **📥 Cargar**: JSON project save/load.
+- **📂 Explorador**: Opens the Lite File Modal in **Modo Organización** (no scene context). Also via `Alt+E`.
 - **🚩 Esquema**: Opens the Timeline Outline sidebar.
 - **DaVinci Tools**: 📁 Media Root Config, 🎬 XML Export, 📍 EDL Markers, 📝 SRT Subtitles.
 
@@ -67,14 +73,14 @@ Active item (matching `selectedId`) is highlighted and auto-scrolled into view. 
 ## Lite File Modal (`#quick-file-modal`)
 
 ### Layout
-Opened via the 🔗 button on each scene card. Contains:
+Opened via the 🔗 button on each scene card, the 📂 Explorador button in the footer, or `Alt+E`. Contains:
 1. **Title bar** with close button (`×`).
 2. **Breadcrumb bar** (`#lite-breadcrumb`) showing hierarchical path.
 3. **Toolbar row**: View toggle (Grid/List), Sort selector (Name/Type), Search input, File counter, ◀ Back / ▶ Forward buttons.
 4. **File grid** (`#quick-file-list`) with draggable file/folder cards.
 
 ### Navigation Flow
-1. `openQuickFileModal(sceneId)` is called from a scene card's 🔗 button.
+1. `openQuickFileModal(sceneId)` is called from a scene card's 🔗 button, or `openQuickFileModal(null, '')` for Modo Organización.
 2. **Contextual Open**: If the modal is closed and the scene has a `linkedFile`, the modal opens directly in the file's parent folder (extracted via `lastIndexOf('/')`). This guard only fires when `modal.style.display !== 'flex'` to avoid overriding internal navigation.
 3. `GET /lite/files?folder=<root>&subpath=<path>` fetches items for the current level.
 4. Results are rendered as card elements with type badges, thumbnails, and context menus.
@@ -87,6 +93,14 @@ Instead of a temporal history stack, the system uses **depth memory**:
 - **▶ Forward**: Calculates the next child folder along `liteDeepestPath` from `currentBrowsePath`.
 - **Button state**: Managed by `updateHistoryButtons()` — disabled via explicit `.disabled` property + CSS `opacity: 0.3`.
 - **Reset**: `closeLiteFileModal()` clears `liteDeepestPath` to `''`.
+- **Drop to Parent**: The `..` card supports `ondrop="_onFolderDrop(event, '..')"`. The `_onFolderDrop` function dynamically resolves the parent path from `currentBrowsePath` at runtime.
+
+### Modo Organización
+When the modal is opened without a `sceneId` (via 📂 button or `Alt+E`):
+- `currentFileSceneId` is set to `null`.
+- An orange badge **📁 Modo Organización** is injected into the breadcrumb bar.
+- `selectLiteFile()` checks `currentFileSceneId`: if null, it shows a toast and aborts (no linking).
+- File CRUD refresh calls pass `currentFileSceneId` (not `null`) to preserve context when a card was the entry point.
 
 ### File Management (CRUD)
 All operations use `sysDialog()` for confirmation and `_litePost()` for API calls:
@@ -154,5 +168,17 @@ Dark mode by default using CSS Variables:
 
 ## Key Interactions
 - **Drag & Drop (Cards)**: Native API for images into drop zones. Drag handle (⋮⋮) for card reordering in timeline.
-- **Drag & Drop (Files)**: Drag files between folders in the Lite File Modal. Auto-scroll activates at 40% edge zones.
-- **Shortcuts**: `Ctrl+Z` (Undo), `Ctrl+Y` (Redo), `Ctrl+S` (Backup), `Alt+Enter` (New Scene), `Shift+?` (Shortcuts modal), `Ctrl+Enter` (Toggle Outline Sidebar).
+- **Drag & Drop (Files)**: Drag files between folders in the Lite File Modal. Auto-scroll activates at 40% edge zones. Files can be dropped on the `..` parent card.
+- **Shortcuts**:
+  - `Ctrl+Z` — Undo
+  - `Ctrl+Y` — Redo
+  - `Ctrl+S` — Manual Backup
+  - `Alt+Enter` — New Scene
+  - `Ctrl+D` — Duplicate Selected Scene
+  - `Supr` — Delete Selected Scene
+  - `Ctrl+L` — Link Media to Selected Scene
+  - `Alt+E` — Global Explorer (Modo Organización)
+  - `Ctrl+Enter` — Toggle Outline Sidebar
+  - `Shift+?` — Shortcuts Modal
+  - `Esc` — Close Windows / Cancel
+  - `Enter` — Confirm Action

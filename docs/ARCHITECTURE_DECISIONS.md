@@ -44,4 +44,19 @@
 ## 9. Panel Lateral de Esquema (Timeline Outline)
 **Estado:** Aceptado
 **Contexto:** Con proyectos de muchas escenas, localizar una tarjeta específica requería scroll manual interminable por el timeline.
-**Decisión:** Panel fijo lateral (`#timeline-outline-sidebar`) que lista todas las escenas con miniatura, sección, título, archivo vinculado y extracto del guión. Se abre con `Ctrl+Enter` o el botón 🚩 Esquema. Utiliza `selectedId` para highlight bidireccional con el timeline. El panel se re-renderiza reactivamente cada vez que `render()` ejecuta.
+**Decisión:** Panel fijo lateral (`#timeline-outline-sidebar`) que lista todas las escenas con miniatura, sección, título, archivo vinculado y extracto del guión. Se abre con `Ctrl+Enter` o el botón 🚩 Esquema. Utiliza `selectedId` para highlight bidireccional con el timeline. Las miniaturas siguen una cadena de prioridad: `linkedFile` API → `tempThumbnail` → `blobCache` → fallback 🎬.
+
+## 10. Zero-Flicker DOM Update
+**Estado:** Aceptado
+**Contexto:** La función `toggleSelection()` llamaba a `render()` tras cada clic, reconstruyendo todo el DOM y causando micro-parpadeos visibles al seleccionar tarjetas.
+**Decisión:** Se eliminó la llamada a `render()` de `toggleSelection()`. En su lugar, se itera directamente sobre `.scene-card` y `.outline-item` usando `classList.toggle()` para aplicar/quitar las clases `.selected` y `.active`. El `outline-item` activo se centra con `scrollIntoView({ block: 'center', behavior: 'smooth' })`. Resultado: selección instantánea sin reconstrucción del DOM.
+
+## 11. blobCache — Prevención de Colapso de Memoria
+**Estado:** Aceptado
+**Contexto:** El esquema lateral inyectaba strings Base64 completos (cientos de KB) directamente en el atributo `src` de `<img>`, multiplicado por el número de escenas. Esto provocaba un DOM extremadamente pesado.
+**Decisión:** Se creó una variable global `blobCache = {}` que convierte cada string Base64 a un `Blob` y genera una URL ligera con `URL.createObjectURL()` (~60 bytes). La conversión se realiza perezosamente (solo al primer uso de cada `imageId`). `clearBlobCache()` revoca todas las URLs al cargar o reiniciar un proyecto para evitar fugas de memoria.
+
+## 12. Modo Organización en el Explorador
+**Estado:** Aceptado
+**Contexto:** El explorador de archivos siempre requería un `sceneId` para funcionar. No existía forma de navegar y gestionar archivos (renombrar, mover, crear carpetas) sin estar vinculado a una tarjeta específica.
+**Decisión:** Se añadió un botón 📂 Explorador en el footer y el atajo `Alt+E`, ambos llamando a `openQuickFileModal(null, '')`. Cuando `currentFileSceneId` es `null`, se inyecta un badge naranja "📁 Modo Organización" en los breadcrumbs. `selectLiteFile()` aborta con un toast informativo si no hay escena objetivo. Todas las operaciones CRUD de refresco pasan `currentFileSceneId` en lugar de `null` para preservar el contexto si se entró desde una tarjeta.

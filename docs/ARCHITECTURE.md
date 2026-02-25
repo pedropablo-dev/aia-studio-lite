@@ -10,14 +10,17 @@ User → browser opens builder.html (file:// or served via FastAPI)
          │
          ├─ Timeline (app.js)
          │    ├─ Scene CRUD, Undo/Redo, SafeStorage (A/B Slot)
+         │    ├─ ⚡ Zero-Flicker Selection → direct DOM class toggle (no full re-render)
          │    ├─ 🔗 Lite File Explorer → hierarchical browse via GET /lite/files
          │    │    ├─ CRUD: rename, delete, move, create/delete/rename folders
-         │    │    ├─ Drag & Drop with dynamic auto-scroll (40% hitbox)
-         │    │    └─ Depth-memory navigation (liteDeepestPath)
+         │    │    ├─ Drag & Drop with dynamic auto-scroll (40% hitbox) + drop-to-parent (..)
+         │    │    ├─ Depth-memory navigation (liteDeepestPath)
+         │    │    └─ 📁 Modo Organización (Alt+E) → browse without scene context
          │    ├─ Thumbnails → <img src="/thumbnail?path=...&folder=...">
          │    ├─ 🎨 Neon file-type coloring via data-type CSS attributes
          │    ├─ 🔍 Timeline Navigator → search, jump, |< >| buttons
-         │    ├─ 🚩 Timeline Outline Sidebar → scrollable card list (Ctrl+Enter toggle)
+         │    ├─ 🚩 Timeline Outline Sidebar → blobCache + /thumbnail API (Ctrl+Enter)
+         │    ├─ 📤 Export System V3 → unified modal (TXT/MD) with speaker checkboxes
          │    ├─ 🗨️ sysDialog() → async custom dialogs (confirm/prompt/alert)
          │    └─ 🗨️ Modal.confirm/prompt/alert → secondary async dialog system
          │
@@ -56,6 +59,7 @@ User → browser opens builder.html (file:// or served via FastAPI)
 ## Persistence (SafeStorage v6.6)
 - **A/B Slot System**: Two LocalStorage keys alternate to prevent corruption during writes.
 - **Image Bank**: Binary image data stored in IndexedDB (`AIA_VideoBuilder_Images`), decoupled from the lightweight JSON state.
+- **blobCache**: In-memory `{}` mapping `imageId → objectURL`. Converts Base64 data URIs from `imageBank` to lightweight `Blob URLs` via `URL.createObjectURL()` for use in the Timeline Outline sidebar. Cleared on project load/reset via `clearBlobCache()`.
 - **Manual Backup**: `Ctrl+S` forces an immediate commit + downloadable JSON.
 - **Undo/Redo**: In-memory stack (max 50 states), excludes image data.
 
@@ -71,7 +75,24 @@ Object-based dialog system using `#modal-overlay`. Supports `confirm`, `prompt`,
 ## Timeline Outline Sidebar
 - **Toggle**: 🚩 Esquema button in footer, or `Ctrl+Enter` keyboard shortcut.
 - **Behavior**: Fixed sidebar sliding from the right. Renders a scrollable list of all scene cards with thumbnail, section color, title, linked file name (neon-colored by type), and script preview.
-- **Reactivity**: Re-renders on every `render()` call if open. `timelineNavGoTo(sceneId)` sets `selectedId` and calls `render()`.
+- **Thumbnail Priority** (in order):
+  1. `linkedFile` exists → `/thumbnail` API for video/image, 🎵 icon for audio.
+  2. `tempThumbnail` → direct URL from camera capture.
+  3. `imageId` + `blobCache` → Base64 converted to lightweight `Blob URL` via `URL.createObjectURL()`.
+  4. Fallback → 🎬 icon on dark background.
+- **Reactivity**: Re-renders via `renderTimelineOutline()` when the outline is open. Selection highlighting uses **Zero-Flicker** direct DOM class toggling + `scrollIntoView({ block: 'center', behavior: 'smooth' })` — no full `render()` call required.
+- **Memory**: `blobCache` stores converted Blob URLs. `clearBlobCache()` is called on `loadProject()` and `resetProject()` to revoke all object URLs and prevent memory leaks.
+
+## Zero-Flicker Selection
+- **Mechanism**: `toggleSelection(event, id)` does **not** call `render()`. Instead, it toggles `.selected` on `.scene-card` elements and `.active` on `.outline-item` elements via direct `classList.toggle()`, eliminating DOM reconstruction flicker.
+- **Scroll Sync**: After toggling, the active `.outline-item` is scrolled into view with `scrollIntoView({ block: 'center', behavior: 'smooth' })`.
+- **Impact**: Selection changes are instantaneous with zero visual flicker, regardless of project size.
+
+## Modo Organización (Global Explorer)
+- **Trigger**: 📂 Explorador button in footer, or `Alt+E` keyboard shortcut.
+- **Behavior**: Opens `openQuickFileModal(null, '')` without a `sceneId`. A badge **📁 Modo Organización** (orange) is injected into the breadcrumb bar.
+- **Guard**: `selectLiteFile()` checks `currentFileSceneId`; if null, it aborts with a toast instead of linking.
+- **Context Preservation**: All file CRUD operations (rename, delete, move, create/delete folder) pass `currentFileSceneId` on refresh to retain card context.
 
 ## File-Type Color System
 Scene cards in the timeline emit a `data-type` attribute (`video`, `image`, `audio`) based on the linked file extension. CSS rules in `style.css` apply neon colors:

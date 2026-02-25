@@ -14,7 +14,7 @@
 
 | Métrica | Valor |
 |---------|-------|
-| Líneas en `app.js` | **~5.180** |
+| Líneas en `app.js` | **~5.400+** |
 | Funciones globales | **~295** |
 | Variables globales mutables | **~25+** (scenes, imageBank, selectedId, presetColors...) |
 | Módulos JS (import/export) | **0** |
@@ -22,7 +22,7 @@
 | Tests unitarios frontend | **0** |
 | Tests de integración | **0** |
 
-**Diagnóstico**: Todo el frontend reside en un único archivo JavaScript de 5.180 líneas sin modularización, sin bundler, sin tree-shaking, sin minificación. El estado global se muta directamente desde cualquier función. No existe ningún patrón de gestión de estado (Redux, signals, stores tipados). La función `render()` reconstruye **todo** el DOM en cada actualización — sin virtual DOM, sin diffing, sin keys.
+**Diagnóstico**: Todo el frontend reside en un único archivo JavaScript de ~5.400 líneas sin modularización, sin bundler, sin tree-shaking, sin minificación. El estado global se muta directamente desde cualquier función. No existe ningún patrón de gestión de estado (Redux, signals, stores tipados). La función `render()` reconstruye la mayoría del DOM en actualizaciones de contenido — sin virtual DOM, sin diffing, sin keys. La selección de tarjetas usa **Zero-Flicker** (manipulación directa de clases), pero el resto de operaciones CRUD siguen dependiendo de `render()`.
 
 **Impacto comercial**: Imposible asignar a múltiples desarrolladores. Imposible realizar revisiones de código productivas. Un cambio en cualquier zona puede romper otra zona sin detección automática.
 
@@ -73,11 +73,11 @@
 |--------|--------|
 | Re-renderizado completo (`innerHTML`) | Cada llamada a `render()` → ~800 líneas de template string |
 | Virtual scrolling | ❌ No implementado en timeline principal |
-| Lazy loading de thumbnails | ❌ Todas cargan simultáneamente |
+| Lazy loading de thumbnails | ⚠️ Parcial (`loading="lazy"` en outline sidebar) |
 | Debouncing de autosave | ✅ 2s debounce |
 | Minificación | ❌ CSS y JS sin minificar |
 
-**Diagnóstico**: Con 50+ escenas, cada `render()` genera ~50KB de HTML string, destruye el DOM y lo reconstruye. Los event listeners se re-crean en cada ciclo. Los thumbnails disparan N requests concurrentes al backend al renderizar.
+**Diagnóstico**: Con 50+ escenas, cada `render()` genera ~50KB de HTML string, destruye el DOM y lo reconstruye (excepto selección, que usa Zero-Flicker). Los event listeners se re-crean en cada ciclo. El esquema lateral usa `blobCache` para evitar inyección de Base64, y miniaturas con `loading="lazy"`, pero el timeline principal sigue sin optimización.
 
 ### 1.6 Calidad de Código
 
@@ -97,7 +97,7 @@
 ### Lo que falta para paquetizar como producto:
 
 1. **Infraestructura de tests**: 0 tests es equivalente a 0 confianza en deploys. Cualquier refactor tiene riesgo de regresión total.
-2. **Modularización del frontend**: 5.180 líneas en un archivo es mantenimiento imposible a escala.
+2. **Modularización del frontend**: ~5.400 líneas en un archivo es mantenimiento imposible a escala.
 3. **Persistencia real**: LocalStorage no es una base de datos. Los usuarios perderán trabajo.
 4. **Multi-plataforma**: Depende de Chrome App Mode con `shell=True` en Windows. No hay soporte nativo para macOS/Linux.
 5. **Distribución**: No hay instalador, no hay contenedorización, no hay binario empaquetado.
@@ -145,7 +145,7 @@
 
 AIA Studio Lite es un **prototipo funcional sólido** para uso personal. Resuelve un problema real (pre-producción de vídeo) con una UI coherente y un backend operativo.
 
-Sin embargo, como **producto comercializable**, tiene una brecha significativa: 0 tests, 0 modularización, persistencia frágil, y un frontend monolítico de 5.180 líneas que es un cuello de botella para cualquier equipo de desarrollo.
+Sin embargo, como **producto comercializable**, tiene una brecha significativa: 0 tests, 0 modularización, persistencia frágil, y un frontend monolítico de ~5.400 líneas que es un cuello de botella para cualquier equipo de desarrollo.
 
 El roadmap propuesto ataca **primero la estabilidad** (P0: threadpool, tests, modularización), luego **la calidad de experiencia** (P1: virtual scroll, TypeScript, lazy load), y finalmente **la distribución** (P2: empaquetado, CI/CD, i18n).
 

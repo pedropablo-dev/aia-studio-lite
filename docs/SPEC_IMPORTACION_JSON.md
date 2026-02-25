@@ -6,7 +6,7 @@ El objetivo es automatizar la conversión de guiones en formato Markdown (`guion
 ## 2. Auditoría de `src/js/app.js` y Datos
 
 ### 2.1. Lógica de Carga (`loadProject`)
-La función `loadProject(input)` (Líneas 1026-1090) realiza una sustitución completa del estado de la aplicación:
+La función `loadProject(input)` realiza una sustitución completa del estado de la aplicación:
 - **Sobrescribe** `scenes`, `imageBank`, y `configs`.
 - **No valida** la existencia de IDs únicos (confía en el archivo de entrada).
 - **No calcula** duraciones automáticamente al cargar (confía en el valor `duration` del JSON).
@@ -53,7 +53,7 @@ La siguiente tabla detalla cómo transformar cada campo del Markdown al esquema 
 
 ## 4. Estrategia de IDs
 
-Para replicar la lógica nativa de `app.js` (Función `createId()` línea 413) y asegurar compatibilidad total:
+Para replicar la lógica nativa de `app.js` (función `createId()`) y asegurar compatibilidad total:
 
 **Fórmula Recomendada (JS):**
 ```javascript
@@ -87,6 +87,6 @@ Recomendación para la "Skill de Importación":
 
 ## 6. Conclusión
 
-La arquitectura actual de **AIA Media Manager** soporta nativamente la inyección de proyectos externos. No es necesario modificar `app.js`.
+La arquitectura actual de **AIA Studio Lite** soporta nativamente la inyección de proyectos externos. No es necesario modificar `app.js`.
 
 La implementación de la skill debe centrarse en un **Parser robusto** que actúe como puente entre el Markdown humano y el JSON técnico, garantizando que todos los códigos de color y configuraciones se traduzcan correctamente antes de llegar al navegador.
