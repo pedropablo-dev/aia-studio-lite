@@ -1715,8 +1715,8 @@ footer {
     overflow: hidden;
     cursor: pointer;
     transition: border-color 0.2s;
-    height: 90px;
-    min-height: 90px;
+    height: 72px;
+    min-height: 72px;
     flex-shrink: 0;
 }
 
@@ -1731,7 +1731,7 @@ footer {
 }
 
 .outline-left {
-    width: 130px;
+    width: 90px;
     flex-shrink: 0;
     display: flex;
     flex-direction: column;
@@ -1739,7 +1739,7 @@ footer {
 }
 
 .outline-thumb {
-    height: 73px;
+    flex: 1;
     width: 100%;
     position: relative;
     overflow: hidden;

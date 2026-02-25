@@ -2519,8 +2519,9 @@ function timelineNavGoTo(sceneId) {
     card.classList.add('nav-highlight');
     card.addEventListener('animationend', () => card.classList.remove('nav-highlight'), { once: true });
 
-    // Also select the scene
-    if (typeof selectScene === 'function') selectScene(sceneId);
+    // Select the scene and sync the outline sidebar
+    selectedId = sceneId;
+    render();
 }
 
 // Close nav dropdown on click outside
