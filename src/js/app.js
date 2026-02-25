@@ -805,7 +805,7 @@ function render() {
                 </div>
 
                 <div class="drop-zone ${scene.linkedFile && !/\.(wav|mp3|flac|ogg|m4a|aac)$/i.test(scene.linkedFile) ? 'has-image' : (imgSrc ? 'has-image' : '')}" 
-                     onclick="triggerImageUpload('${scene.id}')" ondragover="event.preventDefault()" ondrop="handleImageDrop(event, '${scene.id}')">
+                     ondragover="event.preventDefault()" ondrop="handleImageDrop(event, '${scene.id}')">
                     ${(scene.linkedFile && /\.(wav|mp3|flac|ogg|m4a|aac)$/i.test(scene.linkedFile)) ? `
                         <div style="width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; background:#1a1a1a;">
                              <div style="font-size:1.8rem; margin-bottom:0;">\ud83c\udfb5</div>

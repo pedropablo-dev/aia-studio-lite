@@ -243,8 +243,7 @@ async def get_thumbnail(path: str, folder: Optional[str] = None):
                 "-ss", "00:00:01",
                 "-i", str(abs_path),
                 "-vframes", "1",
-                "-vf", "scale=200:-1",
-                "-q:v", "5",
+                "-q:v", "2",
                 str(cache_path)
             ]
             result = subprocess.run(
