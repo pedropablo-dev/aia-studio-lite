@@ -713,6 +713,8 @@ function render() {
         if (fileType) card.dataset.type = fileType;
         else delete card.dataset.type;
         const safeFileName = scene.linkedFile ? scene.linkedFile.replace(/'/g, "\\'") : "";
+        const shortFileName = scene.linkedFile ? scene.linkedFile.split('/').pop() : "";
+        const safeShortFileName = shortFileName.replace(/'/g, "\\'");
 
         // 2. Contenido condicional
         let labelInner = '';
@@ -729,8 +731,8 @@ function render() {
 
             labelInner = `
                     <div style="display:flex; align-items:center; gap:4px; width:100%; cursor:pointer;"
-                         title="Clic para copiar: ${scene.linkedFile}" 
-                         onclick="copyLinkedText('${safeFileName}')">
+                         title="Clic para copiar: ${shortFileName}" 
+                         onclick="copyLinkedText('${safeShortFileName}')">
                         
                         <span style="color:${linkColor}; flex-shrink:0;">🔗</span>
                         
