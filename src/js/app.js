@@ -5159,7 +5159,7 @@ function renderTimelineOutline() {
                 </div>
                 <div class="outline-right">
                     <div class="outline-line-1"><b>#${i + 1}</b> - ${s.title || 'Sin título'}</div>
-                    <div class="outline-line-2"><span style="color:${s.color}">⬤</span> ${colorName} - <span style="color:${linkColor}; font-weight:600;">${shortName}</span></div>
+                    <div class="outline-line-2"><span style="color:${s.color}">⬤</span> <b>${colorName}</b> - <span style="color:${linkColor}; font-weight:600;">${shortName}</span></div>
                     <div class="outline-line-3">${scriptText}</div>
                 </div>
             </div>`;
