@@ -252,6 +252,7 @@ document.addEventListener('keydown', (e) => {
     if (e.ctrlKey && e.key === 'z') { e.preventDefault(); undo(); }
     if ((e.ctrlKey && e.key === 'y') || (e.ctrlKey && e.shiftKey && e.key === 'Z')) { e.preventDefault(); redo(); }
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); toggleTimelineOutline(); }
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'l' && selectedId) { e.preventDefault(); openQuickFileModal(selectedId); }
 });
 
 function showToast(message) {
@@ -363,7 +364,7 @@ function toggleSelection(event, id) {
     if (event.target.closest('button, input, select, textarea, .card-controls, .section-bar, .speaker-badge')) return;
 
     event.stopPropagation();
-    selectedId = (selectedId === id) ? null : id;
+    selectedId = id; // Siempre asume el ID (no deselecciona al hacer clic de nuevo)
     render(); // Necesario para actualizar estado visual de selección
 }
 
@@ -5052,7 +5053,8 @@ function openShortcutsModal() {
             shortcuts: [
                 { keys: ["Alt", "Enter"], desc: "Nueva Escena (Siempre activo)" },
                 { keys: ["Ctrl", "D"], desc: "Duplicar Escena Seleccionada" },
-                { keys: ["Supr"], desc: "Eliminar Escena" }
+                { keys: ["Supr"], desc: "Eliminar Escena" },
+                { keys: ["Ctrl", "L"], desc: "Vincular Media a Escena" }
             ]
         },
         {
@@ -5151,10 +5153,14 @@ function renderTimelineOutline() {
         }
 
         const scriptText = (s.script || s.description || 'Sin guion...').replace(/(\r\n|\n|\r)/gm, " ");
+        let checkOverlay = s.done ? `<div class="outline-thumb-check">✓</div>` : '';
 
         return `<div class="outline-item ${s.id === selectedId ? 'active' : ''}" onclick="timelineNavGoTo('${s.id}')">
                 <div class="outline-left">
-                    <div class="outline-thumb">${thumb}</div>
+                    <div class="outline-thumb">
+                        ${thumb}
+                        ${checkOverlay}
+                    </div>
                     <div class="outline-sec" style="background:${secColor}; color:${secName === 'SECCIÓN' ? '#666' : '#000'}">${secName}</div>
                 </div>
                 <div class="outline-right">

@@ -1725,9 +1725,32 @@ footer {
 }
 
 .outline-item.active {
+    outline: 2px solid var(--accent);
     border-color: var(--accent);
     background: #2a2a2a;
-    box-shadow: 0 0 10px rgba(41, 121, 255, 0.2);
+    box-shadow: 0 0 20px rgba(41, 121, 255, 0.3);
+    z-index: 5;
+    position: relative;
+}
+
+.outline-thumb-check {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 13px;
+    height: 13px;
+    background: rgba(0, 0, 0, 0.5);
+    border: 1.5px solid var(--success);
+    color: var(--success);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    font-weight: bold;
+    z-index: 10;
+    text-shadow: 0 0 8px var(--success);
+    box-shadow: 0 0 5px rgba(0, 230, 118, 0.2);
 }
 
 .outline-left {
