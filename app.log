@@ -4068,3 +4068,5 @@ ConnectionResetError: [WinError 10054] Se ha forzado la interrupción de una con
 2026-02-24 16:46:49,129 [INFO] [Lite] Cache evicted: max_VIDEO PARA TEST.jpg
 2026-02-24 16:46:49,129 [INFO] [Lite] Moved 'max/VIDEO PARA TEST.mp4' -> 'max/Nueva Carpeta de pruieba/VIDEO PARA TEST.mp4'
 2026-02-24 16:47:23,860 [INFO] [Lite] Folder renamed: 'max/Nueva Carpeta de pruieba' -> 'max/TEST'
+2026-02-25 17:47:33,567 [INFO] [Lite] Cache evicted: lorena_lorena-casa-baila-elegante.jpg
+2026-02-25 17:47:33,569 [INFO] [Lite] Moved 'lorena/lorena-casa-baila-elegante.mp4' -> 'lorena/Nueva Carpeta/lorena-casa-baila-elegante.mp4'

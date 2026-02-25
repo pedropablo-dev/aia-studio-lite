@@ -107,10 +107,11 @@
         <button onclick="openSpeakerConfig()">🗣️ Hablantes</button>
         <button onclick="openTechConfig()">🎥 Técnica</button>
         <div style="width: 1px; background: #444; margin: 0 10px;"></div>
-        <button onclick="openExportModal('txt')">📄 Copiar Diálogo</button>
-        <button onclick="openExportModal('md')">⬇️ Markdown</button>
+        <button onclick="openExportModal('txt')">📄 Diálogos (.txt)</button>
+        <button onclick="openExportModal('md')">⬇️ Guion (.md)</button>
         <button onclick="saveProject()">💾 Guardar</button>
-        <button onclick="document.getElementById('load-json').click()">📂 Cargar</button>
+        <button onclick="document.getElementById('load-json').click()">📥 Cargar</button>
+        <button onclick="openQuickFileModal(null, '')" title="Explorador Global (Alt + E)">📂 Explorador</button>
         <button id="toggle-outline-btn" onclick="toggleTimelineOutline()" title="Ver Esquema de Tarjetas">🚩
             Esquema</button>
         <div style="width: 1px; background: #444; margin: 0 10px;"></div>

@@ -253,6 +253,7 @@ document.addEventListener('keydown', (e) => {
     if ((e.ctrlKey && e.key === 'y') || (e.ctrlKey && e.shiftKey && e.key === 'Z')) { e.preventDefault(); redo(); }
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); toggleTimelineOutline(); }
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'l' && selectedId) { e.preventDefault(); openQuickFileModal(selectedId); }
+    if (e.altKey && e.key.toLowerCase() === 'e') { e.preventDefault(); openQuickFileModal(null, ''); }
 });
 
 function showToast(message) {
@@ -365,7 +366,17 @@ function toggleSelection(event, id) {
 
     event.stopPropagation();
     selectedId = id; // Siempre asume el ID (no deselecciona al hacer clic de nuevo)
-    render(); // Necesario para actualizar estado visual de selección
+
+    // Zero-flicker: manipulación directa del DOM sin reconstruir todo el árbol
+    document.querySelectorAll('.scene-card').forEach(el => {
+        el.classList.toggle('selected', el.dataset.id === id);
+    });
+    document.querySelectorAll('.outline-item').forEach(el => {
+        el.classList.toggle('active', el.dataset.id === id);
+    });
+    // Scroll esquema lateral al elemento activo
+    const activeOutline = document.querySelector(`.outline-item[data-id="${id}"]`);
+    if (activeOutline) activeOutline.scrollIntoView({ block: 'center', behavior: 'smooth' });
 }
 
 function clearSelection(event) {
@@ -2086,6 +2097,7 @@ function _renderGridItems(items, mediaRoot) {
  */
 async function openQuickFileModal(sceneId, subpath = '') {
     if (sceneId) currentFileSceneId = sceneId;
+    else currentFileSceneId = null; // Modo Organización: sin escena objetivo
 
     // --- APERTURA CONTEXTUAL ---
     // Si se abre desde una tarjeta (sceneId real) sin subpath explícito,
@@ -2118,6 +2130,16 @@ async function openQuickFileModal(sceneId, subpath = '') {
 
     // Render breadcrumbs
     _renderBreadcrumbs(subpath);
+    // Inyectar etiqueta "Modo Organización" si no hay escena objetivo
+    if (!currentFileSceneId) {
+        const bar = document.getElementById('lite-breadcrumb');
+        if (bar) {
+            const badge = document.createElement('span');
+            badge.style.cssText = 'margin-left:10px;padding:2px 8px;background:#ff9100;color:#000;border-radius:4px;font-size:0.7rem;font-weight:700;letter-spacing:0.5px;vertical-align:middle;';
+            badge.textContent = '\ud83d\udcc1 Modo Organización';
+            bar.appendChild(badge);
+        }
+    }
     initLiteViewMode();
 
     const mediaRoot = document.getElementById('media-path-input')?.value?.trim() || '';
@@ -2228,6 +2250,11 @@ async function filterQuickFiles() {
  * @param {string} filePath - Ruta relativa devuelta por /lite/files (forward slashes).
  */
 function selectLiteFile(filePath) {
+    // Modo Organización: si no hay escena objetivo, no vincular
+    if (!currentFileSceneId) {
+        showToast('Modo Organización: Selecciona un archivo desde una tarjeta para vincularlo');
+        return;
+    }
     const scene = scenes.find(s => s.id === currentFileSceneId);
     if (!scene) {
         console.error('[Lite] No scene found with id:', currentFileSceneId);
@@ -5192,7 +5219,8 @@ function openShortcutsModal() {
                 { keys: ["Alt", "Enter"], desc: "Nueva Escena (Siempre activo)" },
                 { keys: ["Ctrl", "D"], desc: "Duplicar Escena Seleccionada" },
                 { keys: ["Supr"], desc: "Eliminar Escena" },
-                { keys: ["Ctrl", "L"], desc: "Vincular Media a Escena" }
+                { keys: ["Ctrl", "L"], desc: "Vincular Media a Escena" },
+                { keys: ["Alt", "E"], desc: "Explorador Global" }
             ]
         },
         {
@@ -5293,7 +5321,7 @@ function renderTimelineOutline() {
         const scriptText = (s.script || s.description || 'Sin guion...').replace(/(\r\n|\n|\r)/gm, " ");
         let checkOverlay = s.done ? `<div class="outline-thumb-check">✓</div>` : '';
 
-        return `<div class="outline-item ${s.id === selectedId ? 'active' : ''}" onclick="timelineNavGoTo('${s.id}')">
+        return `<div class="outline-item ${s.id === selectedId ? 'active' : ''}" data-id="${s.id}" onclick="timelineNavGoTo('${s.id}')">
                 <div class="outline-left">
                     <div class="outline-thumb">
                         ${thumb}
