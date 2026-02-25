@@ -2012,13 +2012,13 @@ function _renderBreadcrumbs(subpath) {
     let accumulated = '';
     parts.forEach((part, i) => {
         accumulated += (accumulated ? '/' : '') + part;
-        const path = accumulated; // capture for closure
+        const path = accumulated.replace(/\\/g, '/'); // capture for closure
         const isLast = i === parts.length - 1;
         html += `<span class="crumb-sep">›</span>`;
         if (isLast) {
             html += `<span class="crumb-current">${part}</span>`;
         } else {
-            html += `<span class="crumb" onclick="openQuickFileModal(currentFileSceneId, '${path.replace(/'/g, "\\'")}")">${part}</span>`;
+            html += `<span class="crumb" onclick="openQuickFileModal(currentFileSceneId, '${path.replace(/'/g, "\\'")}')">${part}</span>`;
         }
     });
 
@@ -2172,7 +2172,11 @@ async function openQuickFileModal(sceneId, subpath = '') {
         if (subpath) {
             const parent = subpath.includes('/') ? subpath.substring(0, subpath.lastIndexOf('/')) : '';
             const safeParent = parent.replace(/'/g, "\\'");
-            goUp = `<div class="file-card is-parent" onclick="openQuickFileModal(currentFileSceneId, '${safeParent}')">
+            goUp = `<div class="file-card is-parent"
+                        onclick="openQuickFileModal(currentFileSceneId, '${safeParent}')"
+                        ondragover="_onFolderDragOver(event)"
+                        ondragleave="_onFolderDragLeave(event)"
+                        ondrop="_onFolderDrop(event, '..')">
                         <div class="file-icon">📂</div>
                         <div class="file-label">..</div>
                     </div>`;
@@ -2523,11 +2527,26 @@ function _onFolderDrop(event, folderPath) {
     event.preventDefault();
     clearInterval(_dragScrollInterval);
     event.currentTarget.style.borderColor = '';
-    const src = _liteDraggedPath || event.dataTransfer.getData('text/plain');
-    if (!src || src === folderPath) return;
-    // Don't move a folder into itself
-    if (src.startsWith(folderPath + '/') || src === folderPath) return;
-    liteMoveFileTo(src, folderPath);
+
+    // Normalize source path (replace Windows backslashes)
+    const src = (_liteDraggedPath || event.dataTransfer.getData('text/plain')).replace(/\\/g, '/');
+    if (!src) return;
+
+    // Resolve the real destination path
+    let destPath;
+    if (folderPath === '..') {
+        // Navigate up from the current browse path
+        const cur = currentBrowsePath.replace(/\\/g, '/').replace(/\/+$/, '');
+        const lastSlash = cur.lastIndexOf('/');
+        destPath = lastSlash > 0 ? cur.substring(0, lastSlash) : '';
+    } else {
+        destPath = folderPath;
+    }
+
+    // Guard: don't drop on itself
+    if (src === destPath || destPath.startsWith(src + '/')) return;
+
+    liteMoveFileTo(src, destPath);
     _liteDraggedPath = null;
 }
 
