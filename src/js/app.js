@@ -1408,31 +1408,164 @@ async function resetProject() {
     }
 }
 
-// Export Utils
-function exportTXT() {
-    let t = "";
-    scenes.forEach((s) => {
-        let speaker = (s.speakerName && s.speakerName !== 'Voz') ? s.speakerName.toUpperCase() : 'HABLANTES';
-        t += `${speaker}:\n${s.script}\n\n`;
+// =============================================================
+// EXPORT SYSTEM V3 — Unified multi-speaker modal
+// =============================================================
+
+// -- Pure content generators (no side-effects) ----------------
+
+function generateTXTContent(filteredScenes) {
+    let t = '';
+    filteredScenes.forEach(s => {
+        const speaker = (s.speakerName && s.speakerName !== 'Voz')
+            ? s.speakerName.toUpperCase() : 'HABLANTES';
+        t += `${speaker}:\n${s.script || ''}\n\n`;
     });
-    navigator.clipboard.writeText(t).then(async () => {
-        await Modal.alert("📋 Copiado", "Texto para Prompter copiado al portapapeles.");
-    });
+    return t;
 }
 
-function exportMD() {
-    let md = `# GUION DE VIDEO\nGenerado con AIA Studio\n\n`;
-    scenes.forEach((s, i) => {
-        const sectionHeader = s.sectionName !== 'SECCIÓN' ? ` [${s.sectionName}]` : '';
-        const speakerHeader = s.speakerName && s.speakerName !== 'Voz' ? `**🗣️ ${s.speakerName}**\n` : '';
-        md += `### Escena ${i + 1}${sectionHeader} (${s.duration}s) ${s.done ? '✅' : ''}\n`;
-        md += `**Visual:** ${s.shot} | ${s.move}\n**Descripción:** ${s.description}\n\n`;
-        md += `**Diálogo:**\n${speakerHeader}${s.script}\n\n---\n\n`;
+function generateMDContent(filteredScenes, speakerLabel) {
+    let md = `# GUION DE VIDEO\nGenerado con AIA Studio\n`;
+    if (speakerLabel) md += `*Filtrado por: **${speakerLabel}***\n`;
+    md += '\n';
+    filteredScenes.forEach((s, i) => {
+        const sectionHeader = s.sectionName !== 'SECCI\u00d3N' ? ` [${s.sectionName}]` : '';
+        const speakerHeader = s.speakerName && s.speakerName !== 'Voz'
+            ? `**\ud83d\udde3\ufe0f ${s.speakerName}**\n` : '';
+        md += `### Escena ${i + 1}${sectionHeader} (${s.duration}s) ${s.done ? '\u2705' : ''}\n`;
+        md += `**Visual:** ${s.shot} | ${s.move}\n**Descripci\u00f3n:** ${s.description}\n\n`;
+        md += `**Di\u00e1logo:**\n${speakerHeader}${s.script || ''}\n\n---\n\n`;
     });
-    const d = "data:text/markdown;charset=utf-8," + encodeURIComponent(md);
-    const a = document.createElement('a'); a.href = d; a.download = "guion.md";
-    document.body.appendChild(a); a.click(); a.remove();
+    return md;
 }
+
+// -- Blob download helper -------------------------------------
+function _downloadBlob(content, filename, mime) {
+    const blob = new Blob([content], { type: mime });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click();
+    a.remove(); URL.revokeObjectURL(url);
+}
+
+// -- Checkbox row builder -------------------------------------
+function _makeCheckRow(label, id, checked) {
+    const row = document.createElement('label');
+    row.htmlFor = id;
+    row.style.cssText = 'display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:6px;cursor:pointer;border:1px solid transparent;transition:background 0.12s,border-color 0.12s;color:#d0d0d0;font-size:0.875rem;';
+    row.onmouseenter = () => { row.style.background = '#252525'; row.style.borderColor = '#3a3a3a'; };
+    row.onmouseleave = () => { row.style.background = ''; row.style.borderColor = 'transparent'; };
+    const ckb = document.createElement('input');
+    ckb.type = 'checkbox'; ckb.id = id; ckb.checked = checked;
+    ckb.style.cssText = 'width:15px;height:15px;accent-color:var(--accent);cursor:pointer;flex-shrink:0;';
+    const span = document.createElement('span');
+    span.textContent = label;
+    row.appendChild(ckb); row.appendChild(span);
+    return row;
+}
+
+// -- Unified modal entry-point ---------------------------------
+function openExportModal(format) {
+    const activeSpeakers = [...new Set(scenes.map(s => s.speakerName).filter(Boolean))];
+
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:2000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.7);backdrop-filter:blur(5px);';
+
+    const box = document.createElement('div');
+    box.style.cssText = 'background:#1a1a1a;border:1px solid #3a3a3a;border-radius:12px;padding:26px 30px;min-width:300px;max-width:400px;width:92%;box-shadow:0 0 50px rgba(0,0,0,0.9);display:flex;flex-direction:column;gap:0;';
+
+    // Header
+    const header = document.createElement('div');
+    header.style.cssText = 'display:flex;align-items:center;gap:10px;margin-bottom:18px;';
+    const iconEl = document.createElement('span');
+    iconEl.textContent = format === 'txt' ? '\ud83d\udcc4' : '\u2b07\ufe0f';
+    iconEl.style.fontSize = '1.3rem';
+    const hTitle = document.createElement('div');
+    hTitle.innerHTML = `<span style="font-size:1rem;font-weight:700;color:#fff;">Exportar ${format.toUpperCase()}</span><br><span style="font-size:0.75rem;color:#666;">Selecciona los hablantes a incluir</span>`;
+    header.appendChild(iconEl); header.appendChild(hTitle);
+    box.appendChild(header);
+
+    // Checkbox list
+    const listWrap = document.createElement('div');
+    listWrap.style.cssText = 'display:flex;flex-direction:column;gap:2px;max-height:220px;overflow-y:auto;margin-bottom:20px;padding-right:4px;';
+
+    const allRow = _makeCheckRow('\ud83d\udccb Todos los hablantes', 'ckb-todos', true);
+    const allCkb = allRow.querySelector('input');
+    listWrap.appendChild(allRow);
+
+    const speakerCkbs = activeSpeakers.map(spk => {
+        const row = _makeCheckRow('\ud83c\udf99\ufe0f ' + spk, 'ckb-' + spk, true);
+        const ckb = row.querySelector('input');
+        ckb.dataset.speaker = spk;
+        ckb.addEventListener('change', () => {
+            if (!ckb.checked) allCkb.checked = false;
+            else if (speakerCkbs.every(c => c.checked)) allCkb.checked = true;
+        });
+        listWrap.appendChild(row);
+        return ckb;
+    });
+
+    allCkb.addEventListener('change', () => {
+        speakerCkbs.forEach(c => c.checked = allCkb.checked);
+    });
+
+    box.appendChild(listWrap);
+
+    // Button row
+    const btnRow = document.createElement('div');
+    btnRow.style.cssText = 'display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;';
+
+    const destroy = () => document.body.removeChild(overlay);
+
+    const getFiltered = () => {
+        if (allCkb.checked) return { scenes, label: null, suffix: '' };
+        const selected = speakerCkbs.filter(c => c.checked).map(c => c.dataset.speaker);
+        if (!selected.length) { showToast('\u26a0\ufe0f Selecciona al menos un hablante'); return null; }
+        return {
+            scenes: scenes.filter(s => selected.includes(s.speakerName)),
+            label: selected.join(', '),
+            suffix: '_' + selected.map(s => s.replace(/\s+/g, '_')).join('-')
+        };
+    };
+
+    const mkBtn = (html, css, handler) => {
+        const b = document.createElement('button');
+        b.innerHTML = html;
+        b.style.cssText = 'padding:8px 18px;border-radius:6px;font-weight:600;cursor:pointer;font-size:0.875rem;' + css;
+        b.onclick = handler;
+        return b;
+    };
+
+    // Cancelar
+    btnRow.appendChild(mkBtn('Cancelar', 'background:transparent;border:none;color:#666;', destroy));
+
+    // Copiar
+    btnRow.appendChild(mkBtn('\ud83d\udccb\u00a0Copiar', 'background:#2a2a2a;border:1px solid #555;color:#e0e0e0;', () => {
+        const r = getFiltered(); if (!r) return;
+        const content = format === 'txt' ? generateTXTContent(r.scenes) : generateMDContent(r.scenes, r.label);
+        navigator.clipboard.writeText(content).then(() => { showToast('\u2705 Copiado al portapapeles'); destroy(); });
+    }));
+
+    // Exportar
+    const expBtn = mkBtn('\u2b07\ufe0f\u00a0Exportar', 'background:var(--accent);border:none;color:#fff;', () => {
+        const r = getFiltered(); if (!r) return;
+        const ext = format === 'txt' ? 'txt' : 'md';
+        const mime = format === 'txt' ? 'text/plain' : 'text/markdown';
+        const content = format === 'txt' ? generateTXTContent(r.scenes) : generateMDContent(r.scenes, r.label);
+        _downloadBlob(content, `guion${r.suffix}.${ext}`, mime);
+        showToast('\u2705 Archivo descargado');
+        destroy();
+    });
+    btnRow.appendChild(expBtn);
+
+    box.appendChild(btnRow);
+    overlay.appendChild(box);
+    overlay.onclick = e => { if (e.target === overlay) destroy(); };
+    document.body.appendChild(overlay);
+}
+
+
 
 // --- DAVINCI RESOLVE AUTO-CONFORM V7.0 (FINAL PRO) ---
 // Soporta: Rutas Relativas, In-Points precisos (24fps) y Nombre de Proyecto dinámico.
