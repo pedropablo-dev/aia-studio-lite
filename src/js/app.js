@@ -251,6 +251,7 @@ function redo() {
 document.addEventListener('keydown', (e) => {
     if (e.ctrlKey && e.key === 'z') { e.preventDefault(); undo(); }
     if ((e.ctrlKey && e.key === 'y') || (e.ctrlKey && e.shiftKey && e.key === 'Z')) { e.preventDefault(); redo(); }
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); toggleTimelineOutline(); }
 });
 
 function showToast(message) {
@@ -5051,8 +5052,7 @@ function openShortcutsModal() {
             shortcuts: [
                 { keys: ["Alt", "Enter"], desc: "Nueva Escena (Siempre activo)" },
                 { keys: ["Ctrl", "D"], desc: "Duplicar Escena Seleccionada" },
-                { keys: ["Supr"], desc: "Eliminar Escena" },
-                { keys: ["←", "→"], desc: "Moverse entre escenas (si implementado)" }
+                { keys: ["Supr"], desc: "Eliminar Escena" }
             ]
         },
         {
@@ -5060,8 +5060,10 @@ function openShortcutsModal() {
             shortcuts: [
                 { keys: ["Ctrl", "Rueda Ratón"], desc: "Zoom en Línea de Tiempo" },
                 { keys: ["Clic", "Arrastrar"], desc: "Panorámica (Scroll horizontal)" },
+                { keys: ["←", "→"], desc: "Desplazar Línea de Tiempo" },
                 { keys: ["Esc"], desc: "Cerrar Ventanas / Cancelar" },
-                { keys: ["Enter"], desc: "Confirmar acción" }
+                { keys: ["Enter"], desc: "Confirmar acción" },
+                { keys: ["Ctrl", "Enter"], desc: "Abrir/Cerrar Esquema de Tarjetas" }
             ]
         }
     ];
@@ -5131,6 +5133,13 @@ function renderTimelineOutline() {
         const colorName = (presetColors.find(c => c.code === s.color) || {}).name || 'Sin Color';
         const secColor = s.sectionColor || 'transparent';
         const secName = s.sectionName || 'SECCIÓN';
+        let linkColor = '#888';
+        if (s.linkedFile) {
+            const _ext = s.linkedFile.split('.').pop().toLowerCase();
+            if (['mp4', 'mov', 'avi', 'mkv', 'mxf', 'webm'].includes(_ext)) linkColor = '#a5d6a7';
+            else if (['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp'].includes(_ext)) linkColor = '#81d4fa';
+            else if (['mp3', 'wav', 'aac', 'flac', 'ogg', 'm4a'].includes(_ext)) linkColor = '#ce93d8';
+        }
 
         let thumb = '';
         if (s.tempThumbnail) {
@@ -5150,7 +5159,7 @@ function renderTimelineOutline() {
                 </div>
                 <div class="outline-right">
                     <div class="outline-line-1"><b>#${i + 1}</b> - ${s.title || 'Sin título'}</div>
-                    <div class="outline-line-2"><span style="color:${s.color}">⬤</span> ${colorName} - [${shortName}]</div>
+                    <div class="outline-line-2"><span style="color:${s.color}">⬤</span> ${colorName} - <span style="color:${linkColor}; font-weight:600;">${shortName}</span></div>
                     <div class="outline-line-3">${scriptText}</div>
                 </div>
             </div>`;
