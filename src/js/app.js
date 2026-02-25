@@ -1473,7 +1473,7 @@ function openExportModal(format) {
     overlay.style.cssText = 'position:fixed;inset:0;z-index:2000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.7);backdrop-filter:blur(5px);';
 
     const box = document.createElement('div');
-    box.style.cssText = 'background:#1a1a1a;border:1px solid #3a3a3a;border-radius:12px;padding:26px 30px;min-width:300px;max-width:400px;width:92%;box-shadow:0 0 50px rgba(0,0,0,0.9);display:flex;flex-direction:column;gap:0;';
+    box.style.cssText = 'background:#1a1a1a;border:1px solid #3a3a3a;border-radius:12px;padding:26px 30px;min-width:300px;max-width:400px;width:92%;min-height:480px;max-height:85vh;box-shadow:0 0 50px rgba(0,0,0,0.9);display:flex;flex-direction:column;gap:0;';
 
     // Header
     const header = document.createElement('div');
@@ -1482,13 +1482,14 @@ function openExportModal(format) {
     iconEl.textContent = format === 'txt' ? '\ud83d\udcc4' : '\u2b07\ufe0f';
     iconEl.style.fontSize = '1.3rem';
     const hTitle = document.createElement('div');
-    hTitle.innerHTML = `<span style="font-size:1rem;font-weight:700;color:#fff;">Exportar ${format.toUpperCase()}</span><br><span style="font-size:0.75rem;color:#666;">Selecciona los hablantes a incluir</span>`;
+    const displayFormat = format === 'txt' ? 'Dialogo (TXT)' : 'Guion Técnico (MD)';
+    hTitle.innerHTML = `<span style="font-size:1rem;font-weight:700;color:#fff;">Exportar ${displayFormat}</span><br><span style="font-size:0.75rem;color:#666;">Selecciona los hablantes a incluir</span>`;
     header.appendChild(iconEl); header.appendChild(hTitle);
     box.appendChild(header);
 
     // Checkbox list
     const listWrap = document.createElement('div');
-    listWrap.style.cssText = 'display:flex;flex-direction:column;gap:2px;max-height:220px;overflow-y:auto;margin-bottom:20px;padding-right:4px;';
+    listWrap.style.cssText = 'display:flex;flex-direction:column;gap:4px;flex:1;overflow-y:auto;margin-bottom:20px;padding-right:4px;';
 
     const allRow = _makeCheckRow('\ud83d\udccb Todos los hablantes', 'ckb-todos', true);
     const allCkb = allRow.querySelector('input');
@@ -1538,7 +1539,11 @@ function openExportModal(format) {
     };
 
     // Cancelar
-    btnRow.appendChild(mkBtn('Cancelar', 'background:transparent;border:none;color:#666;', destroy));
+    const cancelBtn = document.createElement('button');
+    cancelBtn.innerHTML = 'Cancelar';
+    cancelBtn.className = 'btn-danger';
+    cancelBtn.onclick = destroy;
+    btnRow.appendChild(cancelBtn);
 
     // Copiar
     btnRow.appendChild(mkBtn('\ud83d\udccb\u00a0Copiar', 'background:#2a2a2a;border:1px solid #555;color:#e0e0e0;', () => {
