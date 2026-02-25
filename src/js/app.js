@@ -1,6 +1,9 @@
 // --- ARQUITECTURA DE DATOS V2 (OPTIMIZADA) --- // Updated v7.6
 // imageBank aísla los datos pesados (Base64) del ciclo de renderizado y undo/redo.
 let imageBank = {};
+// blobCache almacena URLs virtuales ligeras para las miniaturas del esquema lateral.
+// Evita inyectar strings Base64 masivos en el DOM.
+let blobCache = {};
 let scenes = [];
 let projectTitle = "Nuevo Proyecto";
 let isTimelineOutlineOpen = false;
@@ -8,6 +11,12 @@ let isTimelineOutlineOpen = false;
 
 
 
+
+// Libera todas las URLs de Blob del esquema lateral para evitar fugas de memoria.
+function clearBlobCache() {
+    Object.values(blobCache).forEach(url => { try { URL.revokeObjectURL(url); } catch (_) { } });
+    blobCache = {};
+}
 
 // --- PERFOMANCE: INDEXEDDB WRAPPER (Images) ---
 const ImageDB = {
@@ -1066,6 +1075,7 @@ function loadProject(input) {
     r.onload = (e) => {
         try {
             const data = JSON.parse(e.target.result);
+            clearBlobCache(); // Liberar URLs de Blob del proyecto anterior
 
             // Carga compatible de escenas
             scenes = Array.isArray(data) ? data : (data.scenes || []);
@@ -1403,6 +1413,7 @@ async function resetProject() {
     });
 
     if (confirmed) {
+        clearBlobCache(); // Liberar URLs de Blob antes de limpiar el proyecto
         // 1. Limpiar SafeStorage Slots & Metadata
         localStorage.removeItem(AUTOSAVE_SLOT_A);
         localStorage.removeItem(AUTOSAVE_SLOT_B);
@@ -2267,6 +2278,10 @@ function selectLiteFile(filePath) {
     saveState();
     scene.linkedFile = filePath;
     scene.startTime = 0;   // Reset any previously synced timecode
+    // Purgar datos de miniatura del estado anterior de la escena
+    scene.tempThumbnail = null;
+    scene.imageId = null;
+    scene.imageSrc = null;
     document.getElementById('quick-file-modal').style.display = 'none';
     currentFileSceneId = null;
     render();
@@ -5329,10 +5344,39 @@ function renderTimelineOutline() {
         }
 
         let thumb = '';
-        if (s.tempThumbnail) {
+        const _mediaFolder = document.getElementById('media-path-input')?.value || '';
+        if (s.linkedFile) {
+            const _ext = s.linkedFile.split('.').pop().toLowerCase();
+            const _audioExts = ['wav', 'mp3', 'flac', 'ogg', 'm4a', 'aac'];
+            if (_audioExts.includes(_ext)) {
+                thumb = `<div style="width:100%; height:100%; background:#1a1a2e; display:flex; align-items:center; justify-content:center; font-size:1.5rem;">🎵</div>`;
+            } else {
+                const _thumbUrl = `http://127.0.0.1:9999/thumbnail?path=${encodeURIComponent(s.linkedFile)}&folder=${encodeURIComponent(_mediaFolder)}`;
+                thumb = `<img src="${_thumbUrl}" style="width:100%; height:100%; object-fit:cover;" loading="lazy">`;
+            }
+        } else if (s.tempThumbnail) {
             thumb = `<img src="${s.tempThumbnail}" style="width:100%; height:100%; object-fit:cover;">`;
         } else if (s.imageId && imageBank[s.imageId]) {
-            thumb = `<img src="${imageBank[s.imageId]}" style="width:100%; height:100%; object-fit:cover;">`;
+            // Use a cached Blob URL if available; otherwise convert Base64 → Blob URL once
+            if (!blobCache[s.imageId]) {
+                const raw = imageBank[s.imageId];
+                if (raw && raw.startsWith('data:image')) {
+                    try {
+                        const [header, b64] = raw.split(',');
+                        const mime = header.match(/:(.*?);/)[1];
+                        const byteChars = atob(b64);
+                        const byteArr = new Uint8Array(byteChars.length);
+                        for (let _b = 0; _b < byteChars.length; _b++) byteArr[_b] = byteChars.charCodeAt(_b);
+                        const blob = new Blob([byteArr], { type: mime });
+                        blobCache[s.imageId] = URL.createObjectURL(blob);
+                    } catch (_) {
+                        blobCache[s.imageId] = raw;
+                    }
+                } else {
+                    blobCache[s.imageId] = raw;
+                }
+            }
+            thumb = `<img src="${blobCache[s.imageId]}" style="width:100%; height:100%; object-fit:cover;">`;
         } else {
             thumb = `<div style="width:100%; height:100%; background:#111; display:flex; align-items:center; justify-content:center; font-size:1.5rem;">🎬</div>`;
         }
