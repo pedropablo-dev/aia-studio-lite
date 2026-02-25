@@ -3,6 +3,8 @@
 let imageBank = {};
 let scenes = [];
 let projectTitle = "Nuevo Proyecto";
+let isTimelineOutlineOpen = false;
+
 
 
 
@@ -915,6 +917,7 @@ function render() {
     document.getElementById("scene-count").innerText = scenes.length;
     calculateTotalTime();
     updateLayoutWidth();
+    if (isTimelineOutlineOpen) renderTimelineOutline();
 }
 
 // --- UTILS & CALCULATIONS ---
@@ -5100,5 +5103,65 @@ function liteSortFiles(value) {
         filterQuickFiles();
     } else {
         openQuickFileModal(currentFileSceneId, currentBrowsePath);
+    }
+}
+
+// --- TIMELINE OUTLINE (SIDEBAR) LOGIC ---
+function toggleTimelineOutline() {
+    isTimelineOutlineOpen = !isTimelineOutlineOpen;
+    const sidebar = document.getElementById('timeline-outline-sidebar');
+    if (sidebar) {
+        if (isTimelineOutlineOpen) {
+            sidebar.classList.add('open');
+            renderTimelineOutline();
+        } else {
+            sidebar.classList.remove('open');
+        }
+    }
+}
+
+function renderTimelineOutline() {
+    if (!isTimelineOutlineOpen) return;
+    const container = document.getElementById('outline-list-container');
+    if (!container) return;
+
+    const htmlString = scenes.map((s, i) => {
+        const shortName = s.linkedFile ? s.linkedFile.split('/').pop() : 'Vacío';
+        const colorName = (presetColors.find(c => c.code === s.color) || {}).name || 'Sin Color';
+        const secColor = s.sectionColor || 'transparent';
+        const secName = s.sectionName || 'SECCIÓN';
+
+        let thumb = '';
+        if (s.tempThumbnail) {
+            thumb = `<img src="${s.tempThumbnail}" style="width:100%; height:100%; object-fit:cover;">`;
+        } else if (s.imageId && imageBank[s.imageId]) {
+            thumb = `<img src="${imageBank[s.imageId]}" style="width:100%; height:100%; object-fit:cover;">`;
+        } else {
+            thumb = `<div style="width:100%; height:100%; background:#111; display:flex; align-items:center; justify-content:center; font-size:1.5rem;">🎬</div>`;
+        }
+
+        const scriptText = (s.script || s.description || 'Sin guion...').replace(/(\r\n|\n|\r)/gm, " ");
+
+        return `<div class="outline-item ${s.id === selectedId ? 'active' : ''}" onclick="timelineNavGoTo('${s.id}')">
+                <div class="outline-left">
+                    <div class="outline-thumb">${thumb}</div>
+                    <div class="outline-sec" style="background:${secColor}; color:${secName === 'SECCIÓN' ? '#666' : '#000'}">${secName}</div>
+                </div>
+                <div class="outline-right">
+                    <div class="outline-line-1"><b>#${i + 1}</b> - ${s.title || 'Sin título'}</div>
+                    <div class="outline-line-2"><span style="color:${s.color}">⬤</span> ${colorName} - [${shortName}]</div>
+                    <div class="outline-line-3">${scriptText}</div>
+                </div>
+            </div>`;
+    }).join('');
+
+    console.log("[DEBUG OUTLINE] HTML Generado: ", htmlString);
+    container.innerHTML = htmlString;
+
+    if (selectedId) {
+        setTimeout(() => {
+            const activeEl = container.querySelector('.outline-item.active');
+            if (activeEl) activeEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }, 50);
     }
 }
