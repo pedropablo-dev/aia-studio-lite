@@ -12,8 +12,8 @@
 - 🚩 **Timeline Outline**: Sidebar panel listing all scenes with thumbnails (via `/thumbnail` API + `blobCache`), sections, titles, and script previews. Toggled via `Ctrl+Enter` or footer button. Uses **Zero-Flicker** selection (no full DOM re-render).
 - 🗨️ **Custom Async Dialogs**: `sysDialog()` and `Modal.*` replace all native `alert`/`confirm`/`prompt` with styled, Promise-based modal dialogs.
 - 🔍 **Timeline Navigator**: Fixed search bar with scene search, `|<` / `>|` start/end buttons, and a clear button.
-- 💾 **SafeStorage**: Atomic A/B slot persistence with Manual Backup (`Ctrl+S`).
-- ⌨️ **Keyboard Shortcuts**: `Alt+Enter` (new scene), `Ctrl+Z/Y` (Undo/Redo), `Ctrl+S` (Backup), `Ctrl+Enter` (Outline), `Ctrl+L` (Link Media), `Ctrl+D` (Duplicate), `Alt+E` (Global Explorer), `Shift+?` (Shortcuts modal).
+- 💾 **SQLite Persistence**: Robust relational database storage (`aia_studio.db`) with 1500ms debounced auto-save and pure JSON Export (`Ctrl+S`).
+- ⌨️ **Keyboard Shortcuts**: `Alt+Enter` (new scene), `Ctrl+Z/Y` (Undo/Redo), `Ctrl+S` (Export Clean Backup), `Ctrl+Enter` (Outline), `Ctrl+L` (Link Media), `Ctrl+D` (Duplicate), `Alt+E` (Global Explorer), `Shift+?` (Shortcuts modal).
 - 📂 **Global Explorer (Modo Organización)**: Browse and manage files independently of any scene via the 📂 button or `Alt+E`. Files cannot be linked in this mode.
 - 📤 **Export System V3**: Unified modal for TXT (dialogue) and MD (technical script) export with per-speaker checkboxes, clipboard copy, and Blob download.
 

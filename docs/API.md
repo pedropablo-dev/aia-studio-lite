@@ -77,15 +77,23 @@ Renames a directory.
 
 ---
 
-### Static File Serving
+### Project Persistence (SQLite)
 
-#### `GET /proxies/{file_path:path}`
-Serves proxy files from the proxy directory. Supports both exact and flattened filename lookups.
+These endpoints handle the atomic saving and loading of the `aia_studio.db` SQLite repository.
 
-#### `GET /raw-content/{filename:path}`
-Streams a file from staging for preview. URL-decodes `%20` for space support.
+#### `POST /api/projects`
+Saves or updates a project state.
+- **Body**: `ProjectSchema` containing `id`, `title`, `metadata_config` and an array of flat `scenes`.
+- **Behavior**: The backend dynamically translates the flat scene dicts into the normalized relational `Scene` model before committing.
+- **Response**: `200 OK` with `project_id` and `scenes_saved` count.
 
+#### `GET /api/projects`
+Lists all persisted projects.
+- **Response**: Array of lightweight project metadata objects (without full scenes).
 
+#### `GET /api/projects/{project_id}`
+Loads a full project schema.
+- **Response**: Complete project data. `scene_data` json columns are nested within the scene objects (frontend handles flattening).
 ## Security
 - **CORS**: Restricted to `localhost:9999`, `127.0.0.1:9999`, and `null` (for `file://`).
 - **Path Traversal**: `sanitize_filename` blocks `..` and absolute path injection.

@@ -63,7 +63,7 @@ Active item (matching `selectedId`) is highlighted via **Zero-Flicker** class to
 - **+ Nueva Escena**: Creates a new scene card (`Alt+Enter`).
 - **Config Buttons**: Tipo Visual, Secciones, Hablantes, Técnica.
 - **Export**: 📄 Diálogos (.txt), ⬇️ Guion (.md) — both open the unified Export V3 modal with speaker checkboxes.
-- **💾 Guardar** / **📥 Cargar**: JSON project save/load.
+- **💾 Exportar** / **📥 Cargar**: JSON pure backup export and intelligent retro-compatible import.
 - **📂 Explorador**: Opens the Lite File Modal in **Modo Organización** (no scene context). Also via `Alt+E`.
 - **🚩 Esquema**: Opens the Timeline Outline sidebar.
 - **DaVinci Tools**: 📁 Media Root Config, 🎬 XML Export, 📍 EDL Markers, 📝 SRT Subtitles.
@@ -160,10 +160,11 @@ Dark mode by default using CSS Variables:
 ---
 
 ## State & Persistence
-- **SafeStorage**: A/B slot rotation in LocalStorage (debounced 2s).
-- **Image Bank**: IndexedDB store (`AIA_VideoBuilder_Images`) for heavy image blobs.
-- **Manual Backup**: `Ctrl+S` → `manualBackup()`.
-- **Undo/Redo**: In-memory stack (max 50 states), excludes image data.
+- **SQLite ORM**: Projects are auto-saved to `aia_studio.db` in the External Media Root via `POST /api/projects`.
+- **Debounced Save**: `debouncedSaveState()` waits 1500ms after user input before pushing to SQLite, preventing API spam.
+- **Cold Boot Sync**: `loadFromLocal()` fetches the database payload and blocks initial UI rendering until the DOM is synchronized.
+- **Clean JSON Export**: `Ctrl+S` → `manualBackup()` strips all Base64 traces (`imageId`) before downloading the schema-compliant JSON.
+- **Undo/Redo**: In-memory stack (max 50 states).
 - **Global State**: `selectedId` tracks the currently selected scene card (used by outline + timeline).
 
 ## Key Interactions
@@ -172,7 +173,7 @@ Dark mode by default using CSS Variables:
 - **Shortcuts**:
   - `Ctrl+Z` — Undo
   - `Ctrl+Y` — Redo
-  - `Ctrl+S` — Manual Backup
+  - `Ctrl+S` — Export Clean Backup (.json)
   - `Alt+Enter` — New Scene
   - `Ctrl+D` — Duplicate Selected Scene
   - `Supr` — Delete Selected Scene

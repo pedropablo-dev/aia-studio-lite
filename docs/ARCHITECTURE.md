@@ -9,9 +9,9 @@ AIA Studio Lite is a stripped-down version of AIA Studio focused exclusively on 
 User → browser opens builder.html (file:// or served via FastAPI)
          │
          ├─ Timeline (app.js)
-         │    ├─ Scene CRUD, Undo/Redo, SafeStorage (A/B Slot)
+         │    ├─ Scene CRUD, Undo/Redo, SQLite Sync (Debounced 1500ms)
          │    ├─ ⚡ Zero-Flicker Selection → direct DOM class toggle (no full re-render)
-         │    ├─ 🔗 Lite File Explorer → hierarchical browse via GET /lite/files
+         │    ├─ 🔗 Lite File Explorer → hierarchical browse via GET /lite/files (paginated)
          │    │    ├─ CRUD: rename, delete, move, create/delete/rename folders
          │    │    ├─ Drag & Drop with dynamic auto-scroll (40% hitbox) + drop-to-parent (..)
          │    │    ├─ Depth-memory navigation (liteDeepestPath)
@@ -47,12 +47,13 @@ User → browser opens builder.html (file:// or served via FastAPI)
 - **Audio**: Returns 404 (no visual thumbnail).
 - **Cache Invalidation**: Lite write endpoints (`rename`, `delete`, `move`) automatically evict stale cache entries via `_delete_cache_entry()`.
 
-## Persistence (SafeStorage v6.6)
-- **A/B Slot System**: Two LocalStorage keys alternate to prevent corruption during writes.
-- **Image Bank**: Binary image data stored in IndexedDB (`AIA_VideoBuilder_Images`), decoupled from the lightweight JSON state.
-- **blobCache**: In-memory `{}` mapping `imageId → objectURL`. Converts Base64 data URIs from `imageBank` to lightweight `Blob URLs` via `URL.createObjectURL()` for use in the Timeline Outline sidebar. Cleared on project load/reset via `clearBlobCache()`.
-- **Manual Backup**: `Ctrl+S` forces an immediate commit + downloadable JSON.
-- **Undo/Redo**: In-memory stack (max 50 states), excludes image data.
+## Persistence (SQLite ORM)
+- **Database Engine**: SQLAlchemy over SQLite. Database file `aia_studio.db` is stored cleanly in the external `AIA_MEDIA_ASSETS` root.
+- **Auto-Save Mechanism**: Silent, non-blocking `debouncedSaveState()` (1500ms delay) pushes the current memory state to `POST /api/projects`.
+- **Media Linking Pattern**: No Base64 data is stored in the database. Scenes persist only absolute/relative paths (`linkedFile`).
+- **Legacy JSON Translation**: Loading an old `ImageDB/IndexedDB` JSON file creates a seamless translation pipeline that purges obsolete `imageId/imageSrc` and standardizes the schema before pushing to SQLite.
+- **Manual Export**: `Ctrl+S` forces an immediate commit + a downloadable, sanitized JSON file strictly following the new schema.
+- **Undo/Redo**: In-memory stack (max 50 states), tracks flat scene lists.
 
 ## Dialog Systems
 The frontend uses **two coexisting** dialog systems:
@@ -69,10 +70,9 @@ Object-based dialog system using `#modal-overlay`. Supports `confirm`, `prompt`,
 - **Thumbnail Priority** (in order):
   1. `linkedFile` exists → `/thumbnail` API for video/image, 🎵 icon for audio.
   2. `tempThumbnail` → direct URL from camera capture.
-  3. `imageId` + `blobCache` → Base64 converted to lightweight `Blob URL` via `URL.createObjectURL()`.
-  4. Fallback → 🎬 icon on dark background.
+  3. Fallback → 🎬 icon on dark background.
+  *(Legacy Base64 object URLs have been deprecated)*
 - **Reactivity**: Re-renders via `renderTimelineOutline()` when the outline is open. Selection highlighting uses **Zero-Flicker** direct DOM class toggling + `scrollIntoView({ block: 'center', behavior: 'smooth' })` — no full `render()` call required.
-- **Memory**: `blobCache` stores converted Blob URLs. `clearBlobCache()` is called on `loadProject()` and `resetProject()` to revoke all object URLs and prevent memory leaks.
 
 ## Zero-Flicker Selection
 - **Mechanism**: `toggleSelection(event, id)` does **not** call `render()`. Instead, it toggles `.selected` on `.scene-card` elements and `.active` on `.outline-item` elements via direct `classList.toggle()`, eliminating DOM reconstruction flicker.
