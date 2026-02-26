@@ -83,7 +83,7 @@ Opened via the 🔗 button on each scene card, the 📂 Explorador button in the
 1. `openQuickFileModal(sceneId)` is called from a scene card's 🔗 button, or `openQuickFileModal(null, '')` for Modo Organización.
 2. **Contextual Open**: If the modal is closed and the scene has a `linkedFile`, the modal opens directly in the file's parent folder (extracted via `lastIndexOf('/')`). This guard only fires when `modal.style.display !== 'flex'` to avoid overriding internal navigation.
 3. `GET /lite/files?folder=<root>&subpath=<path>` fetches items for the current level.
-4. Results are rendered as card elements with type badges, thumbnails, and context menus.
+4. Results are rendered as card elements with type badges, thumbnails, and direct interaction buttons.
 5. Clicking a file calls `selectLiteFile(path)` → sets `scene.linkedFile` → re-renders.
 
 ### Hierarchical Navigation (◀ / ▶)

@@ -24,15 +24,6 @@ User → browser opens builder.html (file:// or served via FastAPI)
          │    ├─ 🗨️ sysDialog() → async custom dialogs (confirm/prompt/alert)
          │    └─ 🗨️ Modal.confirm/prompt/alert → secondary async dialog system
          │
-         ├─ Ingest Studio (app.js)
-         │    ├─ IngestStore (state management pattern)
-         │    ├─ Pagination, filtering, search, trim
-         │    └─ Folder tree navigation
-         │
-         ├─ Media Pool (app.js)
-         │    ├─ Folder tree with drag-and-drop asset management
-         │    └─ Link-from-pool modal for direct scene attachment
-         │
          └─ FastAPI Backend (api.py, port 9999)
               ├─ GET  /lite/files        — hierarchical directory listing + recursive search
               ├─ POST /lite/files/*      — rename, delete, move files
@@ -70,7 +61,7 @@ The frontend uses **two coexisting** dialog systems:
 Async Promise-based modal rendered into `#sys-dialog-overlay` in `builder.html`. Supports `confirm`, `prompt`, and `alert` modes with custom icons, labels, and button classes. Used by the Lite File Explorer for all CRUD confirmation dialogs.
 
 ### `Modal.confirm/prompt/alert` (Secondary)
-Object-based dialog system using `#modal-overlay`. Supports `confirm`, `prompt`, and `alert` modes. Used by Ingest Studio and other modules for confirmation and input dialogs.
+Object-based dialog system using `#modal-overlay`. Supports `confirm`, `prompt`, and `alert` modes. Used by secondary modules and legacy interfaces for confirmation and input dialogs.
 
 ## Timeline Outline Sidebar
 - **Toggle**: 🚩 Esquema button in footer, or `Ctrl+Enter` keyboard shortcut.
