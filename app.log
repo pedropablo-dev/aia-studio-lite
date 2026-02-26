@@ -4104,3 +4104,5 @@ ConnectionResetError: [WinError 10054] Se ha forzado la interrupción de una con
 2026-02-26 09:58:39,016 [INFO] [Lite] Moved 'marcelo/Nueva Carpeta/marcelo-oficina-mira-atento-en-mesa-segunda-expandida.png' -> 'marcelo/marcelo-oficina-mira-atento-en-mesa-segunda-expandida.png'
 2026-02-26 09:58:41,201 [INFO] [Lite] Moved 'marcelo/Nueva Carpeta/marcelo-oficina-mira-atento-en-mesa-segunda.jpg' -> 'marcelo/marcelo-oficina-mira-atento-en-mesa-segunda.jpg'
 2026-02-26 09:58:43,467 [INFO] [Lite] Moved 'marcelo/Nueva Carpeta/marcelo-oficina-mira-atento-en-mesa.jpg' -> 'marcelo/marcelo-oficina-mira-atento-en-mesa.jpg'
+2026-02-26 10:39:53,908 [INFO] [Lite] Cache evicted: max_TEST_VIDEO PARA TEST.jpg
+2026-02-26 10:39:53,908 [INFO] [Lite] Moved 'max/TEST/VIDEO PARA TEST.mp4' -> 'max/VIDEO PARA TEST.mp4'
