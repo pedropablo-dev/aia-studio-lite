@@ -12,6 +12,7 @@ from urllib.parse import unquote
 from fastapi import FastAPI, HTTPException, Body
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
+from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel
 from typing import List, Optional
 import uvicorn
@@ -242,7 +243,8 @@ async def get_thumbnail(path: str, folder: Optional[str] = None):
                 "-q:v", "2",
                 str(cache_path)
             ]
-            result = subprocess.run(
+            result = await run_in_threadpool(
+                subprocess.run,
                 cmd,
                 capture_output=True,
                 timeout=30
@@ -443,13 +445,13 @@ async def lite_rename_file(payload: LiteRenameRequest):
         new_path = new_path.resolve()
         if not new_path.is_relative_to(root):
             raise HTTPException(status_code=403, detail="Resulting path escapes the Media Root")
-        target.rename(new_path)
+        await run_in_threadpool(target.rename, new_path)
     except Exception as e:
         logger.error(f"[Lite] Rename failed: {e}")
         raise HTTPException(status_code=500, detail=f"Rename failed: {e}")
 
     new_rel = new_path.relative_to(root).as_posix()
-    _delete_cache_entry(old_rel)
+    await run_in_threadpool(_delete_cache_entry, old_rel)
 
     logger.info(f"[Lite] Renamed '{old_rel}' -> '{new_rel}'")
     return {"success": True, "old_path": old_rel, "new_path": new_rel}
@@ -471,12 +473,12 @@ async def lite_delete_file(payload: LiteDeleteRequest):
 
     rel_path = payload.file_path.strip().lstrip("/").lstrip("\\")
     try:
-        target.unlink()
+        await run_in_threadpool(target.unlink)
     except Exception as e:
         logger.error(f"[Lite] Delete failed: {e}")
         raise HTTPException(status_code=500, detail=f"Delete failed: {e}")
 
-    _delete_cache_entry(rel_path)
+    await run_in_threadpool(_delete_cache_entry, rel_path)
 
     logger.info(f"[Lite] Deleted '{rel_path}'")
     return {"success": True, "deleted_path": rel_path}
@@ -513,13 +515,13 @@ async def lite_move_file(payload: LiteMoveRequest):
 
     old_rel = payload.file_path.strip().lstrip("/").lstrip("\\")
     try:
-        source.rename(dest_file)
+        await run_in_threadpool(source.rename, dest_file)
     except Exception as e:
         logger.error(f"[Lite] Move failed: {e}")
         raise HTTPException(status_code=500, detail=f"Move failed: {e}")
 
     new_rel = dest_file.relative_to(root).as_posix()
-    _delete_cache_entry(old_rel)
+    await run_in_threadpool(_delete_cache_entry, old_rel)
 
     logger.info(f"[Lite] Moved '{old_rel}' -> '{new_rel}'")
     return {"success": True, "old_path": old_rel, "new_path": new_rel}
@@ -556,7 +558,7 @@ async def lite_create_folder(payload: LiteFolderCreateRequest):
         raise HTTPException(status_code=409, detail=f"'{clean_rel}' already exists")
 
     try:
-        new_dir_path.mkdir(parents=True, exist_ok=False)
+        await run_in_threadpool(new_dir_path.mkdir, parents=True, exist_ok=False)
     except Exception as e:
         logger.error(f"[Lite] Folder create failed: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to create folder: {e}")
@@ -600,7 +602,7 @@ async def lite_delete_folder(payload: LiteFolderDeleteRequest):
         raise HTTPException(status_code=400, detail="Target is not a folder")
 
     try:
-        shutil.rmtree(target_dir)
+        await run_in_threadpool(shutil.rmtree, target_dir)
     except Exception as e:
         logger.error(f"[Lite] Folder delete failed: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to delete folder: {e}")
@@ -651,7 +653,7 @@ async def lite_rename_folder(payload: LiteFolderRenameRequest):
         raise HTTPException(status_code=409, detail=f"'{new_name}' already exists in this location")
         
     try:
-        target_dir.rename(new_dir_path)
+        await run_in_threadpool(target_dir.rename, new_dir_path)
     except Exception as e:
         logger.error(f"[Lite] Folder rename failed: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to rename folder: {e}")
