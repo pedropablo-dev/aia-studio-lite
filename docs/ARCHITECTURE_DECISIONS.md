@@ -60,3 +60,12 @@
 **Estado:** Aceptado
 **Contexto:** El explorador de archivos siempre requería un `sceneId` para funcionar. No existía forma de navegar y gestionar archivos (renombrar, mover, crear carpetas) sin estar vinculado a una tarjeta específica.
 **Decisión:** Se añadió un botón 📂 Explorador en el footer y el atajo `Alt+E`, ambos llamando a `openQuickFileModal(null, '')`. Cuando `currentFileSceneId` es `null`, se inyecta un badge naranja "📁 Modo Organización" en los breadcrumbs. `selectLiteFile()` aborta con un toast informativo si no hay escena objetivo. Todas las operaciones CRUD de refresco pasan `currentFileSceneId` en lugar de `null` para preservar el contexto si se entró desde una tarjeta.
+
+## 13. Extirpación del Módulo Ingestor y APIs Bloqueantes
+**Estado:** Aceptado
+**Contexto:** Los módulos heredados de "Ingest Studio", "Media Pool" y sus APIs correspondientes integraban una carga masiva de componentes DOM, lógica de estado cruzada innecesaria (Drag & Drop, Menús Contextuales redundantes) y endpoints I/O que generaban operaciones destructivas y lentas sobre archivos físicos (proxies, raw, asset management).
+**Decisión:** Fueron **erradicados de raíz** (FastAPI y VanillaJS).
+1. El backend (`api.py`) eliminó totalmente los endpoints heredados bajo las rutas `/raw-files`, `/assets`, `/ingest` y `/folders` convencionales (aprox. 550 líneas depuradas), consolidando todas las operaciones bajo el dominio eficiente y protegido `/lite/`.
+2. El frontend (`app.js`, `builder.html`) fue liberado del objeto `IngestStore`, sus layouts Grid CSS, y el complejo HTML de Modales y Context Menus residuales. Solo sobrevive el "Lite Explorer".
+**Consecuencia:** Aceleramiento notable al inicializar, menor consumo de memoria de navegador sin listeners de arrastre flotantes, y abstracción más robusta y segura garantizada por funciones como `_validate_lite_path` (Zero-bloqueos en UI).
+
