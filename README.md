@@ -16,8 +16,6 @@
 - ⌨️ **Keyboard Shortcuts**: `Alt+Enter` (new scene), `Ctrl+Z/Y` (Undo/Redo), `Ctrl+S` (Backup), `Ctrl+Enter` (Outline), `Ctrl+L` (Link Media), `Ctrl+D` (Duplicate), `Alt+E` (Global Explorer), `Shift+?` (Shortcuts modal).
 - 📂 **Global Explorer (Modo Organización)**: Browse and manage files independently of any scene via the 📂 button or `Alt+E`. Files cannot be linked in this mode.
 - 📤 **Export System V3**: Unified modal for TXT (dialogue) and MD (technical script) export with per-speaker checkboxes, clipboard copy, and Blob download.
-- 📦 **Ingest Studio**: Staging area module with pagination, filtering, trim, search, and folder tree navigation.
-- 🗄️ **Media Pool**: Browse and link files from the `input/` library with folder trees and drag-and-drop.
 
 ## Documentation
 - [Architecture Overview](docs/ARCHITECTURE.md)
@@ -41,4 +39,4 @@
 
 ## Requirements
 - Python 3.8+
-- FFmpeg installed and available on `PATH` (for thumbnail generation and video trimming).
+- FFmpeg installed and available on PATH (for thumbnail generation and proxy video transcoding).

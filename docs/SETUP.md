@@ -2,7 +2,7 @@
 
 ## Prerequisites
 - Python 3.8+
-- **FFmpeg** installed and available on `PATH` (required for video thumbnails and trim).
+- **FFmpeg** installed and available on PATH (required for video thumbnails and proxy transcoding).
 
 ## Installation
 
@@ -32,9 +32,7 @@ You can configure where your media files live in two ways:
 If neither is set, the system falls back to the default paths in `src/utils.py`.
 
 ### Directory Structure
-The system uses these directories inside your Media Root:
 - `input/`: Your media library (scanned by `/lite/files`).
-- `brutos/`: Staging area for raw files (pre-processing).
 
 ## Running the Application
 
