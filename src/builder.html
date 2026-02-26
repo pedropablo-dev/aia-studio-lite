@@ -394,55 +394,6 @@
 
     <div id="toast" class="toast">Notificación</div>
 
-    <!-- AI MATCH MODAL HTML -->
-    <div class="modal-overlay" id="ai-match-modal">
-        <div class="modal-content">
-            <span class="close-modal-x" onclick="closeAIMatchModal()">&times;</span>
-            <div style="display:flex; gap:10px; flex-direction:column; margin-bottom:15px;">
-                <h2 style="margin:0; color:var(--accent);">🔍 AI Semantic Search</h2>
-                <div style="display:flex; gap:10px; align-items:center;">
-                    <input type="text" id="ai-search-input"
-                        placeholder="Describe la escena (ej: 'Atardecer en la playa')..." class="modal-textarea"
-                        style="height:50px; flex:1;" onkeydown="if(event.key==='Enter') searchAI()">
-                    <button class="btn-afx" onclick="searchAI()">Buscar</button>
-                </div>
-
-                <!-- NEW: Precision Control -->
-                <div
-                    style="display:flex; align-items:center; gap:15px; background:#222; padding:10px; border-radius:4px; border:1px solid #333;">
-                    <label style="color:#aaa; font-size:0.85rem; width:160px;">Precisión (Threshold)</label>
-                    <input type="range" id="precision-slider" min="0" max="100" value="20"
-                        style="flex:1; cursor:pointer;"
-                        oninput="document.getElementById('prec-val').innerText = this.value + '%'">
-                    <span id="prec-val"
-                        style="color:var(--accent); font-weight:bold; font-size:0.9rem; width:40px; text-align:right;">20%</span>
-                </div>
-
-                <!-- SCOPE FILTERS -->
-                <div style="display:flex; align-items:center; gap:10px;">
-                    <span style="color:#aaa; font-size:0.85rem; padding-left:5px;">Buscar en:</span>
-                    <div style="display:flex;">
-                        <button id="scope-btn-all" class="filter-btn" onclick="updateSearchScope('all')"
-                            style="border-radius:4px 0 0 4px; border:1px solid var(--accent); background:#333;">Todo</button>
-                        <button id="scope-btn-visual" class="filter-btn" onclick="updateSearchScope('visual')"
-                            style="border-radius:0; border:1px solid #444; border-left:none;">Visual</button>
-                        <button id="scope-btn-audio" class="filter-btn" onclick="updateSearchScope('audio')"
-                            style="border-radius:0; border:1px solid #444; border-left:none;">Audio</button>
-                        <button id="scope-btn-filename" class="filter-btn" onclick="updateSearchScope('filename')"
-                            style="border-radius:0 4px 4px 0; border:1px solid #444; border-left:none;">Nombre</button>
-                    </div>
-                </div>
-            </div>
-
-            <div id="ai-results-container"
-                style="height:500px; overflow-y:scroll !important; display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); grid-auto-rows:min-content; gap:15px; padding:15px;">
-                <!-- Result Cards -->
-            </div>
-        </div>
-    </div>
-
-
-
     <!-- App Script -->
     <script src="js/exporters.js"></script>
     <script src="js/storage.js"></script>
