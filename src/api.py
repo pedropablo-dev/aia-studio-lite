@@ -12,15 +12,23 @@ from urllib.parse import unquote
 from fastapi import FastAPI, HTTPException, Body
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel
 from typing import List, Optional
 import uvicorn
 from pathlib import Path
+import uuid
+import base64
 
 # [MIGRATION v7.0] Import Centralized Paths
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from utils import INPUT_DIR, RAW_DIR, PROXIES_DIR
+import database
+import models
+import schemas
+from sqlalchemy.orm import Session
+from fastapi import Depends
 
 # === LOGGING CONFIGURATION ===
 logging.basicConfig(
@@ -136,6 +144,16 @@ class LiteFolderRenameRequest(BaseModel):
 
 @app.on_event("startup")
 async def startup_event():
+    # Initialize SQLite Database
+    models.Base.metadata.create_all(bind=database.engine)
+    logger.info(f"Base de datos de proyectos inicializada en: {database.DB_PATH}")
+
+    # --- CACHE DIRECTORY --- 
+    global CACHE_DIR
+    CACHE_DIR = database.BASE_MEDIA_PATH / ".cache"
+    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    app.mount("/cache", StaticFiles(directory=CACHE_DIR), name="cache")
+
     # Verify Staging Area from Utils
     if not RAW_DIR.exists():
         RAW_DIR.mkdir(parents=True, exist_ok=True)
@@ -711,6 +729,126 @@ async def lite_rename_folder(payload: LiteFolderRenameRequest):
 
 
 
+
+
+# ==========================================
+# BASE 64 EXTRACTOR (ANTI-DB BLOAT)
+# ==========================================
+
+async def extract_and_save_base64(data):
+    """
+    Recorre recursivamente diccionarios y listas parseando strings Base64 de imagenes.
+    Las guarda en disco en CACHE_DIR y sustituye el valor por la ruta url /cache/archivo.jpg.
+    """
+    if isinstance(data, dict):
+        new_dict = {}
+        for k, v in data.items():
+            if isinstance(v, str) and v.startswith('data:image/'):
+                try:
+                    header, b64_str = v.split(',', 1)
+                    ext = ".png"
+                    if "jpeg" in header or "jpg" in header: ext = ".jpg"
+                    elif "webp" in header: ext = ".webp"
+                    
+                    file_name = uuid.uuid4().hex + ext
+                    file_path = CACHE_DIR / file_name
+                    
+                    # Offload file writing to threadpool to avoid blocking
+                    def _write_img(path, b64_content):
+                        with open(path, "wb") as img_file:
+                            img_file.write(base64.b64decode(b64_content))
+                    
+                    await run_in_threadpool(_write_img, file_path, b64_str)
+                    
+                    new_dict[k] = f"/cache/{file_name}"
+                except Exception as e:
+                    logger.error(f"Error decoding base64 in key {k}: {e}")
+                    new_dict[k] = v # fallback
+            else:
+                new_dict[k] = await extract_and_save_base64(v)
+        return new_dict
+    elif isinstance(data, list):
+        return [await extract_and_save_base64(item) for item in data]
+    else:
+        return data
+
+
+# ==========================================
+# PROJECTS CRUD (SQLITE)
+# ==========================================
+
+@app.post("/api/projects")
+async def save_project(project: schemas.ProjectSchema, db: Session = Depends(database.get_db)):
+    # 1. Extraer imágenes base64 para evitar el bloat
+    clean_meta = await extract_and_save_base64(project.metadata_config)
+    clean_scenes = []
+    
+    for s in project.scenes:
+        clean_s_data = await extract_and_save_base64(s.scene_data)
+        clean_scenes.append({"id": s.id, "order_index": s.order_index, "scene_data": clean_s_data})
+
+    # 2. Upsert Proyecto
+    db_proj = db.query(models.Project).filter(models.Project.id == project.id).first()
+    if db_proj:
+        db_proj.title = project.title
+        db_proj.metadata_config = clean_meta
+    else:
+        db_proj = models.Project(
+            id=project.id,
+            title=project.title,
+            metadata_config=clean_meta
+        )
+        db.add(db_proj)
+
+    db.commit()
+
+    # 3. Reemplazo Completo de Escenas (Evita des-sincronización de índices)
+    db.query(models.Scene).filter(models.Scene.project_id == project.id).delete()
+    
+    for scene_item in clean_scenes:
+        new_scene = models.Scene(
+            id=scene_item["id"],
+            project_id=project.id,
+            order_index=scene_item["order_index"],
+            scene_data=scene_item["scene_data"]
+        )
+        db.add(new_scene)
+    
+    db.commit()
+    return {"status": "success", "message": "Proyecto guardado"}
+
+
+@app.get("/api/projects")
+async def list_projects(db: Session = Depends(database.get_db)):
+    # Lightweight list for "Load Project" UI
+    projs = db.query(models.Project).order_by(models.Project.updated_at.desc()).all()
+    return [{
+        "id": p.id,
+        "title": p.title,
+        "updated_at": p.updated_at.isoformat() if p.updated_at else None
+    } for p in projs]
+
+
+@app.get("/api/projects/{project_id}")
+async def load_project(project_id: str, db: Session = Depends(database.get_db)):
+    proj = db.query(models.Project).filter(models.Project.id == project_id).first()
+    if not proj:
+        raise HTTPException(status_code=404, detail="Proyecto no encontrado")
+
+    scenes = db.query(models.Scene).filter(models.Scene.project_id == project_id).order_by(models.Scene.order_index).all()
+    
+    return {
+        "id": proj.id,
+        "title": proj.title,
+        "metadata_config": proj.metadata_config,
+        "scenes": [
+            {
+                "id": s.id,
+                "order_index": s.order_index,
+                "scene_data": s.scene_data
+            } for s in scenes
+        ]
+    }
 
 
 if __name__ == "__main__":

@@ -4126,3 +4126,4 @@ ConnectionResetError: [WinError 10054] Se ha forzado la interrupción de una con
 2026-02-26 20:11:33,027 [INFO] [Lite] Folder deleted: 'lorena/Nueva Carpeta222'
 2026-02-26 20:58:13,971 [INFO] [Lite] Cache evicted: max_TEST_VIDEO PARA TEST.jpg
 2026-02-26 20:58:13,973 [INFO] [Lite] Moved 'max/TEST/VIDEO PARA TEST.mp4' -> 'max/VIDEO PARA TEST.mp4'
+2026-02-26 22:15:55,320 [INFO] Base de datos de proyectos inicializada en: E:\AIA_MEDIA_ASSETS\aia_studio.db
