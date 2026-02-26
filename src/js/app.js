@@ -477,6 +477,83 @@ function _renderGridItems(items, mediaRoot) {
     }).join('');
 }
 
+// --- EXPLORER PAGINATION STATE ---
+let currentExplorerSkip = 0;
+const currentExplorerLimit = 500;
+let isFetchingMore = false;
+let hasMoreExplorerFiles = true;
+let targetExplorerSubpath = '';
+let targetExplorerQuery = '';
+let explorerObserver = null;
+
+/**
+ * Configura el IntersectionObserver para el scroll infinito del File Explorer.
+ */
+function _setupExplorerObserver(mediaRoot, mode) {
+    const sentinel = document.getElementById('explorer-sentinel');
+    if (!sentinel) return;
+
+    explorerObserver = new IntersectionObserver(async (entries) => {
+        if (entries[0].isIntersecting && hasMoreExplorerFiles && !isFetchingMore) {
+            isFetchingMore = true;
+            currentExplorerSkip += currentExplorerLimit;
+
+            try {
+                let data;
+                if (mode === 'search') {
+                    data = await liteSearchFilesApi(targetExplorerQuery, currentExplorerSkip, currentExplorerLimit);
+                } else {
+                    data = await liteFetchFilesApi(targetExplorerSubpath, currentExplorerSkip, currentExplorerLimit);
+                }
+
+                let items = data.items || [];
+                hasMoreExplorerFiles = data.has_more;
+
+                const sortVal = document.getElementById('lite-sort-select')?.value || 'name';
+                items.sort((a, b) => {
+                    if (a.type === 'folder' && b.type !== 'folder') return -1;
+                    if (a.type !== 'folder' && b.type === 'folder') return 1;
+                    if (sortVal === 'name') return a.name.localeCompare(b.name);
+                    if (sortVal === 'type') {
+                        if (a.type === b.type) return a.name.localeCompare(b.name);
+                        return a.type.localeCompare(b.type);
+                    }
+                    return 0;
+                });
+
+                sentinel.remove();
+
+                const grid = document.getElementById('quick-file-list');
+                const html = _renderGridItems(items, mediaRoot);
+                grid.insertAdjacentHTML('beforeend', html);
+
+                if (hasMoreExplorerFiles) {
+                    grid.insertAdjacentHTML('beforeend', '<div id="explorer-sentinel" style="height: 50px; width: 100%;"></div>');
+                    _setupExplorerObserver(mediaRoot, mode);
+                }
+
+                const counter = document.getElementById('lite-file-count');
+                if (counter) {
+                    const totalLoaded = currentExplorerSkip + items.length;
+                    const text = mode === 'search' ? 'resultado' : 'elemento';
+                    const plural = totalLoaded !== 1 ? 's' : '';
+                    counter.textContent = `${totalLoaded}${hasMoreExplorerFiles ? '+' : ''} ${text}${plural}`;
+                }
+
+            } catch (e) {
+                console.error('[Lite] Pagination error:', e);
+            } finally {
+                isFetchingMore = false;
+            }
+        }
+    }, {
+        root: document.getElementById('quick-file-modal').querySelector('.modal-content'),
+        rootMargin: '200px'
+    });
+
+    explorerObserver.observe(sentinel);
+}
+
 
 /**
  * Abre el explorador jerárquico de archivos Lite.
@@ -484,6 +561,13 @@ function _renderGridItems(items, mediaRoot) {
  * @param {string} subpath  - Subdirectorio a mostrar (default = raíz).
  */
 async function openQuickFileModal(sceneId, subpath = '') {
+    currentExplorerSkip = 0;
+    isFetchingMore = false;
+    hasMoreExplorerFiles = true;
+    targetExplorerSubpath = subpath;
+    targetExplorerQuery = '';
+    if (explorerObserver) explorerObserver.disconnect();
+
     if (sceneId) currentFileSceneId = sceneId;
     else currentFileSceneId = null; // Modo Organización: sin escena objetivo
 
@@ -533,8 +617,9 @@ async function openQuickFileModal(sceneId, subpath = '') {
     const mediaRoot = document.getElementById('media-path-input')?.value?.trim() || '';
 
     try {
-        const data = await liteFetchFilesApi(subpath);
+        const data = await liteFetchFilesApi(subpath, currentExplorerSkip, currentExplorerLimit);
         let items = data.items || [];
+        hasMoreExplorerFiles = data.has_more;
 
         // Apply sorting
         const sortVal = document.getElementById('lite-sort-select')?.value || 'name';
@@ -568,6 +653,12 @@ async function openQuickFileModal(sceneId, subpath = '') {
         }
 
         grid.innerHTML = goUp + _renderGridItems(items, mediaRoot);
+
+        if (hasMoreExplorerFiles) {
+            grid.insertAdjacentHTML('beforeend', '<div id="explorer-sentinel" style="height: 50px; width: 100%;"></div>');
+            _setupExplorerObserver(mediaRoot, 'browse');
+        }
+
         // Update liteDeepestPath when entering a deeper folder
         if (currentBrowsePath.length > liteDeepestPath.length ||
             !liteDeepestPath.startsWith(currentBrowsePath)) {
@@ -586,7 +677,14 @@ async function openQuickFileModal(sceneId, subpath = '') {
  * Se activa con el input #lite-file-search.
  */
 async function filterQuickFiles() {
+    currentExplorerSkip = 0;
+    isFetchingMore = false;
+    hasMoreExplorerFiles = true;
+    if (explorerObserver) explorerObserver.disconnect();
+
     const query = (document.getElementById('lite-file-search')?.value || '').trim();
+    targetExplorerQuery = query;
+
     const grid = document.getElementById('quick-file-list');
     const counter = document.getElementById('lite-file-count');
     const mediaRoot = document.getElementById('media-path-input')?.value?.trim() || '';
@@ -604,8 +702,9 @@ async function filterQuickFiles() {
     if (bar) bar.innerHTML = `<span class="crumb" onclick="openQuickFileModal(currentFileSceneId, '')">🏠 Inicio</span><span class="crumb-sep">›</span><span class="crumb-current">🔍 "${query}"</span>`;
 
     try {
-        const data = await liteSearchFilesApi(query);
+        const data = await liteSearchFilesApi(query, currentExplorerSkip, currentExplorerLimit);
         let items = data.items || [];
+        hasMoreExplorerFiles = data.has_more;
 
         // Apply sorting to search results too
         const sortVal = document.getElementById('lite-sort-select')?.value || 'name';
@@ -621,8 +720,13 @@ async function filterQuickFiles() {
         });
 
 
-        if (counter) counter.textContent = `${items.length} resultado${items.length !== 1 ? 's' : ''}`;
+        if (counter) counter.textContent = `${items.length}${hasMoreExplorerFiles ? '+' : ''} resultado${items.length !== 1 ? 's' : ''}`;
         grid.innerHTML = _renderGridItems(items, mediaRoot);
+
+        if (hasMoreExplorerFiles) {
+            grid.insertAdjacentHTML('beforeend', '<div id="explorer-sentinel" style="height: 50px; width: 100%;"></div>');
+            _setupExplorerObserver(mediaRoot, 'search');
+        }
 
     } catch (err) {
         console.error('[Lite] Error searching /lite/files:', err);

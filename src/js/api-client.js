@@ -8,16 +8,16 @@ function _liteApiBase() {
 }
 
 /** Obtiene lista de archivos (separación de red para openQuickFileModal) */
-async function liteFetchFilesApi(subpath) {
-    const url = _liteApiBase() + '&subpath=' + encodeURIComponent(subpath);
+async function liteFetchFilesApi(subpath, skip = 0, limit = 500) {
+    const url = _liteApiBase() + '&subpath=' + encodeURIComponent(subpath) + `&skip=${skip}&limit=${limit}`;
     const res = await fetch(url);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return await res.json();
 }
 
 /** Busca archivos (separación de red para filterQuickFiles) */
-async function liteSearchFilesApi(query) {
-    const url = _liteApiBase() + '&search=' + encodeURIComponent(query);
+async function liteSearchFilesApi(query, skip = 0, limit = 500) {
+    const url = _liteApiBase() + '&search=' + encodeURIComponent(query) + `&skip=${skip}&limit=${limit}`;
     const res = await fetch(url);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return await res.json();
