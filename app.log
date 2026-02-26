@@ -4116,3 +4116,7 @@ ConnectionResetError: [WinError 10054] Se ha forzado la interrupción de una con
 2026-02-26 19:25:30,991 [INFO] [Lite] Moved 'lorena/lorena-casa-baila-elegante.mp4' -> 'lorena/Nueva Carpeta PRUEBA/lorena-casa-baila-elegante.mp4'
 2026-02-26 19:25:33,954 [INFO] [Lite] Cache evicted: lorena_Nueva Carpeta PRUEBA_lorena-casa-baila-elegante.jpg
 2026-02-26 19:25:33,954 [INFO] [Lite] Moved 'lorena/Nueva Carpeta PRUEBA/lorena-casa-baila-elegante.mp4' -> 'lorena/lorena-casa-baila-elegante.mp4'
+2026-02-26 19:32:14,743 [INFO] [Lite] Cache evicted: lorena_lorena-casa-baila-elegante.jpg
+2026-02-26 19:32:14,743 [INFO] [Lite] Moved 'lorena/lorena-casa-baila-elegante.mp4' -> 'lorena/Nueva Carpeta PRUEBA/lorena-casa-baila-elegante.mp4'
+2026-02-26 19:32:19,149 [INFO] [Lite] Cache evicted: lorena_Nueva Carpeta PRUEBA_lorena-casa-baila-elegante.jpg
+2026-02-26 19:32:19,149 [INFO] [Lite] Moved 'lorena/Nueva Carpeta PRUEBA/lorena-casa-baila-elegante.mp4' -> 'lorena/lorena-casa-baila-elegante.mp4'
