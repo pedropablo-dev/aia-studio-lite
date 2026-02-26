@@ -391,7 +391,8 @@ function toggleSelection(event, id) {
 function clearSelection(event) {
     if (event.target.id === 'viewport' || event.target.id === 'timeline-container') {
         selectedId = null;
-        render();
+        document.querySelectorAll('.scene-card').forEach(el => el.classList.remove('selected'));
+        document.querySelectorAll('.outline-item').forEach(el => el.classList.remove('active'));
     }
 }
 
