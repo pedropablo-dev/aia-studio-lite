@@ -96,10 +96,6 @@ class MoveRequest(BaseModel):
     files: List[str]
     target_folder: str
 
-class RenameFolderRequest(BaseModel):
-    old_path: str
-    new_path: str
-
 class AssetRenameRequest(BaseModel):
     old_path: str
     new_name: str
@@ -666,48 +662,6 @@ async def lite_rename_folder(payload: LiteFolderRenameRequest):
 
 
 
-
-@app.post("/folders/rename")
-async def rename_folder(payload: RenameFolderRequest):
-    """Renames a folder and updates proxy files for all contained assets."""
-    old_rel = sanitize_filename(payload.old_path)
-    new_rel = sanitize_filename(payload.new_path)
-
-    abs_old = INPUT_DIR / old_rel
-    abs_new = INPUT_DIR / new_rel
-
-    if not abs_old.exists():
-        raise HTTPException(status_code=404, detail="Source folder not found")
-
-    if abs_new.exists():
-        raise HTTPException(status_code=400, detail="Target folder already exists (Merge not supported yet)")
-
-    migrated_count = 0
-    try:
-        files_to_migrate = []
-        for root, _, files in os.walk(abs_old):
-            for file in files:
-                full_path = Path(root) / file
-                try:
-                    rel_suffix = full_path.relative_to(abs_old)
-                    old_rel_from_input = str(full_path.relative_to(INPUT_DIR)).replace("\\", "/")
-                    new_rel_from_input = (Path(new_rel) / rel_suffix).as_posix()
-                    files_to_migrate.append((old_rel_from_input, new_rel_from_input))
-                except Exception:
-                    continue
-
-        # Migrate proxies only; physical rename happens by renaming the parent folder
-        for old_p, new_p in files_to_migrate:
-            move_asset_logic(old_p, new_p, move_file_on_disk=False)
-            migrated_count += 1
-
-        os.rename(abs_old, abs_new)
-
-        return {"success": True, "message": f"Renamed folder and updated {migrated_count} asset proxies", "renamed_assets": migrated_count}
-
-    except Exception as e:
-        logger.error(f"Folder Rename Error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
 
 
 if __name__ == "__main__":
