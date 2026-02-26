@@ -4111,3 +4111,8 @@ ConnectionResetError: [WinError 10054] Se ha forzado la interrupción de una con
 2026-02-26 18:51:33,284 [INFO] [Lite] Folder created: 'Nueva Carpeta prueba'
 2026-02-26 18:51:41,646 [INFO] [Lite] Folder renamed: 'Nueva Carpeta prueba' -> 'Nueva Carpeta prueba 2'
 2026-02-26 18:51:49,073 [INFO] [Lite] Folder deleted: 'Nueva Carpeta prueba 2'
+2026-02-26 19:25:28,094 [INFO] [Lite] Folder created: 'lorena/Nueva Carpeta PRUEBA'
+2026-02-26 19:25:30,991 [INFO] [Lite] Cache evicted: lorena_lorena-casa-baila-elegante.jpg
+2026-02-26 19:25:30,991 [INFO] [Lite] Moved 'lorena/lorena-casa-baila-elegante.mp4' -> 'lorena/Nueva Carpeta PRUEBA/lorena-casa-baila-elegante.mp4'
+2026-02-26 19:25:33,954 [INFO] [Lite] Cache evicted: lorena_Nueva Carpeta PRUEBA_lorena-casa-baila-elegante.jpg
+2026-02-26 19:25:33,954 [INFO] [Lite] Moved 'lorena/Nueva Carpeta PRUEBA/lorena-casa-baila-elegante.mp4' -> 'lorena/lorena-casa-baila-elegante.mp4'
