@@ -1,11 +1,12 @@
 function addScene() {
-    saveState();
+    debouncedSaveState();
     const newScene = {
-        id: createId(), color: presetColors[0].code, imageId: null, duration: 0,
+        id: createId(), color: presetColors[0].code, duration: 0,
         timingMode: 'auto', // ESTADOS: 'auto', 'manual', 'video'
         shot: presetShots[0], move: presetMoves[0], description: "", script: "", done: false,
         title: "", sectionName: "SECCIÓN", sectionColor: "transparent",
-        speakerName: "Voz", speakerColor: "transparent"
+        speakerName: "Voz", speakerColor: "transparent",
+        linkedFile: "" // New primary source of truth
     };
     scenes.push(newScene);
     render();
@@ -16,7 +17,7 @@ function addScene() {
 }
 
 function duplicateScene(index, offset) {
-    saveState();
+    debouncedSaveState();
     const original = scenes[index];
     const copy = JSON.parse(JSON.stringify(original));
     copy.id = createId();
@@ -28,14 +29,14 @@ function duplicateScene(index, offset) {
 }
 
 function deleteScene(id) {
-    saveState();
+    debouncedSaveState();
     scenes = scenes.filter(s => s.id !== id);
     if (selectedId === id) selectedId = null;
     render();
 }
 
 function updateData(id, field, value) {
-    saveState();
+    debouncedSaveState();
     const scene = scenes.find(s => s.id === id);
     if (!scene) return;
 
@@ -103,14 +104,14 @@ function applyColorToScene(color) {
 }
 
 function applySectionToScene(name, color) {
-    saveState();
+    debouncedSaveState();
     const s = scenes.find(x => x.id === currentSectionSceneId);
     if (s) { s.sectionName = name; s.sectionColor = color; render(); }
     document.getElementById('quick-section-modal').style.display = 'none';
 }
 
 function applySpeakerToScene(name, color) {
-    saveState();
+    debouncedSaveState();
     const s = scenes.find(x => x.id === currentSpeakerSceneId);
     if (s) { s.speakerName = name; s.speakerColor = color; render(); }
     document.getElementById('quick-speaker-modal').style.display = 'none';
@@ -118,12 +119,12 @@ function applySpeakerToScene(name, color) {
 
 function toggleCheck(id) {
     const s = scenes.find(x => x.id === id);
-    if (s) { saveState(); s.done = !s.done; render(); }
+    if (s) { debouncedSaveState(); s.done = !s.done; render(); }
 }
 
 function moveScene(index, direction) {
     if ((direction === -1 && index > 0) || (direction === 1 && index < scenes.length - 1)) {
-        saveState();
+        debouncedSaveState();
         const targetIndex = index + direction;
         [scenes[index], scenes[targetIndex]] = [scenes[targetIndex], scenes[index]];
         render();

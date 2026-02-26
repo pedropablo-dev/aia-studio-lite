@@ -118,7 +118,7 @@ function clearSelection(event) {
 // --- GESTIÓN DE CHECKLIST ---
 
 function toggleGlobalCheck(index) {
-    saveState();
+    debouncedSaveState();
     projectChecklist[index].checked = !projectChecklist[index].checked;
     renderChecklist();
 }
@@ -141,7 +141,7 @@ function updateTempChecklist(index, value) { tempChecklist[index].name = value; 
 function addChecklistRow() { tempChecklist.push({ name: "Nuevo Estado", checked: false }); renderChecklistRows(); }
 function removeChecklistRow(index) { tempChecklist.splice(index, 1); renderChecklistRows(); }
 function saveChecklistConfig() {
-    saveState();
+    debouncedSaveState();
     projectChecklist = JSON.parse(JSON.stringify(tempChecklist));
     document.getElementById('checklist-config-modal').style.display = 'none';
     renderChecklist();
@@ -155,36 +155,25 @@ function saveChecklistConfig() {
 
 // --- SMART UPDATE V5 (FOCUS FIX + DOM MANIPULATION) ---
 
-// --- GESTIÓN DE IMÁGENES (IMAGE BANK) ---
-function triggerImageUpload(id) { document.getElementById(`file-${id}`).click(); }
+// --- GESTIÓN DE IMÁGENES (IMAGE BANK OBSOLETE) ---
+function triggerImageUpload(id) {
+    showToast('Usa el botón 🔗 para vincular medios desde el explorador', 'warning');
+}
 
 function handleImageSelect(input, id) {
-    if (input.files && input.files[0]) processImage(input.files[0], id);
+    if (input.files && input.files[0]) {
+        showToast('Usa el botón 🔗 para vincular medios desde el explorador', 'warning');
+    }
 }
 
 function handleImageDrop(e, id) {
     e.preventDefault(); e.stopPropagation();
-    if (e.dataTransfer.files[0]) processImage(e.dataTransfer.files[0], id);
+    if (e.dataTransfer.files[0]) {
+        showToast('Usa el botón 🔗 para vincular medios desde el explorador', 'warning');
+    }
 }
 
-function processImage(file, sceneId) {
-    const r = new FileReader();
-    r.onload = (e) => {
-        saveState();
-        // 1. Generar ID único para la imagen
-        const imgId = "img_" + createId();
-        // 2. Guardar en Banco Global
-        imageBank[imgId] = e.target.result;
-        // 3. Vincular escena a ID de imagen
-        const scene = scenes.find(s => s.id === sceneId);
-        if (scene) {
-            scene.imageId = imgId;
-            scene.imageSrc = null; // Limpiar legado si existía
-        }
-        render(); // Aquí sí renderizamos para mostrar la imagen
-    };
-    r.readAsDataURL(file);
-}
+// processImage REMOVED
 
 // --- CONFIG MODALS (GENERIC) ---
 function renderConfigRows(type, containerId) {
@@ -224,13 +213,13 @@ function removeConfigItem(type, index) {
 
 // Modals Open/Save
 function openColorConfig() { tempColors = JSON.parse(JSON.stringify(presetColors)); renderConfigRows('color', 'color-rows-container'); document.getElementById('color-config-modal').style.display = 'flex'; }
-function saveColorConfig() { saveState(); presetColors = JSON.parse(JSON.stringify(tempColors)); document.getElementById('color-config-modal').style.display = 'none'; render(); }
+function saveColorConfig() { debouncedSaveState(); presetColors = JSON.parse(JSON.stringify(tempColors)); document.getElementById('color-config-modal').style.display = 'none'; render(); }
 
 function openSectionConfig() { tempSections = JSON.parse(JSON.stringify(presetSections)); renderConfigRows('section', 'section-rows-container'); document.getElementById('section-config-modal').style.display = 'flex'; }
-function saveSectionConfig() { saveState(); presetSections = JSON.parse(JSON.stringify(tempSections)); document.getElementById('section-config-modal').style.display = 'none'; render(); }
+function saveSectionConfig() { debouncedSaveState(); presetSections = JSON.parse(JSON.stringify(tempSections)); document.getElementById('section-config-modal').style.display = 'none'; render(); }
 
 function openSpeakerConfig() { tempSpeakers = JSON.parse(JSON.stringify(presetSpeakers)); renderConfigRows('speaker', 'speaker-rows-container'); document.getElementById('speaker-config-modal').style.display = 'flex'; }
-function saveSpeakerConfig() { saveState(); presetSpeakers = JSON.parse(JSON.stringify(tempSpeakers)); document.getElementById('speaker-config-modal').style.display = 'none'; render(); }
+function saveSpeakerConfig() { debouncedSaveState(); presetSpeakers = JSON.parse(JSON.stringify(tempSpeakers)); document.getElementById('speaker-config-modal').style.display = 'none'; render(); }
 
 // Tech Config (Strings)
 function renderTechRows(type) {
@@ -250,7 +239,7 @@ function addTechItem(type) { if (type === 'shot') tempShots.push("Nuevo Plano");
 function removeTechItem(type, index) { if (type === 'shot') tempShots.splice(index, 1); else tempMoves.splice(index, 1); renderTechRows(type); }
 
 function openTechConfig() { tempShots = JSON.parse(JSON.stringify(presetShots)); tempMoves = JSON.parse(JSON.stringify(presetMoves)); renderTechRows('shot'); renderTechRows('move'); document.getElementById('tech-config-modal').style.display = 'flex'; }
-function saveTechConfig() { saveState(); presetShots = JSON.parse(JSON.stringify(tempShots)); presetMoves = JSON.parse(JSON.stringify(tempMoves)); document.getElementById('tech-config-modal').style.display = 'none'; render(); }
+function saveTechConfig() { debouncedSaveState(); presetShots = JSON.parse(JSON.stringify(tempShots)); presetMoves = JSON.parse(JSON.stringify(tempMoves)); document.getElementById('tech-config-modal').style.display = 'none'; render(); }
 
 // --- SELECTORES RÁPIDOS ---
 function openQuickColorModal(id) {
@@ -749,7 +738,7 @@ function selectLiteFile(filePath) {
         console.error('[Lite] No scene found with id:', currentFileSceneId);
         return;
     }
-    saveState();
+    debouncedSaveState();
     scene.linkedFile = filePath;
     scene.startTime = 0;   // Reset any previously synced timecode
     // Purgar datos de miniatura del estado anterior de la escena
@@ -1014,92 +1003,17 @@ function copyLinkedText(text) {
     });
 }
 
-// --- PROCESADOR MULTIMEDIA (VÍDEO E IMAGEN) V2 - Clean Reset ---
+// --- PROCESADOR MULTIMEDIA (VÍDEO E IMAGEN) OBSOLETO ---
 function handleVideoSelect(input, id) {
     if (input.files && input.files[0]) {
-        const file = input.files[0];
-        const scene = scenes.find(s => s.id === id);
-        if (!scene) return;
-
-        saveState();
-
-        // === CLEAN RESET LOGIC ===
-        scene.linkedFile = file.name;
-        scene.startTime = 0; // Reset explícito
-        scene.duration = estimateDuration(scene.script); // Reset a auto
-        scene.timingMode = 'auto';
-        scene.manualTiming = false;
-        scene.videoDuration = null; // Se llenará abajo para vídeos
-        scene.tempThumbnail = null;
-
-        if (file.type.startsWith('image/')) {
-            // Lógica de imagen
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                const img = new Image();
-                img.onload = () => {
-                    const canvas = document.createElement('canvas');
-                    const scale = 640 / img.width;
-                    canvas.width = 640;
-                    canvas.height = img.height * scale;
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-                    const imgId = "img_" + createId();
-                    imageBank[imgId] = canvas.toDataURL('image/jpeg', 0.7);
-                    scene.imageId = imgId;
-                    scene.imageSrc = null;
-                    render();
-                    showToast(`Imagen vinculada: ${file.name}`);
-                };
-                img.src = e.target.result;
-            };
-            reader.readAsDataURL(file);
-        } else {
-            // Lógica de vídeo
-            const video = document.createElement('video');
-            video.src = URL.createObjectURL(file);
-            video.muted = true;
-            video.playsInline = true;
-            video.currentTime = 1;
-
-            video.onseeked = () => {
-                // Capturar duración del vídeo (habilita "Usar Vídeo Completo")
-                if (video.duration && isFinite(video.duration)) {
-                    scene.videoDuration = video.duration;
-                    console.log("📊 Duración capturada:", file.name, video.duration + "s");
-                }
-
-                const canvas = document.createElement('canvas');
-                canvas.width = 640;
-                canvas.height = 360;
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-                const imgId = "img_" + createId();
-                imageBank[imgId] = canvas.toDataURL('image/jpeg', 0.7);
-                scene.imageId = imgId;
-                scene.imageSrc = null;
-
-                URL.revokeObjectURL(video.src);
-                render();
-                showToast(`Vídeo vinculado: ${file.name}`);
-            };
-
-            video.onerror = () => {
-                render();
-                showToast(`Archivo vinculado: ${file.name}`);
-            };
-
-            video.preload = 'metadata';
-        }
+        showToast('Las cargas directas han sido deshabilitadas. Usa el explorador (botón 🔗).', 'warning');
     }
 }
 
 // --- GESTIÓN DE TIEMPO V6.5 (MENÚ INTELIGENTE + FIX REPETICIÓN) ---
 
 function toggleTimingMode(id) {
-    saveState();
+    debouncedSaveState();
     const s = scenes.find(x => x.id === id);
     if (s) {
         const currentMode = s.timingMode || (s.manualTiming ? 'manual' : 'auto');
@@ -1122,7 +1036,7 @@ function toggleTimingMode(id) {
 function applyTime(id, newTime, mode, keepMenu = false) {
     const s = scenes.find(x => x.id === id);
     if (s) {
-        saveState();
+        debouncedSaveState();
         s.timingMode = mode;
         s.manualTiming = true;
         s.duration = parseFloat(parseFloat(newTime).toFixed(1));

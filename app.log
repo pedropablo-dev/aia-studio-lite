@@ -4127,3 +4127,24 @@ ConnectionResetError: [WinError 10054] Se ha forzado la interrupción de una con
 2026-02-26 20:58:13,971 [INFO] [Lite] Cache evicted: max_TEST_VIDEO PARA TEST.jpg
 2026-02-26 20:58:13,973 [INFO] [Lite] Moved 'max/TEST/VIDEO PARA TEST.mp4' -> 'max/VIDEO PARA TEST.mp4'
 2026-02-26 22:15:55,320 [INFO] Base de datos de proyectos inicializada en: E:\AIA_MEDIA_ASSETS\aia_studio.db
+2026-02-26 22:26:48,684 [INFO] Base de datos de proyectos inicializada en: E:\AIA_MEDIA_ASSETS\aia_studio.db
+2026-02-26 22:38:55,132 [INFO] Base de datos de proyectos inicializada en: E:\AIA_MEDIA_ASSETS\aia_studio.db
+2026-02-26 22:39:27,231 [INFO] Base de datos de proyectos inicializada en: E:\AIA_MEDIA_ASSETS\aia_studio.db
+2026-02-26 22:42:06,833 [INFO] [Lite] Cache evicted: lorena_DESCARTADA PARA PRUEBA.jpg
+2026-02-26 22:42:06,833 [INFO] [Lite] Moved 'lorena/DESCARTADA PARA PRUEBA.mp4' -> 'DESCARTADA PARA PRUEBA.mp4'
+2026-02-26 22:42:21,757 [INFO] [Lite] Cache evicted: DESCARTADA PARA PRUEBA.jpg
+2026-02-26 22:42:21,757 [INFO] [Lite] Moved 'DESCARTADA PARA PRUEBA.mp4' -> 'lorena/DESCARTADA PARA PRUEBA.mp4'
+2026-02-26 22:52:48,092 [INFO] Base de datos de proyectos inicializada en: E:\AIA_MEDIA_ASSETS\aia_studio.db
+2026-02-26 23:10:02,618 [INFO] Base de datos de proyectos inicializada en: E:\AIA_MEDIA_ASSETS\aia_studio.db
+2026-02-26 23:23:04,212 [INFO] Base de datos de proyectos inicializada en: E:\AIA_MEDIA_ASSETS\aia_studio.db
+2026-02-26 23:36:36,051 [INFO] Base de datos de proyectos inicializada en: E:\AIA_MEDIA_ASSETS\aia_studio.db
+2026-02-26 23:44:14,883 [INFO] Base de datos de proyectos inicializada en: E:\AIA_MEDIA_ASSETS\aia_studio.db
+2026-02-26 23:44:54,476 [INFO] [Lite] Folder created: 'lorena/Nueva Carpeta222'
+2026-02-26 23:44:58,015 [INFO] [Lite] Cache evicted: lorena_DESCARTADA PARA PRUEBA.jpg
+2026-02-26 23:44:58,016 [INFO] [Lite] Moved 'lorena/DESCARTADA PARA PRUEBA.mp4' -> 'lorena/Nueva Carpeta222/DESCARTADA PARA PRUEBA.mp4'
+2026-02-26 23:45:10,379 [INFO] [Lite] Cache evicted: lorena_Nueva Carpeta222_DESCARTADA PARA PRUEBA.jpg
+2026-02-26 23:45:10,379 [INFO] [Lite] Moved 'lorena/Nueva Carpeta222/DESCARTADA PARA PRUEBA.mp4' -> 'lorena/DESCARTADA PARA PRUEBA.mp4'
+2026-02-26 23:52:30,198 [INFO] Base de datos de proyectos inicializada en: E:\AIA_MEDIA_ASSETS\aia_studio.db
+2026-02-26 23:52:46,981 [INFO] Base de datos de proyectos inicializada en: E:\AIA_MEDIA_ASSETS\aia_studio.db
+2026-02-26 23:58:33,218 [INFO] Base de datos de proyectos inicializada en: E:\AIA_MEDIA_ASSETS\aia_studio.db
+2026-02-27 00:02:08,554 [INFO] Base de datos de proyectos inicializada en: E:\AIA_MEDIA_ASSETS\aia_studio.db

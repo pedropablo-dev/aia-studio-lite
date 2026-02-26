@@ -26,15 +26,11 @@ else:
 
 # 3. Define Absolute Paths
 INPUT_DIR = BASE_MEDIA_PATH / "input"
-OUTPUT_DIR = BASE_MEDIA_PATH / "output"
-PROXIES_DIR = BASE_MEDIA_PATH / "proxies"
-RAW_DIR = BASE_MEDIA_PATH / "brutos"
-DB_DIR = BASE_MEDIA_PATH / "db_storage"
 
 # 4. Auto-Initialization
 def init_directories():
     """Ensure all critical directories exist."""
-    dirs = [INPUT_DIR, OUTPUT_DIR, PROXIES_DIR, RAW_DIR, DB_DIR]
+    dirs = [INPUT_DIR]
     created = []
     for d in dirs:
         if not d.exists():

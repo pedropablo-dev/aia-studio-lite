@@ -48,7 +48,7 @@ async function _litePost(endpoint, body) {
 
 /**
  * Actualiza reactivamente todas las escenas que tengan el path antiguo como linkedFile.
- * Llama a saveState() + render() solo si hubo cambios reales.
+ * Llama a debouncedSaveState() + render() solo si hubo cambios reales.
  * @param {string} oldPath
  * @param {string|null} newPath - null indica que el archivo fue eliminado (vacía el vínculo)
  */
@@ -62,7 +62,7 @@ function _syncLinkedFile(oldPath, newPath) {
         }
     });
     if (changed) {
-        saveState();
+        debouncedSaveState();
         render();
         const action = newPath ? `🔄 Vínculo actualizado: ${newPath.split('/').pop()}` : `🔗 Vínculo eliminado`;
         showToast(action);
@@ -190,7 +190,7 @@ async function liteRenameFolder(oldDirPath) {
         });
 
         if (changed) {
-            saveState();
+            debouncedSaveState();
             render();
             showToast(`🔄 Vínculos sincronizados tras renombrar carpeta`);
         }
@@ -226,5 +226,46 @@ async function liteMoveFileTo(filePath, targetDirectory) {
         showToast(`❌ Error al mover: ${err.message}`);
         console.error('[Lite] Move error:', err);
     }
+}
+
+
+// ================================================================
+// [LITE] FASE C — PERSISTENCIA DE PROYECTOS (SQLite)
+// ================================================================
+
+/**
+ * Guarda el proyecto completo en el backend (Upsert).
+ * @param {Object} payload - Objeto estructurado del proyecto
+ */
+async function liteSaveProjectApi(payload) {
+    const res = await fetch('http://localhost:9999/api/projects', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`);
+    return data;
+}
+
+/**
+ * Carga un proyecto específico desde el backend.
+ * @param {string} projectId 
+ */
+async function liteLoadProjectApi(projectId) {
+    const res = await fetch(`http://localhost:9999/api/projects/${projectId}`);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`);
+    return data;
+}
+
+/**
+ * Obtiene la lista ligera de todos los proyectos para el menú de carga.
+ */
+async function liteListProjectsApi() {
+    const res = await fetch('http://localhost:9999/api/projects');
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`);
+    return data;
 }
 

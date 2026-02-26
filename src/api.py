@@ -23,7 +23,7 @@ import base64
 
 # [MIGRATION v7.0] Import Centralized Paths
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-from utils import INPUT_DIR, RAW_DIR, PROXIES_DIR
+from utils import INPUT_DIR
 import database
 import models
 import schemas
@@ -154,46 +154,8 @@ async def startup_event():
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
     app.mount("/cache", StaticFiles(directory=CACHE_DIR), name="cache")
 
-    # Verify Staging Area from Utils
-    if not RAW_DIR.exists():
-        RAW_DIR.mkdir(parents=True, exist_ok=True)
-        logger.info(f"Carpeta de staging verificada: {RAW_DIR}")
-
 
 # === STATIC FILE SERVING ===
-
-@app.get("/proxies/{file_path:path}")
-async def get_proxy_file(file_path: str):
-    # 1. Try exact match (Legacy behavior)
-    exact_path = PROXIES_DIR / file_path
-    if exact_path.exists() and exact_path.is_file():
-        return FileResponse(exact_path)
-
-    # 2. Try Flattened Filename (New behavior)
-    flat_name = file_path.replace("/", "_").replace("\\", "_")
-    flat_path = PROXIES_DIR / flat_name
-
-    if flat_path.exists() and flat_path.is_file():
-        return FileResponse(flat_path)
-
-    raise HTTPException(status_code=404, detail="Proxy not found")
-
-
-@app.get("/raw-content/{filename:path}")
-async def get_raw_content(filename: str):
-    try:
-        real_filename = unquote(filename)
-        safe_filename = sanitize_filename(real_filename)
-        filepath = RAW_DIR / safe_filename
-
-        if not filepath.exists():
-            raise HTTPException(status_code=404, detail=f"File '{safe_filename}' not found in staging")
-
-        return FileResponse(filepath)
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
 
 
 # .lite_cache directory for FFmpeg-generated thumbnails
@@ -744,6 +706,7 @@ async def extract_and_save_base64(data):
         new_dict = {}
         for k, v in data.items():
             if isinstance(v, str) and v.startswith('data:image/'):
+                print(f"[DEBUG] Imagen Base64 detectada. Longitud: {len(v)} bytes.")
                 try:
                     header, b64_str = v.split(',', 1)
                     ext = ".png"
@@ -755,8 +718,12 @@ async def extract_and_save_base64(data):
                     
                     # Offload file writing to threadpool to avoid blocking
                     def _write_img(path, b64_content):
-                        with open(path, "wb") as img_file:
-                            img_file.write(base64.b64decode(b64_content))
+                        try:
+                            with open(path, "wb") as img_file:
+                                img_file.write(base64.b64decode(b64_content))
+                        except Exception as e:
+                            print(f"[ERROR CRÍTICO] Fallo al guardar imagen: {e}")
+                            raise e
                     
                     await run_in_threadpool(_write_img, file_path, b64_str)
                     
@@ -783,9 +750,14 @@ async def save_project(project: schemas.ProjectSchema, db: Session = Depends(dat
     clean_meta = await extract_and_save_base64(project.metadata_config)
     clean_scenes = []
     
-    for s in project.scenes:
-        clean_s_data = await extract_and_save_base64(s.scene_data)
-        clean_scenes.append({"id": s.id, "order_index": s.order_index, "scene_data": clean_s_data})
+    for index, scene_dict in enumerate(project.scenes):
+        clean_s_data = await extract_and_save_base64(scene_dict)
+        scene_id = scene_dict.get("id", str(uuid.uuid4()))
+        clean_scenes.append({
+            "id": scene_id, 
+            "order_index": index, 
+            "scene_data": clean_s_data
+        })
 
     # 2. Upsert Proyecto
     db_proj = db.query(models.Project).filter(models.Project.id == project.id).first()

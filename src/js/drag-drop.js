@@ -17,7 +17,7 @@ function handleDragStart(e, index) {
 function handleDrop(e, dropIndex) {
     e.stopPropagation();
     if (dragSrcIndex !== null && dragSrcIndex !== dropIndex) {
-        saveState();
+        debouncedSaveState();
         const i = scenes.splice(dragSrcIndex, 1)[0];
         scenes.splice(dropIndex, 0, i);
         render();
