@@ -271,6 +271,8 @@ async def list_lite_files(
     folder: Optional[str] = None,
     subpath: str = "",
     search: Optional[str] = None,
+    skip: int = 0,
+    limit: int = 500
 ):
     """
     [LITE] Lists directory contents for the hierarchical file explorer.
@@ -305,10 +307,13 @@ async def list_lite_files(
         raise HTTPException(status_code=404, detail=f"Directory not found: {subpath}")
 
     items = []
+    has_more = False
+    
     try:
         # --- SEARCH MODE: recursive rglob filtered by filename ---
         if search and search.strip():
             query = search.strip().lower()
+            skipped = 0
             for entry in target.rglob("*"):
                 if not entry.is_file():
                     continue
@@ -318,45 +323,87 @@ async def list_lite_files(
                     continue
                 if query not in entry.name.lower():
                     continue
+                
+                # Apply skip
+                if skipped < skip:
+                    skipped += 1
+                    continue
+
                 try:
                     rel_str = entry.relative_to(scan_root).as_posix()
                 except ValueError:
                     continue
+
                 items.append({
                     "path": rel_str,
                     "type": get_media_type(entry.name),
                     "name": entry.name,
                 })
+                
+                # Check limit
+                if len(items) > limit:
+                    has_more = True
+                    items.pop()
+                    break
 
         # --- BROWSE MODE: single-level iterdir ---
         else:
-            entries = sorted(target.iterdir(), key=lambda e: (not e.is_dir(), e.name.lower()))
-            for entry in entries:
+            skipped = 0
+            for entry in target.iterdir():
                 if entry.name.startswith("."):
                     continue
+                
+                is_valid = False
+                is_folder = False
+                if entry.is_dir():
+                    is_valid = True
+                    is_folder = True
+                elif entry.is_file() and entry.suffix.lower() in ALLOWED_EXTENSIONS:
+                    is_valid = True
+                
+                if not is_valid:
+                    continue
+
+                # Apply skip
+                if skipped < skip:
+                    skipped += 1
+                    continue
+
                 try:
                     rel_str = entry.relative_to(scan_root).as_posix()
                 except ValueError:
                     continue
 
-                if entry.is_dir():
+                if is_folder:
                     items.append({
                         "path": rel_str,
                         "type": "folder",
                         "name": entry.name,
                     })
-                elif entry.is_file() and entry.suffix.lower() in ALLOWED_EXTENSIONS:
+                else:
                     items.append({
                         "path": rel_str,
                         "type": get_media_type(entry.name),
                         "name": entry.name,
                     })
+                
+                # Check limit
+                if len(items) > limit:
+                    has_more = True
+                    items.pop()
+                    break
 
     except Exception as e:
         logger.error(f"Error scanning for /lite/files: {e}")
         raise HTTPException(status_code=500, detail=f"Error scanning media directory: {str(e)}")
 
-    return {"status": "success", "items": items, "current": safe_sub}
+    return {
+        "status": "success",
+        "items": items,
+        "current": safe_sub,
+        "total_in_page": len(items),
+        "has_more": has_more
+    }
 
 
 # === LITE FILE WRITE ENDPOINTS ===
