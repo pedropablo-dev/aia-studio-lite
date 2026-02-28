@@ -4,17 +4,7 @@ import { switchProject, createNewProject } from './storage.js';
 
 // Init UI button in header
 export function initProjectManagerUI() {
-    const parentContainer = document.querySelector('.header-left-block');
-    if (!parentContainer) return;
-
-    const btn = document.createElement('button');
-    btn.className = 'view-btn';
-    btn.style.cssText = 'background: #222; border: 1px solid #444; color: #add8e6; margin-left: 15px; padding: 4px 10px; font-weight: bold; cursor: pointer; border-radius: 4px;';
-    btn.innerHTML = '📂 Proyectos';
-    btn.title = 'Gestor de Proyectos (Cambiar / Crear)';
-    btn.onclick = openProjectManagerModal;
-
-    parentContainer.appendChild(btn);
+    // El botón ha sido movido estáticamente al builder.html (Header)
 }
 
 async function openProjectManagerModal() {
@@ -29,7 +19,7 @@ async function openProjectManagerModal() {
 
         const content = document.createElement('div');
         content.className = 'modal-content';
-        content.style.cssText = 'max-width: 500px; height: auto; max-height: 80vh; padding: 24px; display: flex; flex-direction: column;';
+        content.style.cssText = 'max-width: 800px; width: 90%; height: auto; max-height: 80vh; padding: 24px; display: flex; flex-direction: column;';
 
         const closeBtn = document.createElement('div');
         closeBtn.className = 'close-modal-x';
@@ -105,110 +95,166 @@ async function openProjectManagerModal() {
         }
 
         const currentId = ProjectState.getId();
+        let html = '<ul style="list-style:none; padding:0; margin:0;">';
 
-        projects.forEach(p => {
-            const isCurrent = p.id === currentId;
-            const dateStr = p.updated_at ? new Date(p.updated_at).toLocaleString() : 'Desconocida';
+        projects.forEach(proj => {
+            const isActive = proj.id === currentId;
+            const dateStr = proj.updated_at ? new Date(proj.updated_at).toLocaleString() : 'Desconocida';
 
-            const card = document.createElement('div');
-            card.style.cssText = `
-                background: ${isCurrent ? '#1a2a40' : '#1a1a1a'};
-                border: 1px solid ${isCurrent ? 'var(--accent)' : '#333'};
-                padding: 12px;
-                border-radius: 6px;
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                cursor: pointer;
-                transition: background 0.2s;
-            `;
-
-            if (!isCurrent) {
-                card.onmouseover = () => { card.style.background = '#252525'; };
-                card.onmouseout = () => { card.style.background = '#1a1a1a'; };
-                card.onclick = async () => {
-                    overlay.style.display = 'none';
-                    await switchProject(p.id);
-                };
-            } else {
-                card.style.cursor = 'default';
-            }
-
-            const info = document.createElement('div');
-            info.innerHTML = `
-                <div style="font-weight: bold; color: ${isCurrent ? '#fff' : '#ccc'};">${p.title || 'Sin Título'}</div>
-                <div style="font-size: 0.75rem; color: #777; margin-top: 4px;">Última edición: ${dateStr}</div>
-            `;
-
-            const actionTarget = document.createElement('div');
-            actionTarget.style.cssText = 'display: flex; gap: 8px; align-items: center;';
-
-            if (isCurrent) {
-                actionTarget.innerHTML += `<span style="background: var(--accent); color:#fff; font-size:0.7rem; padding: 2px 6px; border-radius:4px; font-weight:bold; margin-right: 10px;">ACTIVO</span>`;
-            }
-
-            // --- CRUD BUTTONS (String Template Mode) ---
-            const safeTitle = (p.title || 'Sin Título').replace(/'/g, "\\'");
-            actionTarget.innerHTML += `
-                <button title="Renombrar" style="background:none; border:none; cursor:pointer; font-size:1.1rem; padding: 0 4px; border-radius: 4px; color: #add8e6;" onclick="event.stopPropagation(); renameProject('${p.id}', '${safeTitle}')">✎</button>
-                <button title="Duplicar" style="background:none; border:none; cursor:pointer; font-size:1.1rem; padding: 0 4px; border-radius: 4px; color: #fca311;" onclick="event.stopPropagation(); duplicateProject('${p.id}')">❏</button>
-                <button title="Eliminar" style="background:none; border:none; cursor:pointer; font-size:1.1rem; padding: 0 4px; border-radius: 4px; color: #ff5252;" onclick="event.stopPropagation(); deleteProject('${p.id}', '${safeTitle}')">🗑</button>
-            `;
-
-            if (!isCurrent) {
-                actionTarget.innerHTML += `<span style="color:#888; font-size:1.2rem; margin-left: 10px;">▶</span>`;
-            }
-
-            card.appendChild(info);
-            card.appendChild(actionTarget);
-            listContainer.appendChild(card);
+            html += `<li class="project-row" style="display:flex; justify-content:space-between; align-items:center; padding: 10px; border-bottom: 1px solid #333;">
+    <div class="project-info" style="flex-grow:1; display:flex; align-items:center; gap:10px;">
+        <strong style="color: ${isActive ? '#fff' : '#ccc'};">${proj.title}</strong>
+        ${isActive ? `<span style="background:var(--accent); color:#fff; padding:2px 6px; border-radius:4px; font-size:0.7em; font-weight:bold;">ACTIVO</span>` : ''}
+        <div style="font-size: 0.8em; color: #888;">Última edición: ${dateStr}</div>
+    </div>
+    <div class="project-actions">
+        <button title="Renombrar" onclick="renameProject('${proj.id}')">✎</button>
+        <button title="Duplicar" onclick="duplicateProject('${proj.id}')">❏</button>
+        <button title="Exportar" onclick="exportProject('${proj.id}')">⇡</button>
+        <button title="Eliminar" style="color:red;" onclick="deleteProject('${proj.id}')">🗑</button>
+        ${!isActive ? `<button onclick="loadProjectFromManager('${proj.id}')">▶</button>` : ''}
+    </div>
+</li>`;
         });
+
+        html += '</ul>';
+        listContainer.innerHTML = html;
 
     } catch (e) {
         listContainer.innerHTML = `< div style = "color:#ff5252; text-align:center;" > Error al cargar: ${e.message}</div > `;
     }
 }
 
+// ==========================================
+// UTILS CUSTOM DIALOGS
+// ==========================================
+
+window.customConfirm = function (message, callback) {
+    const overlay = document.createElement('div');
+    overlay.className = 'custom-dialog-overlay';
+    overlay.innerHTML = `
+        <div class="custom-dialog-box">
+            <h3 style="margin-top:0;">⚠️ Confirmación</h3>
+            <p>${message}</p>
+            <div class="custom-dialog-buttons">
+                <button class="btn-cancel" onclick="this.closest('.custom-dialog-overlay').remove()">Cancelar</button>
+                <button class="btn-confirm" id="confirm-btn">Aceptar</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+    document.getElementById('confirm-btn').onclick = () => { overlay.remove(); callback(); };
+};
+
+window.customPrompt = function (message, defaultValue, callback) {
+    const overlay = document.createElement('div');
+    overlay.className = 'custom-dialog-overlay';
+    overlay.innerHTML = `
+        <div class="custom-dialog-box">
+            <h3 style="margin-top:0;">✏️ Renombrar</h3>
+            <p>${message}</p>
+            <input type="text" id="prompt-input" value="${defaultValue}">
+            <div class="custom-dialog-buttons">
+                <button class="btn-cancel" onclick="this.closest('.custom-dialog-overlay').remove()">Cancelar</button>
+                <button class="btn-confirm" id="prompt-btn">Aceptar</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+    const input = document.getElementById('prompt-input');
+    input.focus();
+    input.select();
+    document.getElementById('prompt-btn').onclick = () => {
+        const val = input.value.trim();
+        overlay.remove();
+        if (val) callback(val);
+    };
+};
+
+window.exportProject = async function (id) {
+    try {
+        const res = await fetch(`/api/projects/${id}`);
+        if (!res.ok) throw new Error("Fallo al cargar el proyecto");
+        const projectData = await res.json();
+
+        const jsonStr = JSON.stringify(projectData, null, 2);
+        const blob = new Blob([jsonStr], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const cleanName = (projectData.title || "proyecto").replace(/[^a-z0-9]/gi, '_').toLowerCase();
+        a.download = `${cleanName}_backup.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        if (typeof showToast === 'function') showToast('Operación exitosa', 'success');
+    } catch (err) {
+        if (typeof showToast === 'function') showToast('Error al exportar: ' + err.message, 'error');
+    }
+};
+
+// ==========================================
+// GLOBALS
+// ==========================================
+
 // Inyectamos el componente al DOM
 window.addEventListener('DOMContentLoaded', initProjectManagerUI);
 
-// Lógica de control CRUD (Exportada globalmente para el DOM de renderProjectList)
-window.renameProject = async function (id, currentTitle) {
-    const newTitle = window.prompt("Introduce el nuevo nombre del proyecto:", currentTitle);
-    if (newTitle !== null && newTitle.trim() !== '') {
-        try {
-            const res = await fetch(`/api/projects/${id}/rename`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ new_title: newTitle.trim() })
-            });
-            if (!res.ok) throw new Error("Fallo al renombrar");
+window.loadProjectFromManager = async function (id) {
+    const overlay = document.getElementById('project-manager-overlay');
+    if (overlay) overlay.style.display = 'none';
+    await switchProject(id);
+};
 
-            // Si renombramos el activo, actualizamos UI global
-            if (id === ProjectState.getId() && typeof saveState === 'function') {
-                projectTitle = newTitle.trim();
-                const tInput = document.getElementById('project-title-input');
-                if (tInput) tInput.value = projectTitle;
-                document.title = projectTitle + " - AIA Studio";
+// Lógica de control CRUD (Exportada globalmente para el DOM de renderProjectList)
+window.renameProject = async function (id) {
+    window.customPrompt("Introduce el nuevo nombre del proyecto:", "", async (newTitle) => {
+        if (newTitle !== null && newTitle !== '') {
+            try {
+                const res = await fetch(`/api/projects/${id}/rename`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ new_title: newTitle })
+                });
+                if (!res.ok) throw new Error("Fallo al renombrar");
+
+                // Si renombramos el activo, actualizamos UI global
+                if (id === ProjectState.getId() && typeof saveState === 'function') {
+                    projectTitle = newTitle;
+                    const tInput = document.getElementById('project-title-input');
+                    if (tInput) tInput.value = projectTitle;
+                    document.title = projectTitle + " - AIA Studio";
+                }
+
+                if (typeof showToast === 'function') showToast('Operación exitosa', 'success');
+                openProjectManagerModal(); // Recargar UI del modal
+            } catch (err) {
+                if (typeof showToast === 'function') showToast('Error: ' + err.message, 'error');
             }
-            openProjectManagerModal(); // Recargar UI del modal
-        } catch (err) { alert("Error al renombrar: " + err.message); }
-    }
+        }
+    });
 };
 
 window.duplicateProject = async function (id) {
     try {
         const res = await fetch(`/api/projects/${id}/duplicate`, { method: 'POST' });
         if (!res.ok) throw new Error("Fallo al duplicar");
+        if (typeof showToast === 'function') showToast('Operación exitosa', 'success');
         openProjectManagerModal();
-    } catch (err) { alert("Error al duplicar: " + err.message); }
+    } catch (err) {
+        if (typeof showToast === 'function') showToast('Error al duplicar: ' + err.message, 'error');
+    }
 };
 
-window.deleteProject = async function (id, title) {
-    if (window.confirm(`¿Estás seguro de eliminar el proyecto "${title}"? Esta acción es irreversible.`)) {
+window.deleteProject = async function (id) {
+    window.customConfirm(`¿Estás seguro de eliminar el proyecto? Esta acción es irreversible.`, async () => {
         try {
             const res = await fetch(`/api/projects/${id}`, { method: 'DELETE' });
             if (!res.ok) throw new Error("Fallo al eliminar");
+
+            if (typeof showToast === 'function') showToast('Operación exitosa', 'success');
 
             // ANTI-SUICIDIO: Si eliminas el enrutado, fallback al por defecto
             if (id === ProjectState.getId()) {
@@ -216,8 +262,10 @@ window.deleteProject = async function (id, title) {
             } else {
                 openProjectManagerModal();
             }
-        } catch (err) { alert("Error al eliminar: " + err.message); }
-    }
+        } catch (err) {
+            if (typeof showToast === 'function') showToast('Error al eliminar: ' + err.message, 'error');
+        }
+    });
 };
 
 // Fallback local functions globally if ever needed:
