@@ -105,7 +105,7 @@ async function loadFromLocal() {
             presetShots = m.shots || presetShots;
             presetMoves = m.moves || presetMoves;
             projectChecklist = m.projectChecklist || projectChecklist;
-            if (m.zoom) currentZoom = m.zoom;
+            // if (m.zoom) currentZoom = m.zoom; // Bloqueado para forzar zoom 100% global
 
             if (m.exportSettings) {
                 const p = document.getElementById('media-path-input');
@@ -120,7 +120,7 @@ async function loadFromLocal() {
         // 5. Force UI refresh
         if (typeof render === 'function') render();
         if (typeof renderChecklist === 'function') renderChecklist();
-        if (typeof fitAll === 'function') fitAll();
+        if (typeof resetView === 'function') resetView();
 
         return true;
 
@@ -136,6 +136,17 @@ function loadProject(input) {
     const r = new FileReader();
     r.onload = async (e) => {
         try {
+            // 1. Bloqueo y guardado de seguridad del proyecto actual
+            if (typeof debounceSaveTimer !== 'undefined' && debounceSaveTimer) clearTimeout(debounceSaveTimer);
+            if (typeof autosaveTimer !== 'undefined' && autosaveTimer) clearTimeout(autosaveTimer);
+            await saveState();
+
+            // 2. Transición a nuevo ID seguro
+            const newImportId = 'proj_imp_' + Date.now();
+            if (typeof ProjectState !== 'undefined') {
+                ProjectState.setId(newImportId);
+            }
+
             const data = JSON.parse(e.target.result);
 
             // 1. Limpieza y estandarización de Escenas
@@ -171,7 +182,7 @@ function loadProject(input) {
                 if (m.speakers) presetSpeakers = m.speakers;
                 if (m.shots) presetShots = m.shots;
                 if (m.moves) presetMoves = m.moves;
-                if (m.zoom) currentZoom = m.zoom;
+                // if (m.zoom) currentZoom = m.zoom; // Bloqueado para forzar zoom 100% global
 
                 if (m.exportSettings) {
                     const p = document.getElementById('media-path-input');
@@ -191,7 +202,7 @@ function loadProject(input) {
             // 4. Force UI refresh
             if (typeof render === 'function') render();
             if (typeof renderChecklist === 'function') renderChecklist();
-            if (typeof fitAll === 'function') fitAll();
+            if (typeof resetView === 'function') resetView();
 
             // 5. EMPUJAR A SQLITE (Persistencia Automática)
             await saveState();
@@ -301,7 +312,7 @@ export async function switchProject(newId) {
 
     if (typeof render === 'function') render();
     if (typeof renderChecklist === 'function') renderChecklist();
-    if (typeof fitAll === 'function') fitAll();
+    if (typeof resetView === 'function') resetView();
     calculateTotalTime();
 
     showToast("📂 Proyecto cambiado correctamente");
@@ -332,7 +343,7 @@ export async function createNewProject() {
     // 5. Repintar UI
     if (typeof render === 'function') render();
     if (typeof renderChecklist === 'function') renderChecklist();
-    if (typeof fitAll === 'function') fitAll();
+    if (typeof resetView === 'function') resetView();
     calculateTotalTime();
 
     showToast("✨ Nuevo proyecto creado");

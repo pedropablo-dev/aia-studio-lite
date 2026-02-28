@@ -32,7 +32,7 @@ window.onload = () => {
         // Si cargó, renderizar todo
         render();
         renderChecklist();
-        updateZoom(currentZoom || 0.8); // Restaura el zoom guardado o usa 80% si no existe
+        updateZoom(1.0); // Fuerza zoom al 100% al arrancar
     }
 
     // Render inicial si falló la carga o es nuevo
@@ -65,7 +65,7 @@ function fitAll() {
 }
 
 function resetView() {
-    const WORK_ZOOM = 0.8;
+    const WORK_ZOOM = 1.0;
     updateZoom(WORK_ZOOM);
     if (selectedId) {
         const index = scenes.findIndex(s => s.id === selectedId);
@@ -896,6 +896,7 @@ document.addEventListener('DOMContentLoaded', () => {
         timelineNavSearch('');
     });
     // Historial jerárquico del explorador de archivos
+    document.getElementById('btn-zoom-reset').addEventListener('click', () => { updateZoom(1.0); });
     document.getElementById('btn-hist-back')?.addEventListener('click', () => {
         if (currentBrowsePath === '') return;
         const lastSlash = currentBrowsePath.lastIndexOf('/');
