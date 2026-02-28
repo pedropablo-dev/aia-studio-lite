@@ -207,10 +207,10 @@ window.exportProject = async function (id) {
 // Inyectamos el componente al DOM
 window.addEventListener('DOMContentLoaded', initProjectManagerUI);
 
-window.loadProjectFromManager = async function (id) {
+window.loadProjectFromManager = async function (id, forceNoSave = false) {
     const overlay = document.getElementById('project-manager-overlay');
     if (overlay) overlay.style.display = 'none';
-    await switchProject(id);
+    await switchProject(id, forceNoSave);
 };
 
 // Lógica de control CRUD (Exportada globalmente para el DOM de renderProjectList)
@@ -271,7 +271,7 @@ window.deleteProject = async function (id) {
                 if (listRes.ok) {
                     const projectList = await listRes.json();
                     if (projectList && projectList.length > 0) {
-                        await loadProjectFromManager(projectList[0].id);
+                        await loadProjectFromManager(projectList[0].id, true);
                         return; // Sale de la función, el modal se cierra automáticamente
                     } else {
                         if (typeof createNewProject === 'function') await createNewProject();

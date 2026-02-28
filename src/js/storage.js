@@ -290,15 +290,15 @@ async function resetProject() {
 /**
  * Transición Segura entre Proyectos (Regla 2: Race Condition Prevention)
  */
-export async function switchProject(newId) {
+export async function switchProject(newId, forceNoSave = false) {
     if (newId === ProjectState.getId()) return;
 
     // 1. Detener temporizadores en vuelo
-    if (debounceSaveTimer) clearTimeout(debounceSaveTimer);
-    if (autosaveTimer) clearTimeout(autosaveTimer);
+    if (typeof debounceSaveTimer !== 'undefined' && debounceSaveTimer) clearTimeout(debounceSaveTimer);
+    if (typeof autosaveTimer !== 'undefined' && autosaveTimer) clearTimeout(autosaveTimer);
 
-    // 2. Guardado síncrono del proyecto saliente
-    await saveState();
+    // 2. Guardado síncrono del proyecto saliente (Cortacorrientes)
+    if (!forceNoSave) await saveState();
 
     // 3. Mutar el estado global de forma segura
     ProjectState.setId(newId);
