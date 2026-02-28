@@ -38,3 +38,7 @@ brutos/
 # --- Sistema ---
 .DS_Store
 Thumbs.db
+
+# --- Logs y Registros ---
+*.log
+app.log
