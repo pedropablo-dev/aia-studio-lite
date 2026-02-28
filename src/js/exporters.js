@@ -211,11 +211,17 @@ function exportDaVinci() {
             // Lógica v7.0: Si hay ruta relativa (linkedFile), úsala. Si no, fallback al sistema antiguo.
             let filename = (s.linkedFile && s.linkedFile.length > 0) ? s.linkedFile : `${i + 1}${mediaExt}`;
 
+            filename = filename.replace(/\\/g, '/');
+            if (filename.startsWith('/')) {
+                filename = filename.substring(1);
+            }
+
             // Construir ruta absoluta para DaVinci
-            const fullPath = `${mediaPath}${filename}`;
+            let fullPath = `${mediaPath}${filename}`;
+            fullPath = encodeURI(fullPath);
 
             const safeName = filename.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-            const safePath = fullPath.replace(/&/g, '&amp;');
+            const safePath = fullPath.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
             const isImage = /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(filename);
             const hasAudioVal = isImage ? "0" : "1";
