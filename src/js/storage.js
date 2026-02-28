@@ -362,3 +362,5 @@ window.loadFromLocal = loadFromLocal;
 window.loadProject = loadProject;
 window.manualBackup = manualBackup;
 window.resetProject = resetProject;
+window.createNewProject = createNewProject;
+window.switchProject = switchProject;

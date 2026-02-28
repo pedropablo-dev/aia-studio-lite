@@ -140,6 +140,7 @@ function undo() {
         configs: { colors: presetColors, sections: presetSections, speakers: presetSpeakers, shots: presetShots, moves: presetMoves }
     });
     restoreState(undoStack.pop());
+    if (typeof triggerAutoSave === 'function') triggerAutoSave();
     showToast("Deshacer");
 }
 
@@ -167,7 +168,11 @@ function redo() {
     const nextState = redoStack.pop();
     restoreState(nextState);
 
+    if (typeof triggerAutoSave === 'function') triggerAutoSave();
     showToast("Rehacer");
 }
 function createId() { return Date.now().toString(36) + Math.random().toString(36).substr(2); }
+
+window.undo = undo;
+window.redo = redo;
 

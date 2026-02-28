@@ -1,15 +1,13 @@
 // src/js/projectState.js
-// Centraliza el estado del proyecto activo (Regla 4 y Regla 2)
-
-let currentProjectId = "default_project";
+let currentProjectId = localStorage.getItem("aia_active_project") || "default_project";
 
 export const ProjectState = {
     getId: () => currentProjectId,
     setId: (id) => {
         if (!id) throw new Error("Invalid Project ID");
         currentProjectId = id;
+        localStorage.setItem("aia_active_project", id);
     }
 };
 
-// Fallback preventivo por si otros scripts legacy no-módulos necesitan leerlo alguna vez
 window.ProjectState = ProjectState;

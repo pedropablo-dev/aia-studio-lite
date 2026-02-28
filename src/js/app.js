@@ -4,8 +4,7 @@
 
 
 // --- CICLO DE VIDA ---
-window.onload = () => {
-
+window.onload = async () => {
     // Configurar Scroll
     const viewport = document.getElementById("viewport");
     viewport.addEventListener("wheel", (evt) => {
@@ -20,25 +19,22 @@ window.onload = () => {
         }
     }, { passive: false });
 
-    // ---> NUEVO: Intentar cargar del almacenamiento local
-    const loaded = loadFromLocal();
+    // ---> ESPERAR CARGA DE BBDD
+    const loaded = await loadFromLocal();
 
     if (!loaded) {
-        // Si no había nada guardado, iniciar nuevo
-        if (scenes.length === 0) addScene();
-        renderChecklist();
-        resetView();
+        // Fallo crítico (404 o BBDD vacía). Ejecutar contingencia:
+        if (typeof window.createNewProject === 'function') {
+            await window.createNewProject();
+        } else {
+            if (scenes.length === 0) addScene();
+            renderChecklist();
+            resetView();
+        }
     } else {
-        // Si cargó, renderizar todo
         render();
         renderChecklist();
-        updateZoom(1.0); // Fuerza zoom al 100% al arrancar
-    }
-
-    // Render inicial si falló la carga o es nuevo
-    if (!loaded) {
-        renderChecklist();
-        resetView();
+        updateZoom(1.0);
     }
 };
 
