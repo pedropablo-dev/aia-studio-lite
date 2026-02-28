@@ -134,7 +134,7 @@ function render() {
                         <span class="speaker-name">${spkName}</span>
                     </div>
                     <button title="Opciones de Reset" class="view-btn" style="padding: 0 2px; margin-right: -2px; border: none; background: transparent; font-size: 1.1rem; flex-shrink: 0; color: #aaa; cursor: pointer;" onclick="openResetMenu(event, '${scene.id}')">↺</button>
-                    <button class="check-btn" onclick="toggleCheck('${scene.id}')" title="Listo">${scene.done ? '✓' : ''}</button>
+                    <button class="check-btn" onclick="toggleCheck('${scene.id}')" title="Listo (Shift+Espacio)">${scene.done ? '✓' : ''}</button>
                 </div>
                 
                 <div class="tech-row">
@@ -146,20 +146,20 @@ function render() {
 
                 <div class="script-area-container">
                     <textarea class="script-preview" placeholder="Diálogo..." oninput="updateData('${scene.id}', 'script', this.value)">${scene.script}</textarea>
-                    <button class="expand-btn" onclick="openModal('${scene.id}')">⤢</button>
+                    <button class="expand-btn" onclick="openModal('${scene.id}')" title="Expandir (Shift+O)">⤢</button>
                 </div>
 
                 <div class="move-controls" style="display:flex; justify-content: space-between; align-items: center; margin-top: 10px; margin-bottom: 10px;">
                     <div class="move-group">
-                        <button ${index === 0 ? 'disabled' : ''} onclick="moveScene(${index}, -1)">←</button>
+                        <button ${index === 0 ? 'disabled' : ''} onclick="moveScene(${index}, -1)" title="Mover a la izquierda (Ctrl+←)">←</button>
                         <button class="dup-btn" onclick="openAddSceneMenu(event, '${scene.id}', -1)">+</button>
                     </div>
                     <div style="display:flex; gap:5px;">
-                        <button onclick="selectedId='${scene.id}'; render(); openQuickFileModal('${scene.id}')" title="Vincular" style="background:#222; border:1px solid #444; color:#ccc; width:30px; height:28px; border-radius:4px; display:flex; align-items:center; justify-content:center; cursor:pointer;">🔗</button>
+                        <button onclick="selectedId='${scene.id}'; render(); openQuickFileModal('${scene.id}')" title="Vincular archivo multimedia (Ctrl+L)" style="background:#222; border:1px solid #444; color:#ccc; width:30px; height:28px; border-radius:4px; display:flex; align-items:center; justify-content:center; cursor:pointer;">🔗</button>
                     </div>
                     <div class="move-group">
                         <button class="dup-btn" onclick="openAddSceneMenu(event, '${scene.id}', 1)">+</button>
-                        <button ${index === scenes.length - 1 ? 'disabled' : ''} onclick="moveScene(${index}, 1)">→</button>
+                        <button ${index === scenes.length - 1 ? 'disabled' : ''} onclick="moveScene(${index}, 1)" title="Mover a la derecha (Ctrl+→)">→</button>
                     </div>
                 </div>
 

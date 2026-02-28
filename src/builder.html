@@ -22,7 +22,7 @@
             </div>
 
             <span style="color:#444; margin-left:15px; font-size:1.5rem;">|</span>
-            <button class="view-btn" onclick="openProjectManagerModal()" title="Gestor de Proyectos"
+            <button class="view-btn" onclick="openProjectManagerModal()" title="Gestor de Proyectos (Ctrl+O)"
                 style="background: #222; border: 1px solid #444; color: #add8e6; margin: 0 15px; padding: 4px 10px; font-weight: bold; cursor: pointer; border-radius: 4px;">📂
                 Proyectos</button>
             <button
@@ -49,10 +49,10 @@
         <div class="vertical-separator"></div>
 
         <div class="zoom-controls">
-            <button class="view-btn" onclick="focusSelection()" title="Centrar tarjeta seleccionada">CENTRAR</button>
+            <button class="view-btn" onclick="focusSelection()" title="Centrar tarjeta (F)">CENTRAR</button>
             <div style="width:1px; height:20px; background:#444; margin:0 5px;"></div>
-            <button class="view-btn" onclick="fitAll()" title="Ver todas las tarjetas">FIT ZOOM</button>
-            <button class="view-btn" onclick="resetView()" title="Vista trabajo (0.8x)">RESTAURAR</button>
+            <button class="view-btn" onclick="fitAll()" title="Ver todas las tarjetas (Shift+F)">FIT ZOOM</button>
+            <button class="view-btn" onclick="resetView()" title="Vista trabajo 100% (0)">RESTAURAR</button>
             <div style="width:1px; height:20px; background:#444; margin:0 5px;"></div>
 
             <span style="font-size:0.7rem; opacity:0.6; font-weight:bold; letter-spacing:1px;">ZOOM</span>
@@ -106,20 +106,21 @@
     </div>
 
     <footer>
-        <button onclick="openShortcutsModal()" title="Atajos de teclado">⌨️</button>
+        <button onclick="openShortcutsModal()" title="Atajos de teclado (Shift+?)">⌨️</button>
         <div style="width: 1px; background: #444; margin: 0 10px;"></div>
-        <button class="btn-accent" onclick="addScene()">+ AÑADIR ESCENA</button>
+        <button class="btn-accent" onclick="addScene()" title="Añadir nueva escena (Alt+Enter)">+ AÑADIR ESCENA</button>
         <div style="width: 1px; background: #444; margin: 0 10px;"></div>
         <button onclick="openColorConfig()">🎞️ Tipo Visual</button>
         <button onclick="openSectionConfig()">🚥 Secciones</button>
         <button onclick="openSpeakerConfig()">🗣️ Hablantes</button>
         <button onclick="openTechConfig()">🎥 Técnica</button>
         <div style="width: 1px; background: #444; margin: 0 10px;"></div>
-        <button onclick="openExportModal('txt')">📄 Diálogos (.txt)</button>
-        <button onclick="openExportModal('md')">⬇️ Guion (.md)</button>
+        <button onclick="openExportModal('txt')" title="Exportar diálogos (Alt+D)">📄 Diálogos (.txt)</button>
+        <button onclick="openExportModal('md')" title="Exportar guion técnico (Alt+G)">⬇️ Guion (.md)</button>
         <!-- JSON LEGACY BOTONES ELIMINADOS -->
         <button onclick="openQuickFileModal(null, '')" title="Explorador Global (Alt + E)">📂 Explorador</button>
-        <button id="toggle-outline-btn" onclick="toggleTimelineOutline()" title="Ver Esquema de Tarjetas">🚩
+        <button id="toggle-outline-btn" onclick="toggleTimelineOutline()"
+            title="Ver esquema de tarjetas (Ctrl+Enter)">🚩
             Esquema</button>
         <div style="width: 1px; background: #444; margin: 0 10px;"></div>
         <button onclick="openMediaConfig()" style="border: 1px solid #fca211c5; color: #fca311;"

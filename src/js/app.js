@@ -1212,6 +1212,8 @@ function openShortcutsModal() {
             title: "💾 Globales / Archivo",
             shortcuts: [
                 { keys: ["Ctrl", "S"], desc: "Guardar Proyecto / Backup" },
+                { keys: ["Ctrl", "O"], desc: "Abrir Gestor de Proyectos" },
+                { keys: ["Ctrl", "E"], desc: "Exportar a TXT (Diálogos)" },
                 { keys: ["Ctrl", "Z"], desc: "Deshacer" },
                 { keys: ["Ctrl", "Y"], desc: "Rehacer" },
                 { keys: ["Shift", "?"], desc: "Abrir esta Ayuda" }
@@ -1220,22 +1222,24 @@ function openShortcutsModal() {
         {
             title: "🎬 Gestión de Escenas",
             shortcuts: [
-                { keys: ["Alt", "Enter"], desc: "Nueva Escena (Siempre activo)" },
+                { keys: ["Alt", "Enter"], desc: "Nueva Escena" },
                 { keys: ["Ctrl", "D"], desc: "Duplicar Escena Seleccionada" },
                 { keys: ["Supr"], desc: "Eliminar Escena" },
-                { keys: ["Ctrl", "L"], desc: "Vincular Media a Escena" },
-                { keys: ["Alt", "E"], desc: "Explorador Global" }
+                { keys: ["Shift", "O"], desc: "Abrir Modal de Edición (Escena Seleccionada)" },
+                { keys: ["Shift", "Espacio"], desc: "Alternar Check de Estado" }
             ]
         },
         {
-            title: "🖱️ Navegación y UI",
+            title: "🖱️ Navegación y Viewport",
             shortcuts: [
-                { keys: ["Ctrl", "Rueda Ratón"], desc: "Zoom en Línea de Tiempo" },
-                { keys: ["Clic", "Arrastrar"], desc: "Panorámica (Scroll horizontal)" },
-                { keys: ["←", "→"], desc: "Desplazar Línea de Tiempo" },
-                { keys: ["Esc"], desc: "Cerrar Ventanas / Cancelar" },
-                { keys: ["Enter"], desc: "Confirmar acción" },
-                { keys: ["Ctrl", "Enter"], desc: "Abrir/Cerrar Esquema de Tarjetas" }
+                { keys: ["←", "→"], desc: "Seleccionar Escena Anterior/Siguiente" },
+                { keys: ["Ctrl", "←", "→"], desc: "Mover Escena Seleccionada" },
+                { keys: ["F"], desc: "Centrar Escena Seleccionada" },
+                { keys: ["Shift", "F"], desc: "Ajustar Zoom (Fit All)" },
+                { keys: ["0"], desc: "Restaurar Zoom (100%)" },
+                { keys: ["Ctrl", "L"], desc: "Vincular Media a Escena" },
+                { keys: ["Alt", "E"], desc: "Explorador Global" },
+                { keys: ["Ctrl", "Enter"], desc: "Abrir/Cerrar Esquema Lateral" }
             ]
         }
     ];
