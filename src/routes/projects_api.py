@@ -5,12 +5,17 @@ from fastapi.concurrency import run_in_threadpool
 from sqlalchemy.orm import Session
 import logging
 
+from pydantic import BaseModel
 import database
 import models
 import schemas
 
 logger = logging.getLogger("AIA-API")
 router = APIRouter(prefix="/api/projects", tags=["projects"])
+
+class ProjectRenameRequest(BaseModel):
+    new_title: str
+
 
 # ==========================================
 # BASE 64 EXTRACTOR (ANTI-DB BLOAT)
@@ -145,3 +150,69 @@ async def load_project(project_id: str, db: Session = Depends(database.get_db)):
             } for s in scenes
         ]
     }
+
+@router.put("/{project_id}/rename")
+async def rename_project(project_id: str, request: ProjectRenameRequest, db: Session = Depends(database.get_db)):
+    if not request.new_title or not request.new_title.strip():
+        raise HTTPException(status_code=400, detail="El título no puede estar vacío.")
+
+    proj = db.query(models.Project).filter(models.Project.id == project_id).first()
+    if not proj:
+        raise HTTPException(status_code=404, detail="Proyecto no encontrado")
+
+    proj.title = request.new_title.strip()
+    db.commit()
+    return {"status": "success", "message": "Proyecto renombrado", "new_title": proj.title}
+
+@router.delete("/{project_id}")
+async def delete_project(project_id: str, db: Session = Depends(database.get_db)):
+    proj = db.query(models.Project).filter(models.Project.id == project_id).first()
+    if not proj:
+        raise HTTPException(status_code=404, detail="Proyecto no encontrado")
+
+    # Eliminación profunda: Escenas primero
+    db.query(models.Scene).filter(models.Scene.project_id == project_id).delete()
+    db.delete(proj)
+    db.commit()
+    return {"status": "success", "message": "Proyecto eliminado permanentemente"}
+
+@router.post("/{project_id}/duplicate")
+async def duplicate_project(project_id: str, db: Session = Depends(database.get_db)):
+    # 1. Recuperar original
+    orig_proj = db.query(models.Project).filter(models.Project.id == project_id).first()
+    if not orig_proj:
+        raise HTTPException(status_code=404, detail="Proyecto original no encontrado")
+
+    # 2. Generar clon de Proyecto
+    import time
+    new_id = f"proj_{int(time.time() * 1000)}_{uuid.uuid4().hex[:5]}"
+    new_title = orig_proj.title + " (Copia)"
+
+    new_proj = models.Project(
+        id=new_id,
+        title=new_title,
+        metadata_config=orig_proj.metadata_config
+    )
+    db.add(new_proj)
+
+    # 3. Recuperar y duplicar escenas con IDs NUEVOS para evitar Unique Constraints
+    orig_scenes = db.query(models.Scene).filter(models.Scene.project_id == project_id).all()
+    for s in orig_scenes:
+        import copy
+        # Deep copy del JSON de la escena y mutar el identificador interno si existe
+        new_scene_data = copy.deepcopy(s.scene_data)
+        new_scene_internal_id = str(uuid.uuid4())
+        if isinstance(new_scene_data, dict) and "id" in new_scene_data:
+            new_scene_data["id"] = new_scene_internal_id
+
+        new_scene = models.Scene(
+            id=new_scene_internal_id,
+            project_id=new_id,
+            order_index=s.order_index,
+            scene_data=new_scene_data
+        )
+        db.add(new_scene)
+
+    db.commit()
+    return {"status": "success", "message": "Proyecto duplicado", "new_id": new_id}
+
