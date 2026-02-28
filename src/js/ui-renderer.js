@@ -16,125 +16,74 @@ function updateZoom(val) {
 
 function render() {
     const container = document.getElementById("timeline-container");
-    container.innerHTML = "";
 
+    // A) Purgado de Huérfanos
+    const validIds = new Set(scenes.map(s => s.id));
+    const existingCards = Array.from(container.querySelectorAll('.scene-card'));
+    existingCards.forEach(card => {
+        if (!validIds.has(card.dataset.id)) {
+            card.remove();
+        }
+    });
+
+    // B) Verificación y Mutación Quirúrgica
     scenes.forEach((scene, index) => {
-        const card = document.createElement("div");
         const isSelected = (scene.id === selectedId);
 
-        card.className = `scene-card ${scene.done ? 'completed' : ''} ${isSelected ? 'selected' : ''}`;
-        card.dataset.id = scene.id;
-        // card.draggable = true; // REMOVED: Now using handle
-
-        card.style.borderTopColor = scene.color;
-        card.style.background = `linear-gradient(180deg, ${scene.color}11 0%, #1e1e1e 20%)`;
-
-        card.onclick = (e) => toggleSelection(e, scene.id);
-        // card.ondragstart = (e) => handleDragStart(e, index); // REMOVED
-        card.ondragover = (e) => e.preventDefault();
-        card.ondrop = (e) => handleDrop(e, index);
-
-        // Recuperar imagen del banco si existe
         let imgSrc = '';
-        if (scene.imageId && imageBank[scene.imageId]) {
-            imgSrc = imageBank[scene.imageId];
-        } else if (scene.tempThumbnail) {
-            // Soporte para miniaturas temporales (API/URL)
-            imgSrc = scene.tempThumbnail;
-        } else if (scene.imageSrc) {
-            // Retrocompatibilidad temporal
-            imgSrc = scene.imageSrc;
-        }
+        if (scene.imageId && imageBank[scene.imageId]) imgSrc = imageBank[scene.imageId];
+        else if (scene.tempThumbnail) imgSrc = scene.tempThumbnail;
+        else if (scene.imageSrc) imgSrc = scene.imageSrc;
 
         const colorName = (presetColors.find(c => c.code === scene.color) || {}).name || '';
         const spkColor = scene.speakerColor || 'transparent';
         const spkName = scene.speakerName || 'Voz';
 
-        // --- ETIQUETA INTELIGENTE V3 (Full Width + Ellipsis Real) ---
-
-        // 1. Detectar tipo y color
-        let linkColor = '#888'; // Default
-        let fileType = '';      // Para data-type en la tarjeta
+        let linkColor = '#888'; let fileType = '';
         if (scene.linkedFile) {
             const _ext = scene.linkedFile.split('.').pop().toLowerCase();
             if (['mp4', 'mov', 'avi', 'mkv', 'mxf', 'webm'].includes(_ext)) { linkColor = '#a5d6a7'; fileType = 'video'; }
             else if (['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp'].includes(_ext)) { linkColor = '#81d4fa'; fileType = 'image'; }
             else if (['mp3', 'wav', 'aac', 'flac', 'ogg', 'm4a'].includes(_ext)) { linkColor = '#ce93d8'; fileType = 'audio'; }
         }
-        // Aplicar data-type a la tarjeta para que CSS pueda colorear el nombre
-        if (fileType) card.dataset.type = fileType;
-        else delete card.dataset.type;
+
         const safeFileName = scene.linkedFile ? scene.linkedFile.replace(/'/g, "\\'") : "";
         const shortFileName = scene.linkedFile ? scene.linkedFile.split('/').pop() : "";
         const safeShortFileName = shortFileName.replace(/'/g, "\\'");
 
-        // 2. Contenido condicional
         let labelInner = '';
-
         if (scene.linkedFile) {
-            // MODO CON ARCHIVO: Flexbox real para que el texto ocupe todo el espacio restante
-
-            // --- TIME BADGE LOGIC ---
             let timeBadge = '';
             if (scene.startTime && scene.startTime > 0) {
                 const timeStr = new Date(scene.startTime * 1000).toISOString().substr(11, 8);
                 timeBadge = `<div class="time-badge" style="color:#ffb74d; font-size:0.65rem; margin-right:6px; font-weight:bold; white-space:nowrap;">⏱ ${timeStr}</div>`;
             }
-
-            labelInner = `
-                    <div style="display:flex; align-items:center; gap:4px; width:100%; cursor:pointer;"
-                         title="Clic para copiar: ${shortFileName}" 
-                         onclick="copyLinkedText('${safeShortFileName}')">
-                        
-                        <span style="color:${linkColor}; flex-shrink:0;">🔗</span>
-                        
-                        <span class="linked-file-name" style="
-                            color:${linkColor}; 
-                            white-space:nowrap; 
-                            overflow:hidden; 
-                            text-overflow:ellipsis; 
-                            flex:1;         
-                            min-width:0;    
-                        ">
-                            ${scene.linkedFile}
-                        </span>
-                        ${timeBadge}
-                    </div>
-                `;
+            labelInner = `<div style="display:flex; align-items:center; gap:4px; width:100%; cursor:pointer;" title="Clic para copiar: ${shortFileName}" onclick="copyLinkedText('${safeShortFileName}')"><span style="color:${linkColor}; flex-shrink:0;">🔗</span><span class="linked-file-name" style="color:${linkColor}; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex:1; min-width:0;">${scene.linkedFile}</span>${timeBadge}</div>`;
         } else {
-            // MODO VACÍO: Espacio reservado invisible
             labelInner = `<span style="opacity:0; user-select:none;">&nbsp;</span>`;
         }
 
-        // ---------------------------------------------------------
         const mode = scene.timingMode || (scene.manualTiming ? 'manual' : 'auto');
-        let timeColor = '#e0e0e0';
-        let timeIcon = '✨';
-        let timeTitle = 'Automático (Basado en guion)';
+        let timeColor = '#e0e0e0'; let timeIcon = '✨'; let timeTitle = 'Automático (Basado en guion)';
+        if (mode === 'manual') { timeColor = '#ff9100'; timeIcon = '🔒'; timeTitle = 'Manual (Bloqueado)'; }
+        else if (mode === 'video') { timeColor = '#00e676'; timeIcon = '📽️'; timeTitle = 'Sincronizado con Vídeo'; }
 
-        if (mode === 'manual') {
-            timeColor = '#ff9100'; timeIcon = '🔒'; timeTitle = 'Manual (Bloqueado)';
-        } else if (mode === 'video') {
-            timeColor = '#00e676'; timeIcon = '📽️'; timeTitle = 'Sincronizado con Vídeo';
-        }
-        // ---------------------------------------------------------
+        // Localizar Nodo Existente
+        let card = container.querySelector(`.scene-card[data-id="${scene.id}"]`);
 
-        // 3. Contenedor Principal (Bloque fijo de altura)
-        const linkedLabel = `
-                <div style="
-                    height: 16px; 
-                    line-height: 16px;
-                    margin-top: 2px; 
-                    font-family:'Consolas', monospace; 
-                    font-size:0.65rem; 
-                    width: 100%; /* Asegura que llegue hasta el borde derecho (debajo de la X) */
-                ">
-                    ${labelInner}
-                </div>
-            `;
+        if (!card) {
+            // NODO NUEVO: Instanciación Completa
+            card = document.createElement("div");
+            card.className = `scene-card ${scene.done ? 'completed' : ''} ${isSelected ? 'selected' : ''}`;
+            card.dataset.id = scene.id;
+            if (fileType) card.dataset.type = fileType;
+            card.style.borderTopColor = scene.color;
+            card.style.background = `linear-gradient(180deg, ${scene.color}11 0%, #1e1e1e 20%)`;
 
-        card.innerHTML = `
-                ${colorName ? `<div class="scene-type-tab" style="background-color:${scene.color}">${colorName}</div>` : ''}
+            const linkedLabel = `<div class="linked-root" style="height: 16px; line-height: 16px; margin-top: 2px; font-family:'Consolas', monospace; font-size:0.65rem; width: 100%;">${labelInner}</div>`;
+
+            card.innerHTML = `
+                ${colorName ? `<div class="scene-type-tab" style="background-color:${scene.color}">${colorName}</div>` : '<div class="scene-type-tab" style="display:none"></div>'}
                 
                 <div class="card-header">
                     <div class="header-left" style="flex-direction:column; align-items:flex-start; gap:0; width: 100%;">
@@ -142,15 +91,11 @@ function render() {
                              <div style="display:flex; align-items:center; gap:8px; flex:1;">
                                 <span class="drag-handle" draggable="true" ondragstart="handleDragStart(event, ${index})">⋮⋮</span>
                                 <span class="scene-number">#${index + 1}</span>
-                                <input type="text" class="scene-title-input" 
-                                       placeholder="Título..." 
-                                       value="${scene.title || ''}" 
-                                       oninput="updateData('${scene.id}', 'title', this.value)">
+                                <input type="text" class="scene-title-input" placeholder="Título..." value="${scene.title || ''}" oninput="updateData('${scene.id}', 'title', this.value)">
                              </div>
                              
                              <div class="card-controls">
-                                <div class="color-picker-trigger" style="background-color:${scene.color}" 
-                                     onclick="openQuickColorModal('${scene.id}')" title="Color"></div>
+                                <div class="color-picker-trigger" style="background-color:${scene.color}" onclick="openQuickColorModal('${scene.id}')" title="Color"></div>
                                 <button class="btn-danger" style="padding:2px 8px; border-radius:4px;" onclick="deleteScene('${scene.id}')">✕</button>
                              </div>
                         </div>
@@ -161,81 +106,45 @@ function render() {
                 <div class="drop-zone ${scene.linkedFile && !/\.(wav|mp3|flac|ogg|m4a|aac)$/i.test(scene.linkedFile) ? 'has-image' : (imgSrc ? 'has-image' : '')}" 
                      ondragover="event.preventDefault()" ondrop="handleImageDrop(event, '${scene.id}')">
                     ${(scene.linkedFile && /\.(wav|mp3|flac|ogg|m4a|aac)$/i.test(scene.linkedFile)) ? `
-                        <div style="width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; background:#1a1a1a;">
-                             <div style="font-size:1.8rem; margin-bottom:0;">\ud83c\udfb5</div>
+                        <div class="audio-wrap" style="width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; background:#1a1a1a;">
+                             <div style="font-size:1.8rem; margin-bottom:0;">🎵</div>
                         </div>
                         <img src="" id="img-${scene.id}" style="display:none">
                     ` : (scene.linkedFile && /\.(mp4|mov|mxf|avi|webm|jpg|jpeg|png|webp)$/i.test(scene.linkedFile)) ? `
                         <img src="http://127.0.0.1:9999/thumbnail?path=${encodeURIComponent(scene.linkedFile)}&folder=${encodeURIComponent(document.getElementById('media-path-input')?.value || '')}" 
-                             id="img-${scene.id}" 
-                             style="width:100%; height:100%; object-fit:cover;"
-                             onerror="this.style.display='none'; this.previousElementSibling && (this.previousElementSibling.style.display='flex');">
+                             id="img-${scene.id}" style="width:100%; height:100%; object-fit:cover;" onerror="this.style.display='none'; this.previousElementSibling && (this.previousElementSibling.style.display='flex');">
                     ` : `
-                        <span>Imagen</span>
-                        <img src="${imgSrc}" id="img-${scene.id}">
+                        <span>Imagen</span><img src="${imgSrc}" id="img-${scene.id}">
                     `}
                     <input type="file" id="file-${scene.id}" class="hidden-file-input" accept="image/*" onchange="handleImageSelect(this, '${scene.id}')">
                 </div>
 
                 <div class="full-row" style="display:flex; align-items:center; gap:6px; margin-bottom:12px;">
-                    
-                    <div class="time-box-wrapper" style="
-                        display:flex; align-items:center; 
-                        background:#222; border:1px solid #444; border-radius:4px; 
-                        padding:0 8px; 
-                        height: 28px; 
-                        box-sizing: border-box;
-                        border-color: ${timeColor === '#e0e0e0' ? '#444' : timeColor + '66'}; 
-                    ">
+                    <div class="time-box-wrapper" style="display:flex; align-items:center; background:#222; border:1px solid ${timeColor === '#e0e0e0' ? '#444' : timeColor + '66'}; border-radius:4px; padding:0 8px; height: 28px; box-sizing: border-box;">
                         <span style="font-size:0.9rem; margin-right:5px; opacity:0.7;">⏱</span>
-                        
-                        <input type="number" value="${scene.duration}" min="0" step="0.1" 
-                               style="
-                                   width:50px; 
-                                   text-align:center; border:none; background:transparent; 
-                                   color: ${timeColor}; 
-                                   font-weight: normal; 
-                                   font-size: 0.85rem; 
-                                   padding:0;
-                                   font-family: inherit;
-                               "
-                               oninput="updateData('${scene.id}', 'duration', this.value)"
-                               title="${timeTitle}">
-                        
+                        <input type="number" class="time-inp" value="${scene.duration}" min="0" step="0.1" style="width:50px; text-align:center; border:none; background:transparent; color:${timeColor}; font-weight: normal; font-size: 0.85rem; padding:0; font-family: inherit;" oninput="updateData('${scene.id}', 'duration', this.value)" title="${timeTitle}">
                         <span style="font-size:0.75rem; color:#666; margin-left:2px;">s</span>
-                        
-                        <div class="time-icon-wrapper" 
-                             onclick="toggleTimingMode('${scene.id}')" 
-                             style="cursor:pointer; font-size:0.75rem; margin-left:6px; opacity:0.8; display:flex; align-items:center;"
-                             title="${mode === 'auto' ? 'Clic para Bloquear (Manual)' : 'Clic para Desbloquear (Volver a Auto)'}">
-                            ${timeIcon}
-                        </div>
+                        <div class="time-icon-wrapper" onclick="toggleTimingMode('${scene.id}')" style="cursor:pointer; font-size:0.75rem; margin-left:6px; opacity:0.8; display:flex; align-items:center;" title="${mode === 'auto' ? 'Clic para Bloquear' : 'Clic para Desbloquear'}">${timeIcon}</div>
                     </div>
 
-                    <button onclick="openTimeMenu(event, '${scene.id}')" title="Herramientas de Tiempo" 
-                            style="height: 28px; width: 28px; padding: 0; display: flex; align-items: center; justify-content: center; background: #222; border: 1px solid #444; border-radius: 4px; font-size: 0.9rem; cursor: pointer;">
-                        ⚡
-                    </button>
+                    <button onclick="openTimeMenu(event, '${scene.id}')" title="Herramientas de Tiempo" style="height: 28px; width: 28px; padding: 0; display: flex; align-items: center; justify-content: center; background: #222; border: 1px solid #444; border-radius: 4px; font-size: 0.9rem; cursor: pointer;">⚡</button>
 
                     <div class="speaker-badge" onclick="openQuickSpeakerModal('${scene.id}')" style="flex-grow:0; margin-left:auto; width:135px;">
                         <div class="speaker-dot" style="background-color: ${spkColor}"></div>
                         <span class="speaker-name">${spkName}</span>
                     </div>
-
                     <button class="check-btn" onclick="toggleCheck('${scene.id}')" title="Listo">${scene.done ? '✓' : ''}</button>
                 </div>
                 
                 <div class="tech-row">
-                    <select onchange="updateData('${scene.id}', 'shot', this.value)">${presetShots.map(t => `<option ${t === scene.shot ? 'selected' : ''}>${t}</option>`).join('')}</select>
-                    <select onchange="updateData('${scene.id}', 'move', this.value)">${presetMoves.map(m => `<option ${m === scene.move ? 'selected' : ''}>${m}</option>`).join('')}</select>
+                    <select class="shot-sel" onchange="updateData('${scene.id}', 'shot', this.value)">${presetShots.map(t => `<option ${t === scene.shot ? 'selected' : ''}>${t}</option>`).join('')}</select>
+                    <select class="move-sel" onchange="updateData('${scene.id}', 'move', this.value)">${presetMoves.map(m => `<option ${m === scene.move ? 'selected' : ''}>${m}</option>`).join('')}</select>
                 </div>
 
-                <textarea class="desc-textarea" placeholder="Descripción breve..." 
-                          oninput="updateData('${scene.id}', 'description', this.value)">${scene.description}</textarea>
+                <textarea class="desc-textarea" placeholder="Descripción breve..." oninput="updateData('${scene.id}', 'description', this.value)">${scene.description}</textarea>
 
                 <div class="script-area-container">
-                    <textarea class="script-preview" placeholder="Diálogo..." 
-                              oninput="updateData('${scene.id}', 'script', this.value)">${scene.script}</textarea>
+                    <textarea class="script-preview" placeholder="Diálogo..." oninput="updateData('${scene.id}', 'script', this.value)">${scene.script}</textarea>
                     <button class="expand-btn" onclick="openModal('${scene.id}')">⤢</button>
                 </div>
 
@@ -244,14 +153,9 @@ function render() {
                         <button ${index === 0 ? 'disabled' : ''} onclick="moveScene(${index}, -1)">←</button>
                         <button class="dup-btn" onclick="duplicateScene(${index}, 0)">+</button>
                     </div>
-
                     <div style="display:flex; gap:5px;">
-                        <button onclick="selectedId='${scene.id}'; render(); openQuickFileModal('${scene.id}')" title="Vincular Archivo Local" 
-                                style="background:#222; border:1px solid #444; color:#ccc; width:30px; height:28px; border-radius:4px; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:all 0.2s;">
-                            🔗
-                        </button>
+                        <button onclick="selectedId='${scene.id}'; render(); openQuickFileModal('${scene.id}')" title="Vincular" style="background:#222; border:1px solid #444; color:#ccc; width:30px; height:28px; border-radius:4px; display:flex; align-items:center; justify-content:center; cursor:pointer;">🔗</button>
                     </div>
-
                     <div class="move-group">
                         <button class="dup-btn" onclick="duplicateScene(${index}, 1)">+</button>
                         <button ${index === scenes.length - 1 ? 'disabled' : ''} onclick="moveScene(${index}, 1)">→</button>
@@ -262,6 +166,110 @@ function render() {
                     <span class="section-label" style="color: ${scene.sectionName === 'SECCIÓN' ? '#666' : '#222'}">${scene.sectionName}</span>
                 </div>
             `;
+        } else {
+            // NODO VIVO: Mutación Quirúrgica
+            card.className = `scene-card ${scene.done ? 'completed' : ''} ${isSelected ? 'selected' : ''}`;
+            if (fileType) card.dataset.type = fileType; else delete card.dataset.type;
+            card.style.borderTopColor = scene.color;
+            card.style.background = `linear-gradient(180deg, ${scene.color}11 0%, #1e1e1e 20%)`;
+
+            // Inputs Update (solo si no tienen foco)
+            const titleInp = card.querySelector('.scene-title-input');
+            if (titleInp && document.activeElement !== titleInp) titleInp.value = scene.title || '';
+            const durInp = card.querySelector('.time-inp');
+            if (durInp && document.activeElement !== durInp) durInp.value = scene.duration;
+            const descArea = card.querySelector('.desc-textarea');
+            if (descArea && document.activeElement !== descArea) descArea.value = scene.description || '';
+            const scriptArea = card.querySelector('.script-preview');
+            if (scriptArea && document.activeElement !== scriptArea) scriptArea.value = scene.script || '';
+            const shotSel = card.querySelector('.shot-sel');
+            if (shotSel && document.activeElement !== shotSel) shotSel.value = scene.shot || presetShots[0];
+            const moveSel = card.querySelector('.move-sel');
+            if (moveSel && document.activeElement !== moveSel) moveSel.value = scene.move || presetMoves[0];
+
+            // Update Labels
+            const typeTab = card.querySelector('.scene-type-tab');
+            if (typeTab) {
+                if (colorName) { typeTab.style.display = 'block'; typeTab.style.backgroundColor = scene.color; typeTab.innerText = colorName; }
+                else { typeTab.style.display = 'none'; }
+            }
+            const linkedLabelContainer = card.querySelector('.linked-root');
+            if (linkedLabelContainer && linkedLabelContainer.innerHTML !== labelInner) { linkedLabelContainer.innerHTML = labelInner; }
+
+            const sceneNum = card.querySelector('.scene-number');
+            if (sceneNum) sceneNum.innerText = `#${index + 1}`;
+
+            const colTrigger = card.querySelector('.color-picker-trigger');
+            if (colTrigger) colTrigger.style.backgroundColor = scene.color;
+
+            // DOM PATCHING: IMAGEN & MULTIMEDIA
+            const dropZone = card.querySelector('.drop-zone');
+            if (dropZone) {
+                dropZone.className = `drop-zone ${scene.linkedFile && !/\.(wav|mp3|flac|ogg|m4a|aac)$/i.test(scene.linkedFile) ? 'has-image' : (imgSrc ? 'has-image' : '')}`;
+                const img = dropZone.querySelector('img');
+                if (img) {
+                    let newSrc = ''; let isAudio = false; let isVideoOrImg = false;
+                    if (scene.linkedFile && /\.(wav|mp3|flac|ogg|m4a|aac)$/i.test(scene.linkedFile)) { isAudio = true; }
+                    else if (scene.linkedFile && /\.(mp4|mov|mxf|avi|webm|jpg|jpeg|png|webp)$/i.test(scene.linkedFile)) {
+                        isVideoOrImg = true;
+                        newSrc = `http://127.0.0.1:9999/thumbnail?path=${encodeURIComponent(scene.linkedFile)}&folder=${encodeURIComponent(document.getElementById('media-path-input')?.value || '')}`;
+                    } else { newSrc = imgSrc; }
+
+                    let currentIsAudio = dropZone.querySelector('.audio-wrap') !== null;
+                    if (isAudio && !currentIsAudio) {
+                        dropZone.innerHTML = `<div class="audio-wrap" style="width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; background:#1a1a1a;"><div style="font-size:1.8rem; margin-bottom:0;">🎵</div></div><img src="" id="img-${scene.id}" style="display:none"><input type="file" id="file-${scene.id}" class="hidden-file-input" accept="image/*" onchange="handleImageSelect(this, '${scene.id}')">`;
+                    } else if (!isAudio && currentIsAudio) {
+                        if (isVideoOrImg) { dropZone.innerHTML = `<img src="${newSrc}" id="img-${scene.id}" style="width:100%; height:100%; object-fit:cover;" onerror="this.style.display='none'; this.previousElementSibling && (this.previousElementSibling.style.display='flex');"><input type="file" id="file-${scene.id}" class="hidden-file-input" accept="image/*" onchange="handleImageSelect(this, '${scene.id}')">`; }
+                        else { dropZone.innerHTML = `<span>Imagen</span><img src="${newSrc}" id="img-${scene.id}"><input type="file" id="file-${scene.id}" class="hidden-file-input" accept="image/*" onchange="handleImageSelect(this, '${scene.id}')">`; }
+                    } else {
+                        // Comparativa Crítica: evita recarga parpadeante de base64
+                        const baseSrc = img.getAttribute('src');
+                        if (baseSrc !== newSrc) {
+                            img.src = newSrc;
+                            img.setAttribute('src', newSrc);
+                            if (newSrc) img.style.display = 'block';
+                        }
+                    }
+                }
+            }
+
+            // Time wrapper
+            const timeBox = card.querySelector('.time-box-wrapper');
+            if (timeBox) timeBox.style.borderColor = timeColor === '#e0e0e0' ? '#444' : timeColor + '66';
+            if (durInp) { durInp.style.color = timeColor; durInp.title = timeTitle; }
+            const timeIconWrap = card.querySelector('.time-icon-wrapper');
+            if (timeIconWrap) { timeIconWrap.title = mode === 'auto' ? 'Clic para Bloquear' : 'Clic para Desbloquear'; timeIconWrap.innerHTML = timeIcon; }
+
+            // Resto...
+            const spkDot = card.querySelector('.speaker-dot'); if (spkDot) spkDot.style.backgroundColor = spkColor;
+            const spkNameEl = card.querySelector('.speaker-name'); if (spkNameEl) spkNameEl.innerText = spkName;
+            const checkBtn = card.querySelector('.check-btn'); if (checkBtn) checkBtn.innerText = scene.done ? '✓' : '';
+
+            const dragHandle = card.querySelector('.drag-handle'); if (dragHandle) dragHandle.setAttribute('ondragstart', `handleDragStart(event, ${index})`);
+            const moveBtns = card.querySelectorAll('.move-group button');
+            if (moveBtns.length >= 4) {
+                moveBtns[0].disabled = (index === 0);
+                moveBtns[0].setAttribute('onclick', `moveScene(${index}, -1)`);
+                moveBtns[1].setAttribute('onclick', `duplicateScene(${index}, 0)`);
+                moveBtns[2].setAttribute('onclick', `duplicateScene(${index}, 1)`);
+                moveBtns[3].disabled = (index === scenes.length - 1);
+                moveBtns[3].setAttribute('onclick', `moveScene(${index}, 1)`);
+            }
+
+            const secBar = card.querySelector('.section-bar');
+            if (secBar) {
+                secBar.style.backgroundColor = scene.sectionColor || 'transparent';
+                const secLab = secBar.querySelector('.section-label');
+                if (secLab) { secLab.style.color = scene.sectionName === 'SECCIÓN' ? '#666' : '#222'; secLab.innerText = scene.sectionName; }
+            }
+        }
+
+        // Reconexiones dinámicas invariables
+        card.onclick = (e) => toggleSelection(e, scene.id);
+        card.ondrop = (e) => handleDrop(e, index);
+        card.ondragover = (e) => e.preventDefault();
+
+        // C) Reordenación Geométrica de Elementos Nativos (Asegura Drag & Drop en orden)
         container.appendChild(card);
     });
     document.getElementById("scene-count").innerText = scenes.length;
