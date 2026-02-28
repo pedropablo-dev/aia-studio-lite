@@ -247,7 +247,7 @@ function render() {
             const spkNameEl = card.querySelector('.speaker-name'); if (spkNameEl) spkNameEl.innerText = spkName;
             const checkBtn = card.querySelector('.check-btn'); if (checkBtn) checkBtn.innerText = scene.done ? '✓' : '';
 
-            const dragHandle = card.querySelector('.drag-handle'); if (dragHandle) dragHandle.setAttribute('ondragstart', `handleDragStart(event, ${index})`);
+            const dragHandle = card.querySelector('.drag-handle'); if (dragHandle) { dragHandle.setAttribute('ondragstart', `handleDragStart(event, ${index})`); }
             const moveBtns = card.querySelectorAll('.move-group button');
             if (moveBtns.length >= 4) {
                 moveBtns[0].disabled = (index === 0);
