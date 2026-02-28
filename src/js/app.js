@@ -880,50 +880,75 @@ document.addEventListener('click', (e) => {
     }
 });
 
-// Botones |< y >| del timeline navigator
+// Botones |< y >| del timeline navigator y controles varios (Con blindaje de nulidad estricto)
 document.addEventListener('DOMContentLoaded', () => {
-    document.getElementById('lite-nav-start')?.addEventListener('click', () => {
-        if (scenes.length > 0) timelineNavGoTo(scenes[0].id);
-    });
-    document.getElementById('lite-nav-end')?.addEventListener('click', () => {
-        if (scenes.length > 0) timelineNavGoTo(scenes[scenes.length - 1].id);
-    });
-    document.getElementById('lite-nav-clear')?.addEventListener('click', () => {
-        const inp = document.getElementById('timeline-nav-input');
-        if (inp) { inp.value = ''; }
-        const dropdown = document.getElementById('timeline-nav-results');
-        if (dropdown) dropdown.style.display = 'none';
-        timelineNavSearch('');
-    });
+    const btnNavStart = document.getElementById('lite-nav-start');
+    if (btnNavStart) {
+        btnNavStart.addEventListener('click', () => { if (scenes.length > 0) timelineNavGoTo(scenes[0].id); });
+    }
+
+    const btnNavEnd = document.getElementById('lite-nav-end');
+    if (btnNavEnd) {
+        btnNavEnd.addEventListener('click', () => { if (scenes.length > 0) timelineNavGoTo(scenes[scenes.length - 1].id); });
+    }
+
+    const btnNavClear = document.getElementById('lite-nav-clear');
+    if (btnNavClear) {
+        btnNavClear.addEventListener('click', () => {
+            const inp = document.getElementById('timeline-nav-input');
+            if (inp) inp.value = '';
+            const dropdown = document.getElementById('timeline-nav-results');
+            if (dropdown) dropdown.style.display = 'none';
+            timelineNavSearch('');
+        });
+    }
+
+    const btnZoomReset = document.getElementById('btn-zoom-reset');
+    if (btnZoomReset) {
+        btnZoomReset.addEventListener('click', () => { updateZoom(1.0); });
+    }
+
     // Historial jerárquico del explorador de archivos
-    document.getElementById('btn-zoom-reset').addEventListener('click', () => { updateZoom(1.0); });
-    document.getElementById('btn-hist-back')?.addEventListener('click', () => {
-        if (currentBrowsePath === '') return;
-        const lastSlash = currentBrowsePath.lastIndexOf('/');
-        const parentPath = lastSlash !== -1 ? currentBrowsePath.substring(0, lastSlash) : '';
-        openQuickFileModal(null, parentPath);
-    });
-    document.getElementById('btn-hist-forward')?.addEventListener('click', () => {
-        // Determinar la siguiente carpeta en la ruta más profunda visitada
-        if (!liteDeepestPath || liteDeepestPath === currentBrowsePath) return;
-        const prefix = currentBrowsePath === '' ? '' : currentBrowsePath + '/';
-        if (!liteDeepestPath.startsWith(prefix) && currentBrowsePath !== '') return;
-        const remainder = liteDeepestPath.slice(prefix.length);
-        const nextSegment = remainder.split('/')[0];
-        const nextPath = currentBrowsePath === '' ? nextSegment : currentBrowsePath + '/' + nextSegment;
-        openQuickFileModal(currentFileSceneId, nextPath);
-    });
-    document.getElementById('lite-sort-select')?.addEventListener('change', () => {
-        // Re-render with new sort: if searching, re-filter; otherwise reload current folder
-        const q = document.getElementById('lite-file-search')?.value?.trim();
-        if (q) filterQuickFiles();
-        else openQuickFileModal(currentFileSceneId, currentBrowsePath);
-    });
-    document.getElementById('lite-search-clear')?.addEventListener('click', () => {
-        const searchInput = document.getElementById('lite-file-search');
-        if (searchInput) { searchInput.value = ''; }
-        filterQuickFiles();
-    });
+    const btnHistBack = document.getElementById('btn-hist-back');
+    if (btnHistBack) {
+        btnHistBack.addEventListener('click', () => {
+            if (currentBrowsePath === '') return;
+            const lastSlash = currentBrowsePath.lastIndexOf('/');
+            const parentPath = lastSlash !== -1 ? currentBrowsePath.substring(0, lastSlash) : '';
+            openQuickFileModal(null, parentPath);
+        });
+    }
+
+    const btnHistForward = document.getElementById('btn-hist-forward');
+    if (btnHistForward) {
+        btnHistForward.addEventListener('click', () => {
+            if (!liteDeepestPath || liteDeepestPath === currentBrowsePath) return;
+            const prefix = currentBrowsePath === '' ? '' : currentBrowsePath + '/';
+            if (!liteDeepestPath.startsWith(prefix) && currentBrowsePath !== '') return;
+            const remainder = liteDeepestPath.slice(prefix.length);
+            const nextSegment = remainder.split('/')[0];
+            const nextPath = currentBrowsePath === '' ? nextSegment : currentBrowsePath + '/' + nextSegment;
+            openQuickFileModal(currentFileSceneId, nextPath);
+        });
+    }
+
+    const sortSelect = document.getElementById('lite-sort-select');
+    if (sortSelect) {
+        sortSelect.addEventListener('change', () => {
+            const q = document.getElementById('lite-file-search')?.value?.trim();
+            if (q) filterQuickFiles();
+            else openQuickFileModal(currentFileSceneId, currentBrowsePath);
+        });
+    }
+
+    const searchClear = document.getElementById('lite-search-clear');
+    if (searchClear) {
+        searchClear.addEventListener('click', () => {
+            const searchInput = document.getElementById('lite-file-search');
+            if (searchInput) searchInput.value = '';
+            filterQuickFiles();
+        });
+    }
 });
 
 // ================================================================

@@ -58,12 +58,32 @@ async function openProjectManagerModal() {
             await createNewProject();
         };
 
+        const importBtn = document.createElement('button');
+        importBtn.className = 'view-btn';
+        importBtn.innerHTML = '📥 Importar JSON';
+        importBtn.onclick = () => { document.getElementById('import-json-input').click(); };
+
         const cancelBtn = document.createElement('button');
         cancelBtn.innerHTML = 'Cerrar';
         cancelBtn.onclick = () => { overlay.style.display = 'none'; };
 
         actions.appendChild(newProjBtn);
+        actions.appendChild(importBtn);
         actions.appendChild(cancelBtn);
+
+        const hiddenInput = document.createElement('input');
+        hiddenInput.type = 'file';
+        hiddenInput.id = 'import-json-input';
+        hiddenInput.accept = '.json';
+        hiddenInput.style.display = 'none';
+        hiddenInput.onchange = function () {
+            if (typeof loadProject === 'function') {
+                overlay.style.display = 'none';
+                loadProject(this);
+            }
+        };
+        content.appendChild(hiddenInput);
+
         content.appendChild(actions);
 
         overlay.appendChild(content);
@@ -121,10 +141,22 @@ async function openProjectManagerModal() {
             `;
 
             const actionTarget = document.createElement('div');
+            actionTarget.style.cssText = 'display: flex; gap: 8px; align-items: center;';
+
             if (isCurrent) {
-                actionTarget.innerHTML = `<span style="background: var(--accent); color:#fff; font-size:0.7rem; padding: 2px 6px; border-radius:4px; font-weight:bold;">ACTIVO</span>`;
-            } else {
-                actionTarget.innerHTML = `<span style="color:#888; font-size:1.2rem;">▶</span>`;
+                actionTarget.innerHTML += `<span style="background: var(--accent); color:#fff; font-size:0.7rem; padding: 2px 6px; border-radius:4px; font-weight:bold; margin-right: 10px;">ACTIVO</span>`;
+            }
+
+            // --- CRUD BUTTONS (String Template Mode) ---
+            const safeTitle = (p.title || 'Sin Título').replace(/'/g, "\\'");
+            actionTarget.innerHTML += `
+                <button title="Renombrar" style="background:none; border:none; cursor:pointer; font-size:1.1rem; padding: 0 4px; border-radius: 4px; color: #add8e6;" onclick="event.stopPropagation(); renameProject('${p.id}', '${safeTitle}')">✎</button>
+                <button title="Duplicar" style="background:none; border:none; cursor:pointer; font-size:1.1rem; padding: 0 4px; border-radius: 4px; color: #fca311;" onclick="event.stopPropagation(); duplicateProject('${p.id}')">❏</button>
+                <button title="Eliminar" style="background:none; border:none; cursor:pointer; font-size:1.1rem; padding: 0 4px; border-radius: 4px; color: #ff5252;" onclick="event.stopPropagation(); deleteProject('${p.id}', '${safeTitle}')">🗑</button>
+            `;
+
+            if (!isCurrent) {
+                actionTarget.innerHTML += `<span style="color:#888; font-size:1.2rem; margin-left: 10px;">▶</span>`;
             }
 
             card.appendChild(info);
@@ -133,12 +165,60 @@ async function openProjectManagerModal() {
         });
 
     } catch (e) {
-        listContainer.innerHTML = `<div style="color:#ff5252; text-align:center;">Error al cargar: ${e.message}</div>`;
+        listContainer.innerHTML = `< div style = "color:#ff5252; text-align:center;" > Error al cargar: ${e.message}</div > `;
     }
 }
 
 // Inyectamos el componente al DOM
 window.addEventListener('DOMContentLoaded', initProjectManagerUI);
+
+// Lógica de control CRUD (Exportada globalmente para el DOM de renderProjectList)
+window.renameProject = async function (id, currentTitle) {
+    const newTitle = window.prompt("Introduce el nuevo nombre del proyecto:", currentTitle);
+    if (newTitle !== null && newTitle.trim() !== '') {
+        try {
+            const res = await fetch(`/api/projects/${id}/rename`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ new_title: newTitle.trim() })
+            });
+            if (!res.ok) throw new Error("Fallo al renombrar");
+
+            // Si renombramos el activo, actualizamos UI global
+            if (id === ProjectState.getId() && typeof saveState === 'function') {
+                projectTitle = newTitle.trim();
+                const tInput = document.getElementById('project-title-input');
+                if (tInput) tInput.value = projectTitle;
+                document.title = projectTitle + " - AIA Studio";
+            }
+            openProjectManagerModal(); // Recargar UI del modal
+        } catch (err) { alert("Error al renombrar: " + err.message); }
+    }
+};
+
+window.duplicateProject = async function (id) {
+    try {
+        const res = await fetch(`/api/projects/${id}/duplicate`, { method: 'POST' });
+        if (!res.ok) throw new Error("Fallo al duplicar");
+        openProjectManagerModal();
+    } catch (err) { alert("Error al duplicar: " + err.message); }
+};
+
+window.deleteProject = async function (id, title) {
+    if (window.confirm(`¿Estás seguro de eliminar el proyecto "${title}"? Esta acción es irreversible.`)) {
+        try {
+            const res = await fetch(`/api/projects/${id}`, { method: 'DELETE' });
+            if (!res.ok) throw new Error("Fallo al eliminar");
+
+            // ANTI-SUICIDIO: Si eliminas el enrutado, fallback al por defecto
+            if (id === ProjectState.getId()) {
+                await switchProject('default_project');
+            } else {
+                openProjectManagerModal();
+            }
+        } catch (err) { alert("Error al eliminar: " + err.message); }
+    }
+};
 
 // Fallback local functions globally if ever needed:
 window.openProjectManagerModal = openProjectManagerModal;

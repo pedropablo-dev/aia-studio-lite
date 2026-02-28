@@ -51,9 +51,7 @@
             <span id="zoom-display">100%</span>
         </div>
 
-        <div style="width:1px; height:20px; background:#444; margin:0 15px;"></div>
-        <button class="view-btn" onclick="resetProject()" title="Borrar todo y empezar de cero"
-            style="color:#ff5252; border-color:#553333;">✨ NUEVO</button>
+        <!-- NUEVO MIGRADO AL PROJECT MANAGER -->
     </header>
 
     <div id="viewport" onclick="clearSelection(event)">
@@ -109,8 +107,7 @@
         <div style="width: 1px; background: #444; margin: 0 10px;"></div>
         <button onclick="openExportModal('txt')">📄 Diálogos (.txt)</button>
         <button onclick="openExportModal('md')">⬇️ Guion (.md)</button>
-        <button onclick="manualBackup()" title="Exportar Proyecto (.json)">💾 Exportar</button>
-        <button onclick="document.getElementById('load-json').click()">📥 Cargar</button>
+        <!-- JSON LEGACY BOTONES ELIMINADOS -->
         <button onclick="openQuickFileModal(null, '')" title="Explorador Global (Alt + E)">📂 Explorador</button>
         <button id="toggle-outline-btn" onclick="toggleTimelineOutline()" title="Ver Esquema de Tarjetas">🚩
             Esquema</button>
@@ -123,7 +120,7 @@
             title="Importar como Marcadores de Timeline">📍</button>
         <button onclick="exportSRT()" style="border: 1px solid #fca211c5; color: #fca311;"
             title="Descargar Guion como Subtítulos">📝</button>
-        <input type="file" id="load-json" class="hidden-file-input" accept=".json" onchange="loadProject(this)">
+        <!-- CARGA JSON ELIMINADA -->
     </footer>
 
 
