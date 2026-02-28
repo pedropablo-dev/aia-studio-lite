@@ -8,6 +8,7 @@ import re
 import shutil
 import subprocess
 import logging
+import asyncio
 from urllib.parse import unquote
 from fastapi import FastAPI, HTTPException, Body
 from fastapi.middleware.cors import CORSMiddleware
@@ -162,6 +163,7 @@ async def startup_event():
 _CACHE_DIR = Path(os.path.dirname(os.path.abspath(__file__))).parent / ".lite_cache"
 _CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
+THUMBNAIL_SEMAPHORE = asyncio.Semaphore(4)
 
 @app.get("/thumbnail")
 async def get_thumbnail(path: str, folder: Optional[str] = None):
@@ -223,12 +225,13 @@ async def get_thumbnail(path: str, folder: Optional[str] = None):
                 "-q:v", "2",
                 str(cache_path)
             ]
-            result = await run_in_threadpool(
-                subprocess.run,
-                cmd,
-                capture_output=True,
-                timeout=30
-            )
+            async with THUMBNAIL_SEMAPHORE:
+                result = await run_in_threadpool(
+                    subprocess.run,
+                    cmd,
+                    capture_output=True,
+                    timeout=30
+                )
             if result.returncode == 0 and cache_path.exists():
                 return FileResponse(str(cache_path), media_type="image/jpeg")
             else:
