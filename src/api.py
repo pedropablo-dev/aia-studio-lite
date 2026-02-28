@@ -12,7 +12,7 @@ import asyncio
 from urllib.parse import unquote
 from fastapi import FastAPI, HTTPException, Body
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel
@@ -158,6 +158,10 @@ async def startup_event():
 
 # === STATIC FILE SERVING ===
 
+_SRC_DIR = Path(os.path.dirname(os.path.abspath(__file__)))
+app.mount("/js", StaticFiles(directory=_SRC_DIR / "js"), name="js")
+app.mount("/css", StaticFiles(directory=_SRC_DIR / "css"), name="css")
+app.mount("/img", StaticFiles(directory=_SRC_DIR / "img"), name="img")
 
 # .lite_cache directory for FFmpeg-generated thumbnails
 _CACHE_DIR = Path(os.path.dirname(os.path.abspath(__file__))).parent / ".lite_cache"
@@ -824,6 +828,11 @@ async def load_project(project_id: str, db: Session = Depends(database.get_db)):
             } for s in scenes
         ]
     }
+
+@app.get("/")
+async def serve_frontend():
+    html_path = Path(__file__).parent / "builder.html"
+    return FileResponse(str(html_path))
 
 
 if __name__ == "__main__":

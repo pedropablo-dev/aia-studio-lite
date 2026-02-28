@@ -1,5 +1,6 @@
 // --- CONSTANTES GLOBALES DE PERSISTENCIA ---
-const CURRENT_PROJECT_ID = "default_project"; // Slot único emulado
+import { ProjectState } from './projectState.js';
+
 const AUTOSAVE_DELAY = 1000;
 let autosaveTimer = null;
 
@@ -33,7 +34,7 @@ async function saveState() {
     }
 
     const payload = {
-        id: CURRENT_PROJECT_ID,
+        id: ProjectState.getId(),
         title: projectTitle || "Mi Proyecto",
         metadata_config: {
             colors: presetColors,
@@ -74,7 +75,8 @@ async function saveState() {
  */
 async function loadFromLocal() {
     try {
-        const data = await liteLoadProjectApi(CURRENT_PROJECT_ID);
+        const currentId = ProjectState.getId();
+        const data = await liteLoadProjectApi(currentId);
 
         // --- RESTAURAR DATOS ---
         if (data.scenes && Array.isArray(data.scenes)) {
@@ -113,7 +115,7 @@ async function loadFromLocal() {
             }
         }
 
-        console.log(`✅ Proyecto '${CURRENT_PROJECT_ID}' restaurado desde SQLite.`);
+        console.log(`✅ Proyecto '${currentId}' restaurado desde SQLite.`);
 
         // 5. Force UI refresh
         if (typeof render === 'function') render();
@@ -222,7 +224,7 @@ async function manualBackup() {
     });
 
     const dataPayload = {
-        id: CURRENT_PROJECT_ID,
+        id: ProjectState.getId(),
         title: projectTitle || "Mi Proyecto",
         metadata_config: {
             colors: presetColors,
@@ -271,3 +273,77 @@ async function resetProject() {
         location.reload();
     }
 }
+
+// --- MULTI-PROJECT SYSTEM (FASE 10) ---
+
+/**
+ * Transición Segura entre Proyectos (Regla 2: Race Condition Prevention)
+ */
+export async function switchProject(newId) {
+    if (newId === ProjectState.getId()) return;
+
+    // 1. Detener temporizadores en vuelo
+    if (debounceSaveTimer) clearTimeout(debounceSaveTimer);
+    if (autosaveTimer) clearTimeout(autosaveTimer);
+
+    // 2. Guardado síncrono del proyecto saliente
+    await saveState();
+
+    // 3. Mutar el estado global de forma segura
+    ProjectState.setId(newId);
+
+    // 4. Cargar datos y repintar UI
+    const loaded = await loadFromLocal();
+    if (!loaded) {
+        scenes = [];
+        projectTitle = "Nuevo Proyecto";
+    }
+
+    if (typeof render === 'function') render();
+    if (typeof renderChecklist === 'function') renderChecklist();
+    if (typeof fitAll === 'function') fitAll();
+    calculateTotalTime();
+
+    showToast("📂 Proyecto cambiado correctamente");
+}
+
+/**
+ * Creación de un proyecto en blanco (Regla 2)
+ */
+export async function createNewProject() {
+    // 1. Detener temporizadores en vuelo
+    if (debounceSaveTimer) clearTimeout(debounceSaveTimer);
+    if (autosaveTimer) clearTimeout(autosaveTimer);
+
+    // 2. Guardado síncrono del proyecto saliente
+    await saveState();
+
+    // 3. Generar ID y transicionar
+    const newId = "proj_" + Date.now() + Math.random().toString(36).substr(2, 5);
+    ProjectState.setId(newId);
+
+    // 4. Reset arrays y forzar guardado inicial
+    scenes = [];
+    projectTitle = "Nuevo Proyecto";
+    if (typeof addScene === 'function') addScene(); // Añadir al menos una escena vacía
+
+    await saveState(); // Crear el registro inicial en BBDD
+
+    // 5. Repintar UI
+    if (typeof render === 'function') render();
+    if (typeof renderChecklist === 'function') renderChecklist();
+    if (typeof fitAll === 'function') fitAll();
+    calculateTotalTime();
+
+    showToast("✨ Nuevo proyecto creado");
+}
+
+
+// --- LIGAR FALLBACKS AL WINDOW (Compatibilidad Módulos ES6 -> Legacy Scripts) ---
+window.debouncedSaveState = debouncedSaveState;
+window.triggerAutoSave = triggerAutoSave;
+window.saveState = saveState;
+window.loadFromLocal = loadFromLocal;
+window.loadProject = loadProject;
+window.manualBackup = manualBackup;
+window.resetProject = resetProject;

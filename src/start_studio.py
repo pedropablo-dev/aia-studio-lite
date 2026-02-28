@@ -26,7 +26,7 @@ def main():
         time.sleep(3)
         
         # 3. Abrir Frontend en MODO APP (Chrome)
-        file_url = "file:///" + BUILDER_HTML.replace("\\", "/")
+        file_url = "http://localhost:9999"
         print(f"[SYSTEM] Lanzando Chrome App Mode: {file_url}")
         
         try:
