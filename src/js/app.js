@@ -1234,6 +1234,8 @@ function openShortcutsModal() {
             shortcuts: [
                 { keys: ["←", "→"], desc: "Seleccionar Escena Anterior/Siguiente" },
                 { keys: ["Ctrl", "←", "→"], desc: "Mover Escena Seleccionada" },
+                { keys: ["Inicio"], desc: "Ir al inicio del timeline" },
+                { keys: ["Fin"], desc: "Ir al final del timeline" },
                 { keys: ["F"], desc: "Centrar Escena Seleccionada" },
                 { keys: ["Shift", "F"], desc: "Ajustar Zoom (Fit All)" },
                 { keys: ["0"], desc: "Restaurar Zoom (100%)" },

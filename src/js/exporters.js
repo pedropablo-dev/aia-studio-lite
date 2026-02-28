@@ -60,10 +60,19 @@ function openExportModal(format) {
     const activeSpeakers = [...new Set(scenes.map(s => s.speakerName).filter(Boolean))];
 
     const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
     overlay.style.cssText = 'position:fixed;inset:0;z-index:2000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.7);backdrop-filter:blur(5px);';
 
     const box = document.createElement('div');
-    box.style.cssText = 'background:#1a1a1a;border:1px solid #3a3a3a;border-radius:12px;padding:26px 30px;min-width:300px;max-width:400px;width:92%;min-height:480px;max-height:85vh;box-shadow:0 0 50px rgba(0,0,0,0.9);display:flex;flex-direction:column;gap:0;';
+    box.style.cssText = 'position:relative;background:#1a1a1a;border:1px solid #3a3a3a;border-radius:12px;padding:26px 30px;min-width:300px;max-width:400px;width:92%;min-height:480px;max-height:85vh;box-shadow:0 0 50px rgba(0,0,0,0.9);display:flex;flex-direction:column;gap:0;';
+
+    const destroy = () => document.body.removeChild(overlay);
+
+    const closeX = document.createElement('div');
+    closeX.className = 'close-modal-x';
+    closeX.innerHTML = '×';
+    closeX.onclick = destroy;
+    box.appendChild(closeX);
 
     // Header
     const header = document.createElement('div');
@@ -106,8 +115,6 @@ function openExportModal(format) {
     // Button row
     const btnRow = document.createElement('div');
     btnRow.style.cssText = 'display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;';
-
-    const destroy = () => document.body.removeChild(overlay);
 
     const getFiltered = () => {
         if (allCkb.checked) return { scenes, label: null, suffix: '' };
