@@ -254,8 +254,8 @@ window.openAddSceneMenu = function (event, sourceId, direction = 1) {
         closeAllContextMenus();
     };
 
-    menu.appendChild(createBtn('📄 Insertar Vacía Aquí', insertEmptyFn, '#fff'));
-    menu.appendChild(createBtn('❏ Duplicar Esta Escena', duplicateFn, '#add8e6'));
+    menu.appendChild(createBtn('▢ Insertar Vacía', insertEmptyFn, '#fff'));
+    menu.appendChild(createBtn('❏ Duplicar Escena', duplicateFn, '#add8e6'));
 
     document.body.appendChild(menu);
 };
