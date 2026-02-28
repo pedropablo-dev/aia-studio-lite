@@ -131,3 +131,126 @@ function moveScene(index, direction) {
     }
 }
 
+window.closeAllContextMenus = function () {
+    document.querySelectorAll('.context-menu').forEach(el => el.remove());
+};
+
+document.addEventListener('click', function (e) {
+    if (!e.target.closest('.context-menu')) {
+        closeAllContextMenus();
+    }
+});
+
+window.openResetMenu = function (event, id) {
+    event.stopPropagation();
+    closeAllContextMenus();
+
+    const menu = document.createElement('div');
+    menu.className = 'context-menu';
+    menu.style.cssText = `position: fixed; left: ${event.clientX}px; top: ${event.clientY}px; z-index: 9999; background: #1a1a1a; border: 1px solid #333; border-radius: 4px; padding: 5px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); display: flex; flex-direction: column; gap: 4px; min-width: 200px;`;
+
+    const createBtn = (text, mode, color) => {
+        const btn = document.createElement('button');
+        btn.innerHTML = text;
+        btn.style.cssText = `background: transparent; border: none; color: ${color}; text-align: left; padding: 8px 12px; cursor: pointer; border-radius: 2px; font-size: 0.9em; transition: background 0.2s;`;
+        btn.onmouseover = () => btn.style.background = '#333';
+        btn.onmouseout = () => btn.style.background = 'transparent';
+        btn.onclick = () => {
+            executeReset(id, mode);
+            closeAllContextMenus();
+        };
+        return btn;
+    };
+
+    menu.appendChild(createBtn('⚠️ Resetear TODO', 'all', '#ff5252'));
+    menu.appendChild(createBtn('🎨 Limpiar Color', 'color', '#ccc'));
+    menu.appendChild(createBtn('🚥 Limpiar Sección', 'section', '#ccc'));
+    menu.appendChild(createBtn('⚙️ Limpiar Técnica', 'tech', '#ccc'));
+
+    document.body.appendChild(menu);
+};
+
+window.executeReset = function (id, mode) {
+    if (typeof saveToHistory === 'function') saveToHistory();
+    const scene = scenes.find(s => s.id === id);
+    if (!scene) return;
+
+    if (mode === 'all') {
+        scene.script = "";
+        scene.description = "";
+        scene.imageSrc = "";
+        scene.imageId = null;
+        scene.tempThumbnail = "";
+        scene.linkedFile = "";
+        scene.duration = 0;
+        scene.timingMode = 'auto';
+        scene.done = false;
+        scene.color = '#333333';
+        scene.sectionName = 'Sección';
+        scene.sectionColor = 'transparent';
+        scene.speakerName = '';
+        scene.speakerColor = 'transparent';
+        scene.shot = 'Cámara';
+        scene.move = 'Técnica';
+    } else if (mode === 'color') {
+        scene.color = '#333333';
+    } else if (mode === 'section') {
+        scene.sectionName = 'Sección';
+        scene.sectionColor = 'transparent'; // O un neutro
+    } else if (mode === 'tech') {
+        scene.shot = 'Cámara';
+        scene.move = 'Técnica';
+        scene.speakerName = '';
+    }
+    render();
+};
+
+window.openAddSceneMenu = function (event, sourceId) {
+    event.stopPropagation();
+    closeAllContextMenus();
+
+    const menu = document.createElement('div');
+    menu.className = 'context-menu';
+    menu.style.cssText = `position: fixed; left: ${event.clientX}px; top: ${event.clientY}px; z-index: 9999; background: #1a1a1a; border: 1px solid #333; border-radius: 4px; padding: 5px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); display: flex; flex-direction: column; gap: 4px; min-width: 200px;`;
+
+    const createBtn = (text, onClickFn, color) => {
+        const btn = document.createElement('button');
+        btn.innerHTML = text;
+        btn.style.cssText = `background: transparent; border: none; color: ${color}; text-align: left; padding: 8px 12px; cursor: pointer; border-radius: 2px; font-size: 0.9em; transition: background 0.2s;`;
+        btn.onmouseover = () => btn.style.background = '#333';
+        btn.onmouseout = () => btn.style.background = 'transparent';
+        btn.onclick = onClickFn;
+        return btn;
+    };
+
+    const insertEmptyFn = () => {
+        if (typeof saveToHistory === 'function') saveToHistory();
+        const index = scenes.findIndex(s => s.id === sourceId);
+        if (index !== -1) {
+            const newScene = {
+                id: createId(), color: '#333333', duration: 0,
+                timingMode: 'auto', shot: 'Cámara', move: 'Técnica',
+                description: "", script: "", done: false,
+                title: "", sectionName: 'Sección', sectionColor: "transparent",
+                speakerName: "", speakerColor: "transparent",
+                linkedFile: ""
+            };
+            scenes.splice(index + 1, 0, newScene);
+            render();
+        }
+        closeAllContextMenus();
+    };
+
+    const duplicateFn = () => {
+        const index = scenes.findIndex(s => s.id === sourceId);
+        if (index !== -1) {
+            duplicateScene(index, 1); // Inserta copia detrás de sourceId
+        }
+        closeAllContextMenus();
+    };
+
+    menu.appendChild(createBtn('📄 Insertar Vacía Aquí', insertEmptyFn, '#fff'));
+    menu.appendChild(createBtn('❏ Duplicar Esta Escena', duplicateFn, '#add8e6'));
+
+    document.body.appendChild(menu);
+};

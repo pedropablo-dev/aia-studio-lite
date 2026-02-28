@@ -133,6 +133,7 @@ function render() {
                         <div class="speaker-dot" style="background-color: ${spkColor}"></div>
                         <span class="speaker-name">${spkName}</span>
                     </div>
+                    <button title="Opciones de Reset" class="view-btn" style="padding: 0 4px; border: none; background: transparent; font-size: 1.1rem; flex-shrink: 0; color: #aaa; cursor: pointer;" onclick="openResetMenu(event, '${scene.id}')">↺</button>
                     <button class="check-btn" onclick="toggleCheck('${scene.id}')" title="Listo">${scene.done ? '✓' : ''}</button>
                 </div>
                 
@@ -151,13 +152,13 @@ function render() {
                 <div class="move-controls" style="display:flex; justify-content: space-between; align-items: center; margin-top: 10px; margin-bottom: 10px;">
                     <div class="move-group">
                         <button ${index === 0 ? 'disabled' : ''} onclick="moveScene(${index}, -1)">←</button>
-                        <button class="dup-btn" onclick="duplicateScene(${index}, 0)">+</button>
+                        <button class="dup-btn" onclick="openAddSceneMenu(event, '${scene.id}')">+</button>
                     </div>
                     <div style="display:flex; gap:5px;">
                         <button onclick="selectedId='${scene.id}'; render(); openQuickFileModal('${scene.id}')" title="Vincular" style="background:#222; border:1px solid #444; color:#ccc; width:30px; height:28px; border-radius:4px; display:flex; align-items:center; justify-content:center; cursor:pointer;">🔗</button>
                     </div>
                     <div class="move-group">
-                        <button class="dup-btn" onclick="duplicateScene(${index}, 1)">+</button>
+                        <button class="dup-btn" onclick="openAddSceneMenu(event, '${scene.id}')">+</button>
                         <button ${index === scenes.length - 1 ? 'disabled' : ''} onclick="moveScene(${index}, 1)">→</button>
                     </div>
                 </div>
@@ -250,8 +251,8 @@ function render() {
             if (moveBtns.length >= 4) {
                 moveBtns[0].disabled = (index === 0);
                 moveBtns[0].setAttribute('onclick', `moveScene(${index}, -1)`);
-                moveBtns[1].setAttribute('onclick', `duplicateScene(${index}, 0)`);
-                moveBtns[2].setAttribute('onclick', `duplicateScene(${index}, 1)`);
+                moveBtns[1].setAttribute('onclick', `openAddSceneMenu(event, '${scene.id}')`);
+                moveBtns[2].setAttribute('onclick', `openAddSceneMenu(event, '${scene.id}')`);
                 moveBtns[3].disabled = (index === scenes.length - 1);
                 moveBtns[3].setAttribute('onclick', `moveScene(${index}, 1)`);
             }

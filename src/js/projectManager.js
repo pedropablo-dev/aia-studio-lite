@@ -40,11 +40,26 @@ async function openProjectManagerModal() {
         const filterContainer = document.createElement('div');
         filterContainer.style.cssText = 'display: flex; gap: 10px; margin-bottom: 12px;';
 
+        const searchInputWrapper = document.createElement('div');
+        searchInputWrapper.style.cssText = 'position:relative; flex:1; display:flex;';
+
         const searchInput = document.createElement('input');
         searchInput.type = 'text';
         searchInput.id = 'pm-search';
         searchInput.placeholder = 'Buscar proyecto...';
-        searchInput.style.cssText = 'flex: 1; background: #1a1a1a; border: 1px solid #333; color: white; padding: 8px; border-radius: 4px; outline: none;';
+        searchInput.style.cssText = 'flex: 1; background: #1a1a1a; border: 1px solid #333; color: white; padding: 8px; padding-right: 30px; border-radius: 4px; outline: none;';
+
+        const clearBtn = document.createElement('button');
+        clearBtn.innerHTML = '✕';
+        clearBtn.title = 'Limpiar búsqueda';
+        clearBtn.style.cssText = 'position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: transparent; border: none; color: #888; font-size: 14px; cursor: pointer; padding: 0;';
+        clearBtn.onclick = () => {
+            document.getElementById('pm-search').value = '';
+            if (typeof window.renderFilteredList === 'function') window.renderFilteredList();
+        };
+
+        searchInputWrapper.appendChild(searchInput);
+        searchInputWrapper.appendChild(clearBtn);
 
         const sortSelect = document.createElement('select');
         sortSelect.id = 'pm-sort';
@@ -130,7 +145,7 @@ async function openProjectManagerModal() {
             if (filterRow) filterRow.style.display = 'flex';
         }
 
-        const renderFilteredList = () => {
+        window.renderFilteredList = function () {
             const q = document.getElementById('pm-search').value.toLowerCase();
             const sortMode = document.getElementById('pm-sort').value;
 
@@ -188,10 +203,10 @@ async function openProjectManagerModal() {
         };
 
         // Escuchadores del filtro/búsqueda
-        document.getElementById('pm-search').addEventListener('input', renderFilteredList);
-        document.getElementById('pm-sort').addEventListener('change', renderFilteredList);
+        document.getElementById('pm-search').addEventListener('input', window.renderFilteredList);
+        document.getElementById('pm-sort').addEventListener('change', window.renderFilteredList);
 
-        renderFilteredList();
+        window.renderFilteredList();
 
     } catch (e) {
         listContainer.innerHTML = `<div style="color:#ff5252; text-align:center;">Error al cargar: ${e.message}</div>`;
