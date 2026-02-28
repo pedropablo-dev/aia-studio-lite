@@ -38,10 +38,13 @@ async function openProjectManagerModal() {
         content.appendChild(listContainer);
 
         const actions = document.createElement('div');
-        actions.style.cssText = 'display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #333; padding-top: 16px;';
+        actions.style.cssText = 'display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #333; padding-top: 16px; gap: 10px;';
+
+        const btnStyle = 'height: 40px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; padding: 0 15px; cursor: pointer; border-radius: 4px; border: 1px solid #444; font-weight: bold;';
 
         const newProjBtn = document.createElement('button');
         newProjBtn.className = 'btn-accent';
+        newProjBtn.style.cssText = btnStyle;
         newProjBtn.innerHTML = '✨ Nuevo Proyecto';
         newProjBtn.onclick = async () => {
             overlay.style.display = 'none';
@@ -50,10 +53,12 @@ async function openProjectManagerModal() {
 
         const importBtn = document.createElement('button');
         importBtn.className = 'view-btn';
+        importBtn.style.cssText = btnStyle + ' background: #222; color: #add8e6;';
         importBtn.innerHTML = '📥 Importar JSON';
         importBtn.onclick = () => { document.getElementById('import-json-input').click(); };
 
         const cancelBtn = document.createElement('button');
+        cancelBtn.style.cssText = btnStyle + ' background: #444; color: white;';
         cancelBtn.innerHTML = 'Cerrar';
         cancelBtn.onclick = () => { overlay.style.display = 'none'; };
 
@@ -256,9 +261,19 @@ window.deleteProject = async function (id) {
 
             if (typeof showToast === 'function') showToast('Operación exitosa', 'success');
 
-            // ANTI-SUICIDIO: Si eliminas el enrutado, fallback al por defecto
+            // ANTI-SUICIDIO DINÁMICO
             if (id === ProjectState.getId()) {
-                await switchProject('default_project');
+                const listRes = await fetch('/api/projects');
+                if (listRes.ok) {
+                    const projectList = await listRes.json();
+                    if (projectList && projectList.length > 0) {
+                        await switchProject(projectList[0].id);
+                    } else {
+                        if (typeof createNewProject === 'function') await createNewProject();
+                    }
+                } else {
+                    if (typeof createNewProject === 'function') await createNewProject();
+                }
             } else {
                 openProjectManagerModal();
             }
