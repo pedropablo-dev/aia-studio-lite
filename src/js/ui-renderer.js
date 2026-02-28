@@ -88,10 +88,10 @@ function render() {
                 <div class="card-header">
                     <div class="header-left" style="flex-direction:column; align-items:flex-start; gap:0; width: 100%;">
                         <div style="display:flex; align-items:center; width:100%; justify-content: space-between;">
-                             <div style="display:flex; align-items:center; gap:8px; flex:1;">
+                             <div style="display:flex; align-items:center; gap:8px; flex:1; min-width: 0;">
                                 <span class="drag-handle" draggable="true" ondragstart="handleDragStart(event, ${index})">⋮⋮</span>
                                 <span class="scene-number">#${index + 1}</span>
-                                <input type="text" class="scene-title-input" placeholder="Título..." value="${scene.title || ''}" oninput="updateData('${scene.id}', 'title', this.value)">
+                                <input type="text" class="scene-title-input" placeholder="Título..." value="${scene.title || ''}" oninput="updateData('${scene.id}', 'title', this.value)" style="text-overflow: ellipsis; overflow: hidden; white-space: nowrap; min-width: 0; flex: 1;">
                              </div>
                              
                              <div class="card-controls">
@@ -133,7 +133,7 @@ function render() {
                         <div class="speaker-dot" style="background-color: ${spkColor}"></div>
                         <span class="speaker-name">${spkName}</span>
                     </div>
-                    <button title="Opciones de Reset" class="view-btn" style="padding: 0 4px; border: none; background: transparent; font-size: 1.1rem; flex-shrink: 0; color: #aaa; cursor: pointer;" onclick="openResetMenu(event, '${scene.id}')">↺</button>
+                    <button title="Opciones de Reset" class="view-btn" style="padding: 0 2px; margin-right: -2px; border: none; background: transparent; font-size: 1.1rem; flex-shrink: 0; color: #aaa; cursor: pointer;" onclick="openResetMenu(event, '${scene.id}')">↺</button>
                     <button class="check-btn" onclick="toggleCheck('${scene.id}')" title="Listo">${scene.done ? '✓' : ''}</button>
                 </div>
                 
@@ -152,13 +152,13 @@ function render() {
                 <div class="move-controls" style="display:flex; justify-content: space-between; align-items: center; margin-top: 10px; margin-bottom: 10px;">
                     <div class="move-group">
                         <button ${index === 0 ? 'disabled' : ''} onclick="moveScene(${index}, -1)">←</button>
-                        <button class="dup-btn" onclick="openAddSceneMenu(event, '${scene.id}')">+</button>
+                        <button class="dup-btn" onclick="openAddSceneMenu(event, '${scene.id}', -1)">+</button>
                     </div>
                     <div style="display:flex; gap:5px;">
                         <button onclick="selectedId='${scene.id}'; render(); openQuickFileModal('${scene.id}')" title="Vincular" style="background:#222; border:1px solid #444; color:#ccc; width:30px; height:28px; border-radius:4px; display:flex; align-items:center; justify-content:center; cursor:pointer;">🔗</button>
                     </div>
                     <div class="move-group">
-                        <button class="dup-btn" onclick="openAddSceneMenu(event, '${scene.id}')">+</button>
+                        <button class="dup-btn" onclick="openAddSceneMenu(event, '${scene.id}', 1)">+</button>
                         <button ${index === scenes.length - 1 ? 'disabled' : ''} onclick="moveScene(${index}, 1)">→</button>
                     </div>
                 </div>
@@ -251,8 +251,8 @@ function render() {
             if (moveBtns.length >= 4) {
                 moveBtns[0].disabled = (index === 0);
                 moveBtns[0].setAttribute('onclick', `moveScene(${index}, -1)`);
-                moveBtns[1].setAttribute('onclick', `openAddSceneMenu(event, '${scene.id}')`);
-                moveBtns[2].setAttribute('onclick', `openAddSceneMenu(event, '${scene.id}')`);
+                moveBtns[1].setAttribute('onclick', `openAddSceneMenu(event, '${scene.id}', -1)`);
+                moveBtns[2].setAttribute('onclick', `openAddSceneMenu(event, '${scene.id}', 1)`);
                 moveBtns[3].disabled = (index === scenes.length - 1);
                 moveBtns[3].setAttribute('onclick', `moveScene(${index}, 1)`);
             }

@@ -40,28 +40,18 @@ async function openProjectManagerModal() {
         const filterContainer = document.createElement('div');
         filterContainer.style.cssText = 'display: flex; gap: 10px; margin-bottom: 12px;';
 
-        const searchInputWrapper = document.createElement('div');
-        searchInputWrapper.style.cssText = 'position:relative; flex:1; display:flex;';
-
-        const searchInput = document.createElement('input');
-        searchInput.type = 'text';
-        searchInput.id = 'pm-search';
-        searchInput.placeholder = 'Buscar proyecto...';
-        searchInput.style.cssText = 'flex: 1; background: #1a1a1a; border: 1px solid #333; color: white; padding: 8px; padding-right: 30px; border-radius: 4px; outline: none;';
-
-        const clearBtn = document.createElement('button');
-        clearBtn.innerHTML = '✕';
-        clearBtn.title = 'Limpiar búsqueda';
-        clearBtn.style.cssText = 'position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: transparent; border: none; color: #888; font-size: 14px; cursor: pointer; padding: 0;';
-        clearBtn.onclick = () => {
-            document.getElementById('pm-search').value = '';
-            if (typeof window.renderFilteredList === 'function') window.renderFilteredList();
-        };
-
-        searchInputWrapper.appendChild(searchInput);
-        searchInputWrapper.appendChild(clearBtn);
-
-        const sortSelect = document.createElement('select');
+        filterContainer.innerHTML = `
+            <div style="position:relative; flex:1; display:flex;">
+                <input type="text" id="pm-search" placeholder="Buscar proyecto..." style="flex: 1; background: #1a1a1a; border: 1px solid #333; color: white; padding: 8px 30px 8px 8px; border-radius: 4px; outline: none;">
+                <button onclick="document.getElementById('pm-search').value=''; if(typeof window.renderFilteredList === 'function') window.renderFilteredList();" style="position:absolute; right:8px; top:50%; transform:translateY(-50%); background:transparent; border:none; color:#888; font-size:14px; cursor:pointer; padding:0;">✕</button>
+            </div>
+            <select id="pm-sort" style="background: #1a1a1a; border: 1px solid #333; color: white; padding: 8px; border-radius: 4px; outline: none; cursor: pointer; max-width: 200px;">
+                <option value="newest">Más recientes primero</option>
+                <option value="oldest">Más antiguos primero</option>
+                <option value="az">Nombre (A-Z)</option>
+                <option value="za">Nombre (Z-A)</option>
+            </select>
+        `;
         sortSelect.id = 'pm-sort';
         sortSelect.style.cssText = 'background: #1a1a1a; border: 1px solid #333; color: white; padding: 8px; border-radius: 4px; outline: none; cursor: pointer; max-width: 200px;';
         sortSelect.innerHTML = `
@@ -71,8 +61,6 @@ async function openProjectManagerModal() {
             <option value="za">Nombre (Z-A)</option>
         `;
 
-        filterContainer.appendChild(searchInput);
-        filterContainer.appendChild(sortSelect);
         content.appendChild(filterContainer);
         // ---------------------------------------------
 

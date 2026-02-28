@@ -166,6 +166,7 @@ window.openResetMenu = function (event, id) {
     menu.appendChild(createBtn('🎨 Limpiar Color', 'color', '#ccc'));
     menu.appendChild(createBtn('🚥 Limpiar Sección', 'section', '#ccc'));
     menu.appendChild(createBtn('⚙️ Limpiar Técnica', 'tech', '#ccc'));
+    menu.appendChild(createBtn('🗣️ Limpiar Hablante', 'speaker', '#ccc'));
 
     document.body.appendChild(menu);
 };
@@ -178,6 +179,7 @@ window.executeReset = function (id, mode) {
     if (mode === 'all') {
         scene.script = "";
         scene.description = "";
+        scene.title = "";
         scene.imageSrc = "";
         scene.imageId = null;
         scene.tempThumbnail = "";
@@ -186,26 +188,28 @@ window.executeReset = function (id, mode) {
         scene.timingMode = 'auto';
         scene.done = false;
         scene.color = '#333333';
-        scene.sectionName = 'Sección';
+        scene.sectionName = 'SECCIÓN';
         scene.sectionColor = 'transparent';
-        scene.speakerName = '';
+        scene.speakerName = 'Voz';
         scene.speakerColor = 'transparent';
         scene.shot = 'Cámara';
         scene.move = 'Técnica';
     } else if (mode === 'color') {
         scene.color = '#333333';
     } else if (mode === 'section') {
-        scene.sectionName = 'Sección';
-        scene.sectionColor = 'transparent'; // O un neutro
+        scene.sectionName = 'SECCIÓN';
+        scene.sectionColor = 'transparent';
     } else if (mode === 'tech') {
         scene.shot = 'Cámara';
         scene.move = 'Técnica';
-        scene.speakerName = '';
+    } else if (mode === 'speaker') {
+        scene.speakerName = 'Voz';
+        scene.speakerColor = 'transparent';
     }
     render();
 };
 
-window.openAddSceneMenu = function (event, sourceId) {
+window.openAddSceneMenu = function (event, sourceId, direction = 1) {
     event.stopPropagation();
     closeAllContextMenus();
 
@@ -231,11 +235,12 @@ window.openAddSceneMenu = function (event, sourceId) {
                 id: createId(), color: '#333333', duration: 0,
                 timingMode: 'auto', shot: 'Cámara', move: 'Técnica',
                 description: "", script: "", done: false,
-                title: "", sectionName: 'Sección', sectionColor: "transparent",
-                speakerName: "", speakerColor: "transparent",
+                title: "", sectionName: 'SECCIÓN', sectionColor: "transparent",
+                speakerName: "Voz", speakerColor: "transparent",
                 linkedFile: ""
             };
-            scenes.splice(index + 1, 0, newScene);
+            const targetIndex = direction === -1 ? index : index + 1;
+            scenes.splice(targetIndex, 0, newScene);
             render();
         }
         closeAllContextMenus();
@@ -244,7 +249,7 @@ window.openAddSceneMenu = function (event, sourceId) {
     const duplicateFn = () => {
         const index = scenes.findIndex(s => s.id === sourceId);
         if (index !== -1) {
-            duplicateScene(index, 1); // Inserta copia detrás de sourceId
+            duplicateScene(index, direction === -1 ? 0 : 1);
         }
         closeAllContextMenus();
     };
