@@ -149,19 +149,18 @@ function loadProject(input) {
 
             const data = JSON.parse(e.target.result);
 
-            // 1. Limpieza y estandarización de Escenas
+            // 3. Limpieza y REGENERACIÓN DE IDs (Evita IntegrityError en SQLite)
             let importedScenes = Array.isArray(data) ? data : (data.scenes || []);
             importedScenes = importedScenes.map(scene => {
-                // Eliminar base64 obsoletas para que Pydantic no pete
+                // Forzamos un ID nuevo para cada escena importada
+                scene.id = createId();
                 delete scene.imageId;
                 delete scene.imageSrc;
-                // Garantizar UUID
-                if (!scene.id) scene.id = 'import_' + Math.random().toString(36).substr(2, 9);
                 return scene;
             });
 
-            // 2. Normalización de Metadatos (Legacy -> metadata_config)
-            projectTitle = data.projectTitle || data.title || "Proyecto Importado";
+            // 4. Título con etiqueta de importación
+            projectTitle = (data.projectTitle || data.title || "Proyecto") + " (Importado)";
             const titleInput = document.getElementById('project-title-input');
             if (titleInput) titleInput.value = projectTitle;
             document.title = projectTitle + " - AIA Studio";
@@ -204,9 +203,10 @@ function loadProject(input) {
             if (typeof renderChecklist === 'function') renderChecklist();
             if (typeof resetView === 'function') resetView();
 
-            // 5. EMPUJAR A SQLITE (Persistencia Automática)
+            // 5. Guardado y Sincronización de Vista
             await saveState();
-            showToast("✅ Proyecto antiguo convertido y guardado en SQLite", "info");
+            await loadFromLocal(); // Obligatorio para refrescar ProjectState y UI
+            showToast("✅ Proyecto importado con éxito", "success");
 
         } catch (err) {
             console.error(err);
