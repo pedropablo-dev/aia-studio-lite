@@ -18,8 +18,6 @@ document.addEventListener('dragend', function (event) {
     document.querySelectorAll('.scene-card').forEach(card => {
         card.classList.remove('dragging', 'ghost', 'drag-over');
         card.style.opacity = '1';
-        card.style.borderTop = card.dataset.color || '';
-        card.style.borderBottom = '';
     });
 });
 
