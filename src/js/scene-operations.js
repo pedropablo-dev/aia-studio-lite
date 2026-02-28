@@ -1,5 +1,5 @@
 function addScene() {
-    debouncedSaveState();
+    if (typeof saveToHistory === 'function') saveToHistory();
     const newScene = {
         id: createId(), color: presetColors[0].code, duration: 0,
         timingMode: 'auto', // ESTADOS: 'auto', 'manual', 'video'
@@ -17,7 +17,7 @@ function addScene() {
 }
 
 function duplicateScene(index, offset) {
-    debouncedSaveState();
+    if (typeof saveToHistory === 'function') saveToHistory();
     const original = scenes[index];
     const copy = JSON.parse(JSON.stringify(original));
     copy.id = createId();
@@ -29,14 +29,14 @@ function duplicateScene(index, offset) {
 }
 
 function deleteScene(id) {
-    debouncedSaveState();
+    if (typeof saveToHistory === 'function') saveToHistory();
     scenes = scenes.filter(s => s.id !== id);
     if (selectedId === id) selectedId = null;
     render();
 }
 
 function updateData(id, field, value) {
-    debouncedSaveState();
+    if (typeof saveToHistory === 'function') saveToHistory(); // Llenar pila de Undo antes de mutar
     const scene = scenes.find(s => s.id === id);
     if (!scene) return;
 
@@ -104,14 +104,14 @@ function applyColorToScene(color) {
 }
 
 function applySectionToScene(name, color) {
-    debouncedSaveState();
+    if (typeof saveToHistory === 'function') saveToHistory();
     const s = scenes.find(x => x.id === currentSectionSceneId);
     if (s) { s.sectionName = name; s.sectionColor = color; render(); }
     document.getElementById('quick-section-modal').style.display = 'none';
 }
 
 function applySpeakerToScene(name, color) {
-    debouncedSaveState();
+    if (typeof saveToHistory === 'function') saveToHistory();
     const s = scenes.find(x => x.id === currentSpeakerSceneId);
     if (s) { s.speakerName = name; s.speakerColor = color; render(); }
     document.getElementById('quick-speaker-modal').style.display = 'none';
@@ -119,12 +119,12 @@ function applySpeakerToScene(name, color) {
 
 function toggleCheck(id) {
     const s = scenes.find(x => x.id === id);
-    if (s) { debouncedSaveState(); s.done = !s.done; render(); }
+    if (s) { if (typeof saveToHistory === 'function') saveToHistory(); s.done = !s.done; render(); }
 }
 
 function moveScene(index, direction) {
     if ((direction === -1 && index > 0) || (direction === 1 && index < scenes.length - 1)) {
-        debouncedSaveState();
+        if (typeof saveToHistory === 'function') saveToHistory();
         const targetIndex = index + direction;
         [scenes[index], scenes[targetIndex]] = [scenes[targetIndex], scenes[index]];
         render();

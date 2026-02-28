@@ -256,6 +256,10 @@ window.duplicateProject = async function (id) {
 window.deleteProject = async function (id) {
     window.customConfirm(`¿Estás seguro de eliminar el proyecto? Esta acción es irreversible.`, async () => {
         try {
+            // BLOQUEO ASÍNCRONO DE AUTOGUARDADOS PENDIENTES
+            if (typeof debounceSaveTimer !== 'undefined' && debounceSaveTimer) clearTimeout(debounceSaveTimer);
+            if (typeof autosaveTimer !== 'undefined' && autosaveTimer) clearTimeout(autosaveTimer);
+
             const res = await fetch(`/api/projects/${id}`, { method: 'DELETE' });
             if (!res.ok) throw new Error("Fallo al eliminar");
 
@@ -267,7 +271,7 @@ window.deleteProject = async function (id) {
                 if (listRes.ok) {
                     const projectList = await listRes.json();
                     if (projectList && projectList.length > 0) {
-                        await switchProject(projectList[0].id);
+                        await loadProjectFromManager(projectList[0].id);
                     } else {
                         if (typeof createNewProject === 'function') await createNewProject();
                     }

@@ -306,8 +306,13 @@ export async function switchProject(newId) {
     // 4. Cargar datos y repintar UI
     const loaded = await loadFromLocal();
     if (!loaded) {
-        scenes = [];
-        projectTitle = "Nuevo Proyecto";
+        if (typeof createNewProject === 'function') {
+            await createNewProject();
+            return; // Evita el doble render de abajo
+        } else {
+            scenes = [];
+            projectTitle = "Nuevo Proyecto";
+        }
     }
 
     if (typeof render === 'function') render();
@@ -323,30 +328,29 @@ export async function switchProject(newId) {
  */
 export async function createNewProject() {
     // 1. Detener temporizadores en vuelo
-    if (debounceSaveTimer) clearTimeout(debounceSaveTimer);
-    if (autosaveTimer) clearTimeout(autosaveTimer);
+    if (typeof debounceSaveTimer !== 'undefined' && debounceSaveTimer) clearTimeout(debounceSaveTimer);
+    if (typeof autosaveTimer !== 'undefined' && autosaveTimer) clearTimeout(autosaveTimer);
 
-    // 2. Guardado síncrono del proyecto saliente
-    await saveState();
-
-    // 3. Generar ID y transicionar
+    // 2. Transicionar a un nuevo ID
     const newId = "proj_" + Date.now() + Math.random().toString(36).substr(2, 5);
     ProjectState.setId(newId);
 
-    // 4. Reset arrays y forzar guardado inicial
+    // 3. Limpiar estado global estrictamente
     scenes = [];
     projectTitle = "Nuevo Proyecto";
-    if (typeof addScene === 'function') addScene(); // Añadir al menos una escena vacía
+    const tInput = document.getElementById('project-title-input');
+    if (tInput) tInput.value = projectTitle;
+    document.title = projectTitle + " - AIA Studio";
 
-    await saveState(); // Crear el registro inicial en BBDD
+    // 4. Forzar guardado inicial explícito e inmediato a SQLite (evita duplicados de auto-save)
+    await saveState();
 
-    // 5. Repintar UI
+    // 5. Añadir al menos una escena vacía y repintar UI
+    if (typeof addScene === 'function') addScene();
     if (typeof render === 'function') render();
     if (typeof renderChecklist === 'function') renderChecklist();
     if (typeof resetView === 'function') resetView();
-    calculateTotalTime();
-
-    showToast("✨ Nuevo proyecto creado");
+    if (typeof calculateTotalTime === 'function') calculateTotalTime();
 }
 
 

@@ -75,8 +75,8 @@ let currentFileSceneId = null;  // [LITE] ID de la escena que abrió el file pic
 let currentBrowsePath = '';     // [LITE] Subpath actual en el explorador jerárquico
 let liteDeepestPath = '';       // [LITE] Ruta más profunda visitada (para navegación jerárquica ►)
 
-// NOTA TÉCNICA: saveState ahora es ligero. No guarda las imágenes (MBs), solo referencias (Bytes).
-function saveState() {
+// NOTA TÉCNICA: saveToHistory ahora es ligero. No guarda las imágenes (MBs), solo referencias (Bytes).
+function saveToHistory() {
     const state = {
         projectTitle: projectTitle,
         scenes: JSON.parse(JSON.stringify(scenes)),
@@ -93,9 +93,10 @@ function saveState() {
     if (undoStack.length > MAX_HISTORY) undoStack.shift();
     redoStack = [];
 
-    // ---> NUEVO: Disparar auto-guardado
-    triggerAutoSave();
+    // ---> Disparar auto-guardado a BBDD 
+    if (typeof triggerAutoSave === 'function') triggerAutoSave();
 }
+window.saveToHistory = saveToHistory;
 
 function updateProjectTitle(val) {
     projectTitle = val;
