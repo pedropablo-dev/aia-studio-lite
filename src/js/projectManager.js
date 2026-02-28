@@ -272,15 +272,17 @@ window.deleteProject = async function (id) {
                     const projectList = await listRes.json();
                     if (projectList && projectList.length > 0) {
                         await loadProjectFromManager(projectList[0].id);
+                        return; // Sale de la función, el modal se cierra automáticamente
                     } else {
                         if (typeof createNewProject === 'function') await createNewProject();
                     }
                 } else {
                     if (typeof createNewProject === 'function') await createNewProject();
                 }
-            } else {
-                openProjectManagerModal();
             }
+
+            // Refresco obligatorio del modal si no se ejecutó el return previo
+            openProjectManagerModal();
         } catch (err) {
             if (typeof showToast === 'function') showToast('Error al eliminar: ' + err.message, 'error');
         }
