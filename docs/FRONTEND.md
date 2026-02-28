@@ -170,16 +170,10 @@ Dark mode by default using CSS Variables:
 ## Key Interactions
 - **Drag & Drop (Cards)**: Native API for images into drop zones. Drag handle (⋮⋮) for card reordering in timeline.
 - **Drag & Drop (Files)**: Drag files between folders in the Lite File Modal. Auto-scroll activates at 40% edge zones. Files can be dropped on the `..` parent card.
-- **Shortcuts**:
-  - `Ctrl+Z` — Undo
-  - `Ctrl+Y` — Redo
-  - `Ctrl+S` — Export Clean Backup (.json)
-  - `Alt+Enter` — New Scene
-  - `Ctrl+D` — Duplicate Selected Scene
-  - `Supr` — Delete Selected Scene
-  - `Ctrl+L` — Link Media to Selected Scene
-  - `Alt+E` — Global Explorer (Modo Organización)
-  - `Ctrl+Enter` — Toggle Outline Sidebar
-  - `Shift+?` — Shortcuts Modal
-  - `Esc` — Close Windows / Cancel
-  - `Enter` — Confirm Action
+- **Shortcuts (Hotkeys V1.2 - 10/10)**:
+  - **Navegación espacial**: `Home` / `End` (Saltan al inicio/fin), `←` / `→` (Seleccionan tarjeta anterior/siguiente).
+  - **Mover Escenas**: `Ctrl + ←` / `Ctrl + →` (Mueve la tarjeta seleccionada a la izquierda/derecha).
+  - **Viewport**: `F` (Centrar selección), `Shift + F` (Ver todas/Fit), `0` (Reset zoom).
+  - **Acciones sobre Escena**: `Alt + Enter` (Nueva), `Shift + O` (Modal de Edición), `Shift + Space` (Toggle Completado), `Delete` (Solo Supr borra tarjeta), `Ctrl + D` (Duplicar).
+  - **Archivos y Globales**: `Ctrl + S` (Guardar), `Ctrl + O` (Proyectos), `Ctrl + E` (Exportar TXT), `Ctrl + L` (Vincular Media), `Alt + E` (Explorador Global), `Ctrl+Enter` (Ver Esquema), `Shift+?` (Ayuda).
+  - **Escape Master**: `Esc` evalúa cierres jerárquicos (1. Cierra Modales activos -> 2. Limpia Selección actual).
