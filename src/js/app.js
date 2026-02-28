@@ -41,10 +41,15 @@ window.onload = async () => {
 // --- VIEWPORT & ZOOM ---
 
 function updateLayoutWidth() {
-    const realContentWidth = scenes.length * 385;
-    const scaledWidth = realContentWidth * currentZoom;
     const container = document.getElementById('timeline-container');
-    container.style.width = (scaledWidth + (300 * currentZoom)) + "px";
+    const cards = container.querySelectorAll('.scene-card');
+    if (cards.length === 0) return;
+
+    const lastCard = cards[cards.length - 1];
+    const realContentWidth = lastCard.offsetLeft + lastCard.offsetWidth + 200; // 200px margen final
+    const scaledWidth = realContentWidth * currentZoom;
+
+    container.style.width = scaledWidth + "px";
 }
 
 function manualZoom(val) { updateZoom(parseFloat(val)); }
@@ -52,10 +57,23 @@ function manualZoom(val) { updateZoom(parseFloat(val)); }
 function fitAll() {
     if (scenes.length === 0) return;
     const viewport = document.getElementById('viewport');
-    const availableWidth = viewport.clientWidth - 50;
-    const totalRealWidth = (scenes.length * 385) + 140;
+    const container = document.getElementById('timeline-container');
+
+    // Obtener el ancho disponible del visor
+    const availableWidth = viewport.clientWidth - 100; // 50px de padding por lado
+
+    // Calcular el ancho base real (sin escalar) sumando el offsetWidth de todas las tarjetas más sus gaps
+    // Forma segura: leer la posición del borde derecho de la última tarjeta
+    const cards = Array.from(container.querySelectorAll('.scene-card'));
+    if (cards.length === 0) return;
+
+    const firstCard = cards[0];
+    const lastCard = cards[cards.length - 1];
+    const totalRealWidth = (lastCard.offsetLeft + lastCard.offsetWidth) - firstCard.offsetLeft;
+
     let fitZoom = availableWidth / totalRealWidth;
-    fitZoom = Math.min(Math.max(fitZoom, 0.15), 1.0);
+    fitZoom = Math.min(Math.max(fitZoom, 0.15), 1.0); // Restringir límites
+
     updateZoom(fitZoom);
     requestAnimationFrame(() => { viewport.scrollLeft = 0; });
 }
@@ -76,12 +94,29 @@ function focusSelection() {
 }
 
 function centerOnIndex(index, zoomLevel) {
-    const targetX = (index * 385 * zoomLevel);
     const viewport = document.getElementById("viewport");
-    const centerOffset = viewport.clientWidth / 2;
-    const cardHalfWidth = (360 * zoomLevel) / 2;
-    const leftPadding = 40 * zoomLevel;
-    viewport.scrollTo({ left: targetX - centerOffset + cardHalfWidth + leftPadding, behavior: 'smooth' });
+    const container = document.getElementById('timeline-container');
+    const cards = Array.from(container.querySelectorAll('.scene-card'));
+
+    if (!cards[index]) return;
+    const targetCard = cards[index];
+
+    // 1. Obtener la coordenada local exacta (sin escala)
+    const cardLocalX = targetCard.offsetLeft;
+    const cardBaseWidth = targetCard.offsetWidth;
+
+    // 2. Aplicar el factor de escala a la coordenada y al ancho
+    const scaledCardX = cardLocalX * zoomLevel;
+    const scaledCardWidth = cardBaseWidth * zoomLevel;
+
+    // 3. Calcular el centro del viewport
+    const viewportCenter = viewport.clientWidth / 2;
+
+    // 4. Calcular el punto de scroll final
+    // Queremos que el centro de la tarjeta escalada (scaledCardX + scaledCardWidth/2) coincida con el centro del viewport
+    const targetScrollLeft = (scaledCardX + (scaledCardWidth / 2)) - viewportCenter;
+
+    viewport.scrollTo({ left: targetScrollLeft, behavior: 'smooth' });
 }
 
 function toggleSelection(event, id) {
