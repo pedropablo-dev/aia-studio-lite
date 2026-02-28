@@ -92,7 +92,7 @@ async function loadFromLocal() {
         if (data.title) {
             projectTitle = data.title;
             const titleInput = document.getElementById('project-title-input');
-            if (titleInput) titleInput.value = projectTitle;
+            if (titleInput) { titleInput.value = projectTitle; titleInput.title = projectTitle; }
             document.title = projectTitle + " - AIA Studio";
         }
 
@@ -339,7 +339,7 @@ export async function createNewProject() {
     scenes = [];
     projectTitle = "Nuevo Proyecto";
     const tInput = document.getElementById('project-title-input');
-    if (tInput) tInput.value = projectTitle;
+    if (tInput) { tInput.value = projectTitle; tInput.title = projectTitle; }
     document.title = projectTitle + " - AIA Studio";
 
     // 4. Forzar guardado inicial explícito e inmediato a SQLite (evita duplicados de auto-save)

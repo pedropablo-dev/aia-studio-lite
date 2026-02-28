@@ -35,6 +35,32 @@ async function openProjectManagerModal() {
         const listContainer = document.createElement('div');
         listContainer.id = 'project-list-container';
         listContainer.style.cssText = 'flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px;';
+
+        // --- NUEVO: BARRA DE BÚSQUEDA Y ORDENACIÓN ---
+        const filterContainer = document.createElement('div');
+        filterContainer.style.cssText = 'display: flex; gap: 10px; margin-bottom: 12px;';
+
+        const searchInput = document.createElement('input');
+        searchInput.type = 'text';
+        searchInput.id = 'pm-search';
+        searchInput.placeholder = 'Buscar proyecto...';
+        searchInput.style.cssText = 'flex: 1; background: #1a1a1a; border: 1px solid #333; color: white; padding: 8px; border-radius: 4px; outline: none;';
+
+        const sortSelect = document.createElement('select');
+        sortSelect.id = 'pm-sort';
+        sortSelect.style.cssText = 'background: #1a1a1a; border: 1px solid #333; color: white; padding: 8px; border-radius: 4px; outline: none; cursor: pointer; max-width: 200px;';
+        sortSelect.innerHTML = `
+            <option value="newest">Más recientes primero</option>
+            <option value="oldest">Más antiguos primero</option>
+            <option value="az">Nombre (A-Z)</option>
+            <option value="za">Nombre (Z-A)</option>
+        `;
+
+        filterContainer.appendChild(searchInput);
+        filterContainer.appendChild(sortSelect);
+        content.appendChild(filterContainer);
+        // ---------------------------------------------
+
         content.appendChild(listContainer);
 
         const actions = document.createElement('div');
@@ -96,37 +122,79 @@ async function openProjectManagerModal() {
         listContainer.innerHTML = '';
         if (projects.length === 0) {
             listContainer.innerHTML = '<div style="color:#aaa; text-align:center;">No hay proyectos guardados.</div>';
+            const filterRow = document.getElementById('pm-search')?.parentElement;
+            if (filterRow) filterRow.style.display = 'none';
             return;
+        } else {
+            const filterRow = document.getElementById('pm-search')?.parentElement;
+            if (filterRow) filterRow.style.display = 'flex';
         }
 
-        const currentId = ProjectState.getId();
-        let html = '<ul style="list-style:none; padding:0; margin:0;">';
+        const renderFilteredList = () => {
+            const q = document.getElementById('pm-search').value.toLowerCase();
+            const sortMode = document.getElementById('pm-sort').value;
 
-        projects.forEach(proj => {
-            const isActive = proj.id === currentId;
-            const dateStr = proj.updated_at ? new Date(proj.updated_at).toLocaleString() : 'Desconocida';
+            let filtered = projects.filter(p => (p.title || 'Proyecto').toLowerCase().includes(q));
 
-            html += `<li class="project-row" style="display:flex; justify-content:space-between; align-items:center; padding: 10px; border-bottom: 1px solid #333;">
-    <div class="project-info" style="flex-grow:1; display:flex; align-items:center; gap:10px;">
-        <strong style="color: ${isActive ? '#fff' : '#ccc'};">${proj.title}</strong>
-        ${isActive ? `<span style="background:var(--accent); color:#fff; padding:2px 6px; border-radius:4px; font-size:0.7em; font-weight:bold;">ACTIVO</span>` : ''}
-        <div style="font-size: 0.8em; color: #888;">Última edición: ${dateStr}</div>
-    </div>
-    <div class="project-actions">
-        <button title="Renombrar" onclick="renameProject('${proj.id}')">✎</button>
-        <button title="Duplicar" onclick="duplicateProject('${proj.id}')">❏</button>
-        <button title="Exportar" onclick="exportProject('${proj.id}')">⇡</button>
-        <button title="Eliminar" style="color:red;" onclick="deleteProject('${proj.id}')">🗑</button>
-        ${!isActive ? `<button onclick="loadProjectFromManager('${proj.id}')">▶</button>` : ''}
-    </div>
-</li>`;
-        });
+            filtered.sort((a, b) => {
+                const dateA = new Date(a.updated_at).getTime() || 0;
+                const dateB = new Date(b.updated_at).getTime() || 0;
+                if (sortMode === 'newest') return dateB - dateA;
+                if (sortMode === 'oldest') return dateA - dateB;
+                if (sortMode === 'az') return (a.title || '').localeCompare(b.title || '');
+                if (sortMode === 'za') return (b.title || '').localeCompare(a.title || '');
+                return 0;
+            });
 
-        html += '</ul>';
-        listContainer.innerHTML = html;
+            listContainer.innerHTML = '';
+
+            if (filtered.length === 0) {
+                listContainer.innerHTML = '<div style="color:#aaa; text-align:center;">No hay coincidencias.</div>';
+                return;
+            }
+
+            const currentId = ProjectState.getId();
+            const ul = document.createElement('ul');
+            ul.style.cssText = 'list-style:none; padding:0; margin:0;';
+
+            filtered.forEach(proj => {
+                const isActive = proj.id === currentId;
+                const safeTitle = (proj.title || "Proyecto").replace(/'/g, "\\'");
+                const dateStr = proj.updated_at ? new Date(proj.updated_at).toLocaleString() : 'Desconocida';
+
+                const li = document.createElement('li');
+                li.className = 'project-row';
+                li.style.cssText = `display:flex; justify-content:space-between; align-items:center; padding: 10px; border-bottom: 1px solid #333;`;
+
+                const statusBadgeHTML = isActive ? `<span style="background:var(--accent); color:#fff; padding:2px 6px; border-radius:4px; font-size:0.7em; font-weight:bold;">ACTIVO</span>` : '';
+
+                li.innerHTML = `
+                    <div class="project-info" style="flex-grow:1; display:flex; align-items:center; gap:10px; min-width: 0;">
+                        <strong style="color: ${isActive ? '#fff' : '#ccc'}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 280px; display: inline-block; vertical-align: middle;" title="${safeTitle}">${proj.title}</strong>
+                        ${statusBadgeHTML}
+                        <div style="font-size: 0.8em; color: #888;">Última edición: ${dateStr}</div>
+                    </div>
+                    <div class="project-actions" style="flex-shrink:0;">
+                        <button title="Renombrar" onclick="renameProject('${proj.id}', '${safeTitle}')">✎</button>
+                        <button title="Duplicar" onclick="duplicateProject('${proj.id}')">❏</button>
+                        <button title="Exportar" onclick="exportProject('${proj.id}')">⇡</button>
+                        <button title="Eliminar" style="color:red;" onclick="deleteProject('${proj.id}')">🗑</button>
+                        ${!isActive ? `<button onclick="loadProjectFromManager('${proj.id}')">▶</button>` : ''}
+                    </div>
+                `;
+                ul.appendChild(li);
+            });
+            listContainer.appendChild(ul);
+        };
+
+        // Escuchadores del filtro/búsqueda
+        document.getElementById('pm-search').addEventListener('input', renderFilteredList);
+        document.getElementById('pm-sort').addEventListener('change', renderFilteredList);
+
+        renderFilteredList();
 
     } catch (e) {
-        listContainer.innerHTML = `< div style = "color:#ff5252; text-align:center;" > Error al cargar: ${e.message}</div > `;
+        listContainer.innerHTML = `<div style="color:#ff5252; text-align:center;">Error al cargar: ${e.message}</div>`;
     }
 }
 
@@ -214,8 +282,8 @@ window.loadProjectFromManager = async function (id, forceNoSave = false) {
 };
 
 // Lógica de control CRUD (Exportada globalmente para el DOM de renderProjectList)
-window.renameProject = async function (id) {
-    window.customPrompt("Introduce el nuevo nombre del proyecto:", "", async (newTitle) => {
+window.renameProject = async function (id, currentTitle = "") {
+    window.customPrompt("Introduce el nuevo nombre del proyecto:", currentTitle, async (newTitle) => {
         if (newTitle !== null && newTitle !== '') {
             try {
                 const res = await fetch(`/api/projects/${id}/rename`, {

@@ -4180,3 +4180,6 @@ ConnectionResetError: [WinError 10054] Se ha forzado la interrupción de una con
 2026-02-28 17:45:54,761 [INFO] Base de datos de proyectos inicializada en: E:\AIA_MEDIA_ASSETS\aia_studio.db
 2026-02-28 17:57:06,269 [INFO] Base de datos de proyectos inicializada en: E:\AIA_MEDIA_ASSETS\aia_studio.db
 2026-02-28 18:06:04,518 [INFO] Base de datos de proyectos inicializada en: E:\AIA_MEDIA_ASSETS\aia_studio.db
+2026-02-28 18:18:18,971 [INFO] Base de datos de proyectos inicializada en: E:\AIA_MEDIA_ASSETS\aia_studio.db
+2026-02-28 18:31:46,915 [INFO] [Lite] Cache evicted: lorena_DESCARTADA PARA PRUEBA.jpg
+2026-02-28 18:31:46,915 [INFO] [Lite] Moved 'lorena/DESCARTADA PARA PRUEBA.mp4' -> 'lorena/Nueva Carpeta222/DESCARTADA PARA PRUEBA.mp4'
