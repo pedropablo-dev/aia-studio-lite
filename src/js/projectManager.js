@@ -277,7 +277,7 @@ window.loadProjectFromManager = async function (id, forceNoSave = false) {
 };
 
 // Lógica de control CRUD (Exportada globalmente para el DOM de renderProjectList)
-window.renameProject = async function (id, currentTitle = "") {
+window.renameProject = async function (id, currentTitle = "", isFromModal = true) {
     window.customPrompt("Introduce el nuevo nombre del proyecto:", currentTitle, async (newTitle) => {
         if (newTitle !== null && newTitle !== '') {
             try {
@@ -290,14 +290,25 @@ window.renameProject = async function (id, currentTitle = "") {
 
                 // Si renombramos el activo, actualizamos UI global
                 if (id === ProjectState.getId() && typeof saveState === 'function') {
-                    projectTitle = newTitle;
-                    const tInput = document.getElementById('project-title-input');
-                    if (tInput) tInput.value = projectTitle;
-                    document.title = projectTitle + " - AIA Studio";
+                    if (typeof projectTitle !== 'undefined') projectTitle = newTitle;
+                    document.title = newTitle + " - AIA Studio";
+
+                    const headerTitleEl = document.getElementById('project-title-input');
+                    if (headerTitleEl) {
+                        // Detección dinámica del tipo de nodo
+                        if (headerTitleEl.tagName === 'INPUT' || headerTitleEl.tagName === 'TEXTAREA') {
+                            headerTitleEl.value = newTitle;
+                        } else {
+                            headerTitleEl.innerText = newTitle;
+                        }
+                        headerTitleEl.title = newTitle; // Actualiza el tooltip nativo
+                    } else {
+                        console.warn("AIA ERROR: Nodo 'project-title-input' no encontrado en el DOM principal.");
+                    }
                 }
 
                 if (typeof showToast === 'function') showToast('Operación exitosa', 'success');
-                openProjectManagerModal(); // Recargar UI del modal
+                if (isFromModal) openProjectManagerModal(); // Recargar UI del modal
             } catch (err) {
                 if (typeof showToast === 'function') showToast('Error: ' + err.message, 'error');
             }

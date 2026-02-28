@@ -25,6 +25,11 @@
             <button class="view-btn" onclick="openProjectManagerModal()" title="Gestor de Proyectos"
                 style="background: #222; border: 1px solid #444; color: #add8e6; margin: 0 15px; padding: 4px 10px; font-weight: bold; cursor: pointer; border-radius: 4px;">📂
                 Proyectos</button>
+            <button
+                onclick="if(typeof renameProject === 'function') renameProject(window.ProjectState ? window.ProjectState.getId() : currentProjectId, document.getElementById('project-title-input').value, false)"
+                style="background: transparent; border: none; cursor: pointer; font-size: 0.9rem; padding: 0 2px; margin: 0; background: transparent; border: none; cursor: pointer; transition: transform 0.1s;"
+                onmouseover="this.style.transform='scale(1.15)'" onmouseout="this.style.transform='scale(1)'"
+                title="Renombrar Proyecto">✏️</button>
             <input type="text" id="project-title-input" class="project-title-input" value="Nuevo Proyecto"
                 placeholder="Nombre del Proyecto..." readonly
                 style="cursor: default; pointer-events: auto; background: transparent; border: none; outline: none; box-shadow: none; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; max-width: 250px;">
