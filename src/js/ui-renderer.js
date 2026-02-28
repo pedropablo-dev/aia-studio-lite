@@ -91,7 +91,7 @@ function render() {
                              <div style="display:flex; align-items:center; gap:8px; flex:1; min-width: 0;">
                                 <span class="drag-handle" draggable="true" ondragstart="handleDragStart(event, ${index})">⋮⋮</span>
                                 <span class="scene-number">#${index + 1}</span>
-                                <input type="text" class="scene-title-input" placeholder="Título..." value="${scene.title || ''}" oninput="updateData('${scene.id}', 'title', this.value)" style="text-overflow: ellipsis; overflow: hidden; white-space: nowrap; min-width: 0; flex: 1;">
+                                <input type="text" class="scene-title-input" title="${scene.title || ''}" placeholder="Título..." value="${scene.title || ''}" oninput="updateData('${scene.id}', 'title', this.value)" style="text-overflow: ellipsis; overflow: hidden; white-space: nowrap; min-width: 0; flex: 1;">
                              </div>
                              
                              <div class="card-controls">
@@ -177,6 +177,7 @@ function render() {
             // Inputs Update (solo si no tienen foco)
             const titleInp = card.querySelector('.scene-title-input');
             if (titleInp && document.activeElement !== titleInp) titleInp.value = scene.title || '';
+            if (titleInp) titleInp.title = scene.title || '';
             const durInp = card.querySelector('.time-inp');
             if (durInp && document.activeElement !== durInp) durInp.value = scene.duration;
             const descArea = card.querySelector('.desc-textarea');
