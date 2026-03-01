@@ -1,13 +1,29 @@
+function createBaseScene(id = null) {
+    return {
+        id: id || createId(),
+        color: "#333333",
+        duration: 0,
+        timingMode: 'auto',
+        shot: (typeof presetShots !== 'undefined' && presetShots.length > 0) ? presetShots[0] : "Plano",
+        move: (typeof presetMoves !== 'undefined' && presetMoves.length > 0) ? presetMoves[0] : "Movimiento",
+        description: "",
+        script: "",
+        done: false,
+        title: "",
+        sectionName: "SECCIÓN",
+        sectionColor: "transparent",
+        speakerName: "Hablante",
+        speakerColor: "transparent",
+        linkedFile: "",
+        imageSrc: "",
+        imageId: null,
+        tempThumbnail: ""
+    };
+}
+
 function addScene() {
     if (typeof saveToHistory === 'function') saveToHistory();
-    const newScene = {
-        id: createId(), color: presetColors[0].code, duration: 0,
-        timingMode: 'auto', // ESTADOS: 'auto', 'manual', 'video'
-        shot: presetShots[0], move: presetMoves[0], description: "", script: "", done: false,
-        title: "", sectionName: "SECCIÓN", sectionColor: "transparent",
-        speakerName: "Voz", speakerColor: "transparent",
-        linkedFile: "" // New primary source of truth
-    };
+    const newScene = createBaseScene();
     scenes.push(newScene);
     render();
     setTimeout(() => {
@@ -177,31 +193,17 @@ window.executeReset = function (id, mode) {
     if (!scene) return;
 
     if (mode === 'all') {
-        scene.script = "";
-        scene.description = "";
-        scene.title = "";
-        scene.imageSrc = "";
-        scene.imageId = null;
-        scene.tempThumbnail = "";
-        scene.linkedFile = "";
-        scene.duration = 0;
-        scene.timingMode = 'auto';
-        scene.done = false;
-        scene.color = '#333333';
-        scene.sectionName = 'SECCIÓN';
-        scene.sectionColor = 'transparent';
-        scene.speakerName = 'Voz';
-        scene.speakerColor = 'transparent';
-        scene.shot = 'Cámara';
-        scene.move = 'Técnica';
+        const baseScene = createBaseScene(scene.id);
+        Object.assign(scene, baseScene);
     } else if (mode === 'color') {
         scene.color = '#333333';
     } else if (mode === 'section') {
         scene.sectionName = 'SECCIÓN';
         scene.sectionColor = 'transparent';
     } else if (mode === 'tech') {
-        scene.shot = 'Cámara';
-        scene.move = 'Técnica';
+        const baseScene = createBaseScene(scene.id);
+        scene.shot = baseScene.shot;
+        scene.move = baseScene.move;
     } else if (mode === 'speaker') {
         scene.speakerName = 'Voz';
         scene.speakerColor = 'transparent';
@@ -231,14 +233,7 @@ window.openAddSceneMenu = function (event, sourceId, direction = 1) {
         if (typeof saveToHistory === 'function') saveToHistory();
         const index = scenes.findIndex(s => s.id === sourceId);
         if (index !== -1) {
-            const newScene = {
-                id: createId(), color: '#333333', duration: 0,
-                timingMode: 'auto', shot: 'Cámara', move: 'Técnica',
-                description: "", script: "", done: false,
-                title: "", sectionName: 'SECCIÓN', sectionColor: "transparent",
-                speakerName: "Voz", speakerColor: "transparent",
-                linkedFile: ""
-            };
+            const newScene = createBaseScene();
             const targetIndex = direction === -1 ? index : index + 1;
             scenes.splice(targetIndex, 0, newScene);
             render();

@@ -38,15 +38,18 @@ let presetSections = [
 ];
 
 let presetSpeakers = [
-    { name: "Voz", code: "transparent" },
+    { name: "Hablante", code: "transparent" },
     { name: "Voz en Off", code: "#b0bec5" },
     { name: "Fernando", code: "#ff6d00" },
     { name: "Pedro P.", code: "#2962ff" },
-    { name: "Lorena", code: "#d500f9" }
+    { name: "Lorena", code: "#d500f9" },
+    { name: "Max", code: "#f9e800ff" },
+    { name: "Marcelo", code: "#be7200ff" },
+    { name: "Extra", code: "#00f5f9ff" }
 ];
 
-let presetShots = ["Plano General", "Plano Medio", "Primer Plano", "Primerísimo P.P.", "Plano Detalle", "Gran Plano Gral"];
-let presetMoves = ["Fijo", "Panorámica", "Tilt", "Zoom In", "Zoom Out", "Tracking/Dolly", "Cámara en Mano", "VFX"];
+let presetShots = ["Plano", "Plano General", "Plano Medio", "Primer Plano", "Primerísimo P.P.", "Plano Detalle", "Gran Plano Gral"];
+let presetMoves = ["Movimiento", "Fijo", "Panorámica", "Tilt", "Zoom In", "Zoom Out", "Tracking/Dolly", "Cámara en Mano", "VFX"];
 
 let projectChecklist = [
     { name: "Idea", checked: true },
