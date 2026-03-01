@@ -8,8 +8,9 @@ import sys
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from utils import BASE_MEDIA_PATH
 
-DB_PATH = BASE_MEDIA_PATH / "aia_studio.db"
+DB_PATH = BASE_MEDIA_PATH / "database" / "aia_studio.db"
 
+DB_PATH.parent.mkdir(parents=True, exist_ok=True)
 engine = create_engine(
     f"sqlite:///{DB_PATH}", connect_args={"check_same_thread": False}
 )
