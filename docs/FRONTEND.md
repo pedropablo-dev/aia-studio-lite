@@ -33,7 +33,9 @@ All inline event handlers (`onclick`, `onchange`, `oninput`, etc.) have been **e
 ### State Management
 - `state.js` exports a singleton `projectState` object containing all mutable state (scenes, config, zoom, history).
 - The legacy `blobCache` has been encapsulated inside `projectState.setBlobCache()` with automatic `URL.revokeObjectURL()` cleanup.
+- The legacy `imageBank` has been **fully erased** from the codebase (constructor, window alias, render lookup, and outline renderer). All thumbnails are served via `/thumbnail` API.
 - No bare `let data = []` globals exist — all state is accessed via `projectState.propertyName`.
+- `recentColors` is capped at **20 entries** via FIFO eviction (`shift()` on overflow) to prevent unbounded heap growth.
 
 ---
 
@@ -59,15 +61,30 @@ Flexbox container holding **Scene Cards**, each with:
 ### DOM Reconciliation (Zero-Flicker Rendering)
 The `render()` function in `ui-renderer.js` uses **surgical DOM patching** instead of full innerHTML rebuilds:
 1. **Orphan Purging**: Cards for deleted scenes are removed.
-2. **Attribute Diffing**: Existing cards are mutated in-place — only changed attributes are updated.
-3. **Image Stability** (`data-current-media`): Before touching a thumbnail's `src` or opacity, the renderer compares `img.dataset.currentMedia` against `scene.linkedFile`. If identical, the image is left untouched. This prevents flickering during Undo/Redo or text edits.
-4. **Geometric Reordering**: `container.insertBefore()` is used instead of `container.appendChild()` to preserve scroll position. Cards are only moved if they are out of order.
+2. **O(1) Node Lookup**: A `Map<id, Element>` (`cardMap`) is pre-built before the scene loop. Each card is retrieved with `cardMap.get(scene.id)` — O(1) instead of the previous O(n²) `querySelector` inside the loop.
+3. **Attribute Diffing**: Existing cards are mutated in-place — only changed attributes are updated.
+4. **Image Stability** (`data-current-media`): Before touching a thumbnail's `src` or opacity, the renderer compares `img.dataset.currentMedia` against `scene.linkedFile`. If identical, the image is left untouched. This prevents flickering during Undo/Redo or text edits.
+5. **Geometric Reordering**: `container.insertBefore()` is used instead of `container.appendChild()` to preserve scroll position. Cards are only moved if they are out of order.
 
-### Async Thumbnail Polling
+### Async Thumbnail Polling (Timeline)
 When the `/thumbnail` API returns HTTP `202 Accepted` (FFmpeg still processing), the frontend:
 1. Shows a CSS `.loading-spinner` on the thumbnail container.
 2. Retries via `setTimeout` every 800ms (max 5 retries).
-3. On HTTP `200`, creates an Object URL and fades in the image with `opacity: 0 → 1` transition (0.4s ease-in).
+3. On HTTP `200`, **revokes the previous blob URL** (`URL.revokeObjectURL(img.src)`) to prevent memory leaks, then creates a new Object URL and fades in the image with `opacity: 0 → 1` transition (0.4s ease-in).
+4. **Fallback on exhaustion**: If all retries are consumed (e.g., video too large, FFmpeg timeout), the spinner is removed and a definitive 🎬 fallback icon is injected into the container.
+
+### Async Thumbnail Polling (Explorer)
+The Lite File Modal uses an identical polling pattern via `loadExplorerThumbnail()` in `lite-explorer.js`:
+1. Each media card renders with `data-explorer-thumb-url` (no static `src`). A `.loading-spinner` is applied by default.
+2. `_kickExplorerThumbnailPolling()` runs after each grid render (browse and search modes), initiating async polling for all visible thumbnails.
+3. Polling retries every 1000ms (max 10 retries). Same `revokeObjectURL` + blob URL pattern.
+4. Fallback 🎬 icon on exhaustion. Guard prevents duplicate `pollingStarted` assignment.
+
+### DB Sync Integrity Badge
+If `saveState()` in `storage.js` throws (disk full, server down, network error):
+- A **persistent** `#db-sync-warning` badge appears at bottom-right: "⚠️ Sin guardar (Error de Disco)".
+- Badge auto-disappears when the next save succeeds (`hideDbSyncWarning()`).
+- Guard `getElementById` prevents duplicate badges.
 
 ### Dead Link Verification (Phase 9)
 After each `render()`, a debounced (1000ms) async function `triggerRouteVerification()`:
@@ -120,8 +137,8 @@ Active item (matching `selectedId`) is highlighted via **Zero-Flicker** class to
 Opened via the 🔗 button on each scene card, the 📂 Explorador button in the footer, or `Alt+E`. Contains:
 1. **Title bar** with close button (`×`).
 2. **Breadcrumb bar** (`#lite-breadcrumb`) showing hierarchical path.
-3. **Toolbar row**: View toggle (Grid/List), Sort selector (Name/Type), Search input, File counter, ◀ Back / ▶ Forward buttons.
-4. **File grid** (`#quick-file-list`) with draggable file/folder cards.
+3. **Toolbar row**: View toggle (Grid/List), Sort selector (Name/Type), Search input, ✕ Clear button, **↻ Refresh button** (reloads current directory), File counter, ◀ Back / ▶ Forward buttons.
+4. **File grid** (`#quick-file-list`) with draggable file/folder cards. Thumbnails load asynchronously via `loadExplorerThumbnail()` polling.
 
 ### Navigation Flow
 1. `openQuickFileModal(sceneId)` is called from a scene card's 🔗 button, or `openQuickFileModal(null, '')` for Modo Organización.
@@ -156,8 +173,8 @@ Scene cards in the timeline emit a `data-type` attribute based on the linked fil
 - **SQLite ORM**: Projects are auto-saved to `aia_studio.db` in the External Media Root via `POST /api/projects`.
 - **Debounced Save**: `debouncedSaveState()` waits **3000ms** after user input before pushing to SQLite, preventing API spam. Global `input` and `change` listeners on `document` trigger this automatically.
 - **Cold Boot Sync**: `loadFromLocal()` fetches the database payload and blocks initial UI rendering until the DOM is synchronized.
-- **Clean JSON Export**: `Ctrl+S` → `manualBackup()` strips all Base64 traces (`imageId`) before downloading the schema-compliant JSON.
-- **Undo/Redo**: In-memory stack (max 50 states).
+- **Clean JSON Export**: `Ctrl+S` → `manualBackup()` downloads a schema-compliant JSON (no legacy `imageId`/`imageBank` pollution).
+- **Undo/Redo**: In-memory stack with **dynamic cap** — 50 states for projects ≤300 scenes, 10 for larger projects (prevents OOM at scale).
 - **Global State**: `projectState.selectedId` tracks the currently selected scene card (used by outline + timeline).
 
 ## Key Interactions

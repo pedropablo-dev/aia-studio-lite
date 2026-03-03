@@ -46,18 +46,21 @@ User → browser opens builder.html (served via FastAPI on port 9999)
 ## Thumbnail Cache (`.lite_cache/`)
 - **Location**: Project root → `.lite_cache/` (auto-created).
 - **Strategy**: When `/thumbnail` receives a video path, it checks for a cached JPEG. If not found, FFmpeg extracts a single frame at `00:00:01` at **native resolution** with quality `-q:v 2` and stores it with a flattened filename (slashes → underscores). The endpoint returns HTTP `202 Accepted` while FFmpeg processes, enabling the frontend to poll asynchronously.
+- **Failure Purge**: If FFmpeg exits with a non-zero return code (e.g., disk full, corrupt file), the partially-written cache file is **deleted immediately** via `cache_path.unlink(missing_ok=True)` to prevent serving corrupted thumbnails on subsequent requests.
 - **Images**: Served directly without caching.
 - **Audio**: Returns 404 (no visual thumbnail).
 - **Cache Invalidation**: Lite write endpoints (`rename`, `delete`, `move`) automatically evict stale cache entries via `_delete_cache_entry()`.
 - **Garbage Collection**: `cleanup_orphan_thumbnails()` runs at server startup and shutdown, comparing cached `.jpg` files against active `linkedFile` entries in SQLite. Orphaned files are automatically deleted.
 
 ## Persistence (SQLite ORM)
-- **Database Engine**: SQLAlchemy over SQLite. Database file `aia_studio.db` is stored cleanly in the external `AIA_MEDIA_ASSETS` root.
+- **Database Engine**: SQLAlchemy over SQLite in **WAL mode** (`PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000;` set via connection event listener). WAL enables concurrent reads and writes and prevents `database is locked` errors.
+- **Atomic Transactions**: The `save_project` endpoint wraps the full project upsert (delete old scenes + insert new) in a single `try…except` block with `db.commit()` on success and `db.rollback()` on failure, preventing data corruption if the process is interrupted.
 - **Auto-Save Mechanism**: Silent, non-blocking `debouncedSaveState()` (**3000ms** delay) pushes the current memory state to `POST /api/projects`. Global `input` and `change` event listeners on `document` trigger this automatically.
-- **Media Linking Pattern**: No Base64 data is stored in the database. Scenes persist only relative paths (`linkedFile`).
+- **DB Sync Warning**: If `saveState()` throws (disk full, server down), a persistent `#db-sync-warning` badge appears at bottom-right: "⚠️ Sin guardar (Error de Disco)". The badge auto-disappears when the next save succeeds.
+- **Media Linking Pattern**: No Base64 data is stored in the database. Scenes persist only relative paths (`linkedFile`). The legacy `imageBank` has been **fully erased** from the codebase.
 - **Manual Export**: `Ctrl+S` forces an immediate commit + a downloadable, sanitized JSON file strictly following the new schema.
-- **Undo/Redo**: In-memory stack (max 50 states), tracks flat scene lists.
-- **Storage Optimization**: `POST /optimize_storage` executes `VACUUM;` on the SQLite database to reclaim disk space after mass deletions.
+- **Undo/Redo**: In-memory stack with **dynamic cap** — `MAX_HISTORY=50` for projects ≤300 scenes, reduced to `MAX_HISTORY=10` for larger projects to prevent Out-Of-Memory conditions (~30MB vs ~500MB at 5000 scenes). `recentColors` is capped at 20 entries via FIFO eviction.
+- **Storage Optimization**: `POST /optimize_storage` executes `VACUUM;` in `AUTOCOMMIT` isolation mode on the SQLite database to reclaim disk space after mass deletions.
 
 ## Backend Lifecycle Events
 
@@ -74,9 +77,11 @@ User → browser opens builder.html (served via FastAPI on port 9999)
 ## DOM Reconciliation (Zero-Flicker)
 The `render()` function in `ui-renderer.js` uses a **surgical DOM patching** strategy:
 1. **Orphan Purging**: Cards for deleted scenes are removed from the DOM.
-2. **Attribute Diffing**: Existing cards are mutated in-place — only changed attributes are updated.
-3. **Image Stability** (`data-current-media`): Before touching a thumbnail `src` or resetting opacity, the renderer compares `img.dataset.currentMedia` against the scene's `linkedFile`. If identical, no mutation occurs.
-4. **Scroll-Safe Reordering**: `container.insertBefore()` replaces `container.appendChild()` — cards are only moved in the DOM tree if they are out of order, preserving the user's scroll position.
+2. **O(1) Node Lookup**: A `Map<id, Element>` (`cardMap`) is pre-built before the scene loop via `container.querySelectorAll('.scene-card')`. Each card is retrieved with `cardMap.get(scene.id)` — O(1) instead of O(n²) `querySelector` within the loop.
+3. **Attribute Diffing**: Existing cards are mutated in-place — only changed attributes are updated.
+4. **Image Stability** (`data-current-media`): Before touching a thumbnail `src` or resetting opacity, the renderer compares `img.dataset.currentMedia` against the scene's `linkedFile`. If identical, no mutation occurs.
+5. **Scroll-Safe Reordering**: `container.insertBefore()` replaces `container.appendChild()` — cards are only moved in the DOM tree if they are out of order, preserving the user's scroll position.
+6. **Memory Safety**: `URL.revokeObjectURL()` is called on the previous blob URL before assigning a new one in `loadThumbnail()`, preventing Object URL accumulation over long sessions.
 
 ## Event Delegation
 All inline event handlers have been **fully eradicated** from `builder.html`. A single delegated listener on `#timeline-container` handles all card-level events (click, change, input, dragstart, dragover, drop) via `event.target.closest()` pattern matching.

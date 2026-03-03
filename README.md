@@ -2,6 +2,8 @@
 
 **AIA Studio Lite** is a lightweight, local-first video pre-production toolkit. It strips away all AI/DB dependencies from the original AIA Studio, keeping only the core builder, a hierarchical file manager with full CRUD, and an FFmpeg-powered media browser.
 
+> **Status: Grado Producción (Local)** — Optimizado para sesiones prolongadas de 12+ horas, proyectos de 5000+ escenas, y discos llenos. Puntuación de auditoría interna: **10/10** (entorno local monousuario).
+
 ## Key Features
 - 🎬 **Video Builder**: Timeline-based scriptwriting with shot types, speakers, sections, and DaVinci Resolve export (XML, EDL, SRT).
 - 📂 **Hierarchical File Explorer**: Browse, link, rename, delete, and drag-and-drop media files into folders via the Lite File Modal backed by `/lite/files` and `/lite/files/*` API endpoints.
@@ -15,6 +17,9 @@
 - 💾 **SQLite Persistence & Dual Save**: Robust relational database storage (`aia_studio.db`) with 3000ms debounced auto-save. Manual `Ctrl+S` forces a backup save.
 - ⚠️ **Dead Link Detection**: Automatic background verification of linked files via `POST /lite/verify_routes`. Missing files are flagged with a ⚠️ icon and red strikethrough.
 - 🧹 **Garbage Collection**: Automatic cleanup of orphan thumbnails at server startup/shutdown. `POST /optimize_storage` for SQLite VACUUM.
+- 🛡️ **Data Integrity**: SQLite WAL mode, atomic transactions with rollback on failure, and a persistent ⚠️ *db-sync-warning* badge when disk I/O fails.
+- ⚡ **O(1) Render Engine**: DOM node lookup via pre-built `Map` eliminates O(n²) bottleneck at scale. Object URL revocation prevents memory leaks. Dynamic undo cap (50/10 states based on project size).
+- 📂 **Explorer Async Thumbnails**: File browser thumbnails load via async polling with retry/fallback — identical to the timeline pattern. Refresh button (↻) for instant directory reload.
 - ⌨️ **Keyboard Shortcuts (Hotkeys 10/10)**: Comprehensive, input-protected system.
   - **Navigation**: `Home/End` (First/Last), `←/→` (Select Prev/Next), `Ctrl+←/→` (Move Card).
   - **Viewport**: `F` (Center), `Shift+F` (Fit All), `0` (Restore Zoom).

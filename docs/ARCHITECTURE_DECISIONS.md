@@ -6,9 +6,9 @@
 **Decisión:** Se eliminaron completamente Whisper, Vision, ChromaDB, y el proceso monitor (`monitor.py`). La vinculación de archivos es manual vía el endpoint `/lite/files` + modal en el frontend.
 
 ## 2. Generación de Miniaturas vía FFmpeg (Asíncrono)
-**Estado:** Aceptado (Actualizado Fase 6-7)
+**Estado:** Actualizado (Fase 11)
 **Contexto:** Sin un proceso de ingesta automática, las miniaturas de vídeo no se pre-generan.
-**Decisión:** El endpoint `/thumbnail` genera miniaturas bajo demanda usando `asyncio` + `subprocess`. Devuelve HTTP `202 Accepted` mientras FFmpeg procesa, permitiendo al frontend hacer polling asíncrono (máx. 5 reintentos, 800ms). Las miniaturas se cachean en `.lite_cache/`. Se usa `THUMBNAIL_SEMAPHORE` (máx. 4 procesos concurrentes) para evitar saturar la CPU.
+**Decisión:** El endpoint `/thumbnail` genera miniaturas bajo demanda usando `asyncio` + `subprocess`. Devuelve HTTP `202 Accepted` mientras FFmpeg procesa, permitiendo al frontend hacer polling asíncrono. Las miniaturas se cachean en `.lite_cache/`. Se usa `THUMBNAIL_SEMAPHORE` (máx. 4 procesos concurrentes) para evitar saturar la CPU. **Si FFmpeg falla** (código de retorno ≠ 0, ej. disco lleno), el archivo parcial se **elimina inmediatamente** vía `cache_path.unlink(missing_ok=True)` para evitar servir miniaturas corruptas.
 **Riesgo:** Si FFmpeg no está instalado, las miniaturas de vídeo fallarán con 404/500. Se acepta como requisito del sistema.
 
 ## 3. Procesamiento Asíncrono con FastAPI
@@ -51,13 +51,15 @@
 2. **DOMContentLoaded**: Cada módulo registra sus propios listeners.
 3. **window.***: Funciones accesibles entre módulos se exponen globalmente.
 
-## 11. Reconciliación Atómica del DOM (Fase 8)
-**Estado:** Aceptado
+## 11. Reconciliación Atómica del DOM (Fase 8, Actualizado Fase 11)
+**Estado:** Actualizado
 **Contexto:** `render()` reconstruía todo el `innerHTML` causando parpadeo de miniaturas y pérdida de scroll.
 **Decisión:** Se implementó un sistema quirúrgico:
+- **O(1) Node Lookup**: Un `Map<id, Element>` (`cardMap`) se pre-construye antes del bucle. `cardMap.get(scene.id)` reemplaza el O(n²) `querySelector` dentro del loop.
 - **data-current-media**: Cada `<img>` almacena el path actual. Si no cambia, la miniatura no se toca.
 - **insertBefore condicional**: Solo se reordena un nodo DOM si está fuera de posición, preservando el scroll.
 - **removeAttribute('src')**: Al resetear una escena, se elimina el `src` y se oculta el `<img>` para evitar el ícono de imagen rota.
+- **Memory Safety**: `URL.revokeObjectURL()` se invoca sobre el blob anterior antes de asignar uno nuevo en `loadThumbnail()`, previniendo acumulación de Object URLs en sesiones largas.
 
 ## 12. Garbage Collection de Miniaturas (Fase 9)
 **Estado:** Aceptado
@@ -74,3 +76,27 @@
 **Contexto:** Los módulos heredados de "Ingest Studio", "Media Pool" y sus APIs correspondientes integraban una carga masiva de componentes DOM y endpoints I/O destructivos.
 **Decisión:** Fueron erradicados. El backend eliminó las rutas bajo `/raw-files`, `/assets`, `/ingest` y `/folders` convencionales. El frontend fue liberado del objeto `IngestStore`. Solo sobrevive el "Lite Explorer".
 
+## 15. Integridad de Datos: WAL + Transacciones Atómicas (Fase 10)
+**Estado:** Aceptado
+**Contexto:** En entorno local con disco limitado, un crash a mitad de `save_project` podía corromper la base de datos.
+**Decisión:** SQLite configurado en modo WAL (`PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000;`) vía event listener de SQLAlchemy. El endpoint `save_project` envuelve la operación completa (delete + insert) en un bloque `try…except` con `db.commit()` / `db.rollback()`. `VACUUM` ejecutado en modo `AUTOCOMMIT` para evitar conflictos con WAL.
+
+## 16. Gestión Dinámica de Memoria RAM (Fase 11)
+**Estado:** Aceptado
+**Contexto:** Proyectos con 5000+ escenas consumen ~500MB en el undoStack con 50 snapshots.
+**Decisión:** `saveToHistory()` aplica un cap dinámico: `MAX_HISTORY=10` para proyectos >300 escenas, 50 para el resto. `recentColors` limitado a 20 entradas con evicción FIFO (`shift()`).
+
+## 17. Erradicación de `imageBank` (Fase 11)
+**Estado:** Aceptado
+**Contexto:** `imageBank` era una estructura legacy que almacenaba datos Base64 de imágenes. Tras migrar a miniaturas FFmpeg, estaba vacía pero aún tenía código de conversión activo.
+**Decisión:** Eliminadas 24 líneas: constructor en `state.js`, `Object.defineProperty` alias, lookup en `render()`, bloque Base64-to-blob de 20 líneas en `generateThumbnailHTML()`, y comentario de arquitectura muerto en `app.js`.
+
+## 18. Testigo Visual de Integridad de Base de Datos (Fase 11)
+**Estado:** Aceptado
+**Contexto:** El toast de error desaparecía en 1.5s, invisible si el usuario no estaba mirando.
+**Decisión:** `showDbSyncWarning()` inyecta un badge persistente `#db-sync-warning` ("⚠️ Sin guardar") en bottom-right con z-index 99999. `hideDbSyncWarning()` lo elimina automáticamente cuando el siguiente `saveState()` tiene éxito. Guard `getElementById` previene duplicados.
+
+## 19. Polling Asíncrono de Miniaturas en Explorador (Fase 11)
+**Estado:** Aceptado
+**Contexto:** Las miniaturas del File Explorer se cargaban con `<img src>` estático, fallando silenciosamente si FFmpeg aún procesaba.
+**Decisión:** `loadExplorerThumbnail()` replica el patrón del timeline (fetch → 202 retry → blob URL). Cada `<img>` usa `data-explorer-thumb-url` sin `src` inicial. `_kickExplorerThumbnailPolling()` arranca tras cada render de grid (browse y search). 10 reintentos / 1000ms. Fallback 🎬 definitivo y `revokeObjectURL` estricto. Botón ↻ estático en la barra de búsqueda para recarga manual.

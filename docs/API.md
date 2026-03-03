@@ -42,6 +42,7 @@ Returns a thumbnail for a media file.
   | Audio (`.mp3`, `.wav`, `.aac`) | Returns `404` |
 - **Concurrency**: Controlled by `THUMBNAIL_SEMAPHORE` (max 4 concurrent FFmpeg processes).
 - **Cache**: `.lite_cache/` directory at project root. Filenames are flattened (`/` → `_`).
+- **Failure Purge**: If FFmpeg exits with a non-zero return code, the partially-written cache file is **deleted immediately** to prevent serving corrupted thumbnails.
 - **Errors**: 400 (missing path), 404 (file not found / audio / generation failed), 202 (processing), 504 (FFmpeg timeout).
 
 #### `POST /lite/verify_routes`
@@ -88,7 +89,7 @@ Renames a directory.
 
 ### Project Persistence (SQLite)
 
-These endpoints handle the atomic saving and loading of the `aia_studio.db` SQLite repository.
+These endpoints handle the atomic saving and loading of the `aia_studio.db` SQLite repository. The database runs in **WAL mode** with `busy_timeout=5000` for concurrent read/write safety.
 
 #### `POST /api/projects`
 Saves or updates a project state.
