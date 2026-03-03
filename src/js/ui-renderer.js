@@ -116,10 +116,11 @@ function render() {
                     ` : (scene.linkedFile && /\.(mp4|mov|mxf|avi|webm|jpg|jpeg|png|webp)$/i.test(scene.linkedFile)) ? `
                         <div class="thumb-loader-container" id="thumb-container-${scene.id}" style="width:100%; height:100%; position:relative; overflow:hidden; background:#111;">
                             <img data-thumb-url="http://127.0.0.1:9999/thumbnail?path=${encodeURIComponent(scene.linkedFile)}&folder=${encodeURIComponent(document.getElementById('media-path-input')?.value || '')}" 
+                                 data-current-media="${scene.linkedFile.replace(/"/g, '&quot;')}"
                                  id="img-${scene.id}" style="width:100%; height:100%; object-fit:cover; display:none; opacity:0; transition:opacity 0.4s ease-in;" alt="Thumbnail">
                         </div>
                     ` : `
-                        <span>Imagen</span><img src="${imgSrc}" id="img-${scene.id}">
+                        <span>Imagen</span><img src="${imgSrc}" data-current-media="${imgSrc}" id="img-${scene.id}">
                     `}
                     <input type="file" id="file-${scene.id}" class="hidden-file-input" accept="image/*" data-id="${scene.id}">
                 </div>
@@ -227,12 +228,15 @@ function render() {
                     if (isAudio && !currentIsAudio) {
                         dropZone.innerHTML = `<div class="audio-wrap" style="width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; background:#1a1a1a;"><div style="font-size:1.8rem; margin-bottom:0;">🎵</div></div><img src="" id="img-${scene.id}" style="display:none"><input type="file" id="file-${scene.id}" class="hidden-file-input" accept="image/*" data-id="${scene.id}">`;
                     } else if (!isAudio && currentIsAudio) {
-                        if (isVideoOrImg) { dropZone.innerHTML = `<div class="thumb-loader-container" id="thumb-container-${scene.id}" style="width:100%; height:100%; position:relative; overflow:hidden; background:#111;"><img data-thumb-url="${newSrc}" id="img-${scene.id}" style="width:100%; height:100%; object-fit:cover; display:none; opacity:0; transition:opacity 0.4s ease-in;" alt="Thumbnail"></div><input type="file" id="file-${scene.id}" class="hidden-file-input" accept="image/*" data-id="${scene.id}">`; }
-                        else { dropZone.innerHTML = `<span>Imagen</span><img src="${newSrc}" id="img-${scene.id}"><input type="file" id="file-${scene.id}" class="hidden-file-input" accept="image/*" data-id="${scene.id}">`; }
+                        if (isVideoOrImg) { dropZone.innerHTML = `<div class="thumb-loader-container" id="thumb-container-${scene.id}" style="width:100%; height:100%; position:relative; overflow:hidden; background:#111;"><img data-thumb-url="${newSrc}" data-current-media="${scene.linkedFile.replace(/"/g, '&quot;')}" id="img-${scene.id}" style="width:100%; height:100%; object-fit:cover; display:none; opacity:0; transition:opacity 0.4s ease-in;" alt="Thumbnail"></div><input type="file" id="file-${scene.id}" class="hidden-file-input" accept="image/*" data-id="${scene.id}">`; }
+                        else { dropZone.innerHTML = `<span>Imagen</span><img src="${newSrc}" data-current-media="${imgSrc}" id="img-${scene.id}"><input type="file" id="file-${scene.id}" class="hidden-file-input" accept="image/*" data-id="${scene.id}">`; }
                     } else {
-                        // Comparativa Crítica: evita recarga parpadeante de base64
-                        const baseSrc = img.getAttribute('src') || img.dataset.thumbUrl;
-                        if (baseSrc !== newSrc) {
+                        // Comparativa Crítica: evita recarga parpadeante en base al media path actual
+                        const targetMedia = scene.linkedFile || imgSrc || '';
+                        const currentMedia = img.dataset.currentMedia || '';
+
+                        if (currentMedia !== targetMedia) {
+                            img.dataset.currentMedia = targetMedia;
                             if (isVideoOrImg) {
                                 img.dataset.thumbUrl = newSrc;
                                 delete img.dataset.polling;
@@ -283,8 +287,10 @@ function render() {
             }
         }
 
-        // C) Reordenación Geométrica de Elementos Nativos (Asegura Drag & Drop en orden)
-        container.appendChild(card);
+        // C) Reordenación Geométrica Sin Desplazar Scroll (Solo reordena si está fuera de sitio)
+        if (container.children[index] !== card) {
+            container.insertBefore(card, container.children[index] || null);
+        }
     });
 
     // POLLING THUMBNAILS: Disparar retries para asincronía FFmpeg
