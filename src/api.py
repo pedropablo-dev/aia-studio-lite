@@ -344,7 +344,10 @@ async def get_thumbnail(path: str, folder: Optional[str] = None):
                     try:
                         stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=30.0)
                         if proc.returncode != 0:
-                            logger.warning(f"FFmpeg thumbnail failed for '{path}': {stderr.decode(errors='replace')[:300]}")
+                            # Eliminar archivo corrupto/incompleto (ej. disco lleno) para evitar que
+                            # cache_path.exists() devuelva True en futuras peticiones y sirva un JPEG dañado.
+                            cache_path.unlink(missing_ok=True)
+                            logger.error(f"FFmpeg thumbnail failed for '{path}' (rc={proc.returncode}): {stderr.decode(errors='replace')[:300]}")
                     except asyncio.TimeoutError:
                         proc.kill()
                         logger.error(f"FFmpeg timeout generating thumbnail for '{path}'")
