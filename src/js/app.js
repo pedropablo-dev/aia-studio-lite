@@ -1,5 +1,4 @@
 // --- ARQUITECTURA DE DATOS V2 (OPTIMIZADA) --- // Updated v7.6
-// imageBank aísla los datos pesados (Base64) del ciclo de renderizado y undo/redo.
 
 
 

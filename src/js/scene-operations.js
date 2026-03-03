@@ -110,7 +110,12 @@ function updateData(id, field, value) {
 }
 
 function applyCustomColor(color) {
-    if (!presetColors.some(p => p.code === color) && !recentColors.includes(color)) recentColors.push(color);
+    const RECENT_COLORS_MAX = 20;
+    if (!presetColors.some(p => p.code === color) && !recentColors.includes(color)) {
+        recentColors.push(color);
+        // FIFO cap: evitar crecimiento ilimitado en sesiones largas
+        if (recentColors.length > RECENT_COLORS_MAX) recentColors.shift();
+    }
     applyColorToScene(color);
 }
 

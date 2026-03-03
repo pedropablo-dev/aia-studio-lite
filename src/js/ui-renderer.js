@@ -37,8 +37,7 @@ function render() {
         const isSelected = (scene.id === projectState.selectedId);
 
         let imgSrc = '';
-        if (scene.imageId && projectState.imageBank[scene.imageId]) imgSrc = projectState.imageBank[scene.imageId];
-        else if (scene.tempThumbnail) imgSrc = scene.tempThumbnail;
+        if (scene.tempThumbnail) imgSrc = scene.tempThumbnail;
         else if (scene.imageSrc) imgSrc = scene.imageSrc;
 
         const colorName = (projectState.presetColors.find(c => c.code === scene.color) || {}).name || '';
@@ -602,26 +601,6 @@ function generateThumbnailHTML(s) {
         }
     } else if (s.tempThumbnail) {
         thumb = `<img src="${s.tempThumbnail}" style="width:100%; height:100%; object-fit:cover;">`;
-    } else if (s.imageId && projectState.imageBank[s.imageId]) {
-        if (!projectState.blobCache[s.imageId]) {
-            const raw = projectState.imageBank[s.imageId];
-            if (raw && raw.startsWith('data:image')) {
-                try {
-                    const [header, b64] = raw.split(',');
-                    const mime = header.match(/:(.*?);/)[1];
-                    const byteChars = atob(b64);
-                    const byteArr = new Uint8Array(byteChars.length);
-                    for (let _b = 0; _b < byteChars.length; _b++) byteArr[_b] = byteChars.charCodeAt(_b);
-                    const blob = new Blob([byteArr], { type: mime });
-                    projectState.setBlobCache(s.imageId, blob);
-                } catch (_) {
-                    projectState.setBlobCache(s.imageId, raw);
-                }
-            } else {
-                projectState.setBlobCache(s.imageId, raw);
-            }
-        }
-        thumb = `<img src="${projectState.blobCache[s.imageId]}" style="width:100%; height:100%; object-fit:cover;">`;
     } else {
         thumb = `<div style="width:100%; height:100%; background:#111; display:flex; align-items:center; justify-content:center; font-size:1.5rem;">🎬</div>`;
     }

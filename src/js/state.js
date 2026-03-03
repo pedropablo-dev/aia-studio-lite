@@ -1,7 +1,6 @@
 // --- PROJECT STATE ENCAPSULATION ---
 export class ProjectState {
     constructor() {
-        this.imageBank = {};
         this.blobCache = {};
         this.scenes = [];
         this.projectTitle = "Nuevo Proyecto";
@@ -212,7 +211,6 @@ export const explorerState = new ExplorerState();
 // necesitamos inyectar de nuevo este estado de forma simulada.
 
 // Project State
-Object.defineProperty(window, 'imageBank', { get: () => projectState.imageBank, set: (v) => projectState.imageBank = v });
 Object.defineProperty(window, 'blobCache', { get: () => projectState.blobCache, set: (v) => projectState.blobCache = v });
 Object.defineProperty(window, 'scenes', { get: () => projectState.scenes, set: (v) => projectState.scenes = v });
 Object.defineProperty(window, 'projectTitle', { get: () => projectState.projectTitle, set: (v) => projectState.projectTitle = v });
