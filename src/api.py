@@ -179,6 +179,78 @@ async def startup_event():
     CACHE_DIR = database.BASE_MEDIA_PATH / ".cache"
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
     app.mount("/cache", StaticFiles(directory=CACHE_DIR), name="cache")
+    
+    # --- STARTUP CLEANUP ---
+    try:
+        cleanup_orphan_thumbnails()
+    except Exception as e:
+        logger.error(f"Error en limpieza inicial de miniaturas: {e}")
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """
+    [LITE - PHASE 9] Limpieza a la salida del servidor.
+    1. Cancela todos los procesos de FFmpeg asíncronos en vuelo.
+    2. Ejecuta garbage collection final de miniaturas huérfanas o basura temporal.
+    """
+    logger.info("Iniciando secuencia de apagado seguro...")
+    
+    # Cancelar FFmpeg
+    for task_id, process in list(active_tasks.items()):
+        try:
+            logger.info(f"Terminando proceso FFmpeg huérfano: {task_id}")
+            process.kill()
+        except OSError:
+            pass
+    active_tasks.clear()
+    
+    # Limpieza final de caché
+    try:
+        cleanup_orphan_thumbnails()
+    except Exception as e:
+        logger.error(f"Error en limpieza final de caché: {e}")
+    
+    logger.info("Apagado seguro completado.")
+
+def cleanup_orphan_thumbnails():
+    """
+    [LITE - PHASE 9] Garbage Collection para limpiar archivos .jpg en .lite_cache 
+    que ya no estén asociados a ninguna escena en el estado persistido (SQLite).
+    """
+    if not _CACHE_DIR.exists(): return
+    
+    # Leer todos los linkedFiles de todas las escenas en SQLite
+    db: Session = database.SessionLocal()
+    try:
+        all_projects = db.query(models.Project).all()
+        valid_stems = set()
+        
+        for p in all_projects:
+            if not p.scenes: continue
+            for scene in p.scenes:
+                scene_data = scene.scene_data or {}
+                linked_file = scene_data.get("linkedFile")
+                if not linked_file: continue
+                # Regenerar el patrón de stem usado por get_thumbnail()
+                safe_name = linked_file.replace("/", "_").replace("\\", "_")
+                stem = os.path.splitext(safe_name)[0]
+                valid_stems.add(stem)
+                
+        # Escanear el disco  
+        deleted_count = 0
+        for cached_file in _CACHE_DIR.glob("*.jpg"):
+            if cached_file.stem not in valid_stems:
+                try:
+                    cached_file.unlink()
+                    deleted_count += 1
+                except Exception as e:
+                    logger.warning(f"No se pudo eliminar el archivo caché huérfano {cached_file}: {e}")
+                    
+        if deleted_count > 0:
+            logger.info(f"[Garbage Collection] Se eliminaron {deleted_count} miniaturas huérfanas del disco.")
+    finally:
+        db.close()
+
 
 
 # === STATIC FILE SERVING ===
@@ -452,6 +524,35 @@ async def list_lite_files(
         "total_in_page": len(items),
         "has_more": has_more
     }
+
+class VerifyRoutesRequest(BaseModel):
+    folder: str
+    paths: List[str]
+
+@app.post("/lite/verify_routes")
+async def lite_verify_routes(payload: VerifyRoutesRequest):
+    """
+    [LITE - PHASE 9] Recibe una lista de rutas relativas y verifica masivamente
+    si los archivos físicos existen en el disco bajo el Media Root actual.
+    """
+    if not payload.folder or not payload.folder.strip():
+        raise HTTPException(status_code=400, detail="Media Root is required")
+        
+    root = Path(payload.folder.strip()).resolve()
+    if not root.is_dir():
+        return {"status": "error", "message": "Media Root not found", "missing": payload.paths}
+        
+    missing_paths = []
+    for rel_path in payload.paths:
+        if not rel_path: continue
+        clean_rel = rel_path.strip().lstrip("/").lstrip("\\")
+        if ".." in clean_rel.replace("\\", "/").split("/"): continue # Skip invalid
+        
+        target = (root / clean_rel).resolve()
+        if not target.is_relative_to(root) or not target.is_file():
+            missing_paths.append(rel_path)
+            
+    return {"status": "success", "missing": missing_paths}
 
 
 # === LITE FILE WRITE ENDPOINTS ===
@@ -761,6 +862,26 @@ async def lite_rename_folder(payload: LiteFolderRenameRequest):
 async def serve_frontend():
     html_path = Path(__file__).parent / "builder.html"
     return FileResponse(str(html_path))
+
+# === SQLITE VACUUM ===
+@app.post("/optimize_storage")
+async def optimize_storage():
+    """
+    [LITE] Forzar VACUUM en la base de datos de SQLite para reducir su tamaño y recomponer fragmentos
+    tras masivas eliminaciones o reescrituras del editor. 
+    """
+    db: Session = database.SessionLocal()
+    try:
+        # En SQLite crudo o sqlalchemy text:
+        db.execute(database.text("VACUUM;"))
+        db.commit()
+        logger.info("[Database] Comando VACUUM ejecutado exitosamente.")
+        return {"status": "success", "message": "Storage optimized."}
+    except Exception as e:
+        logger.error(f"Fallo al ejecutar VACUUM: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to optimize storage: {e}")
+    finally:
+        db.close()
 
 
 if __name__ == "__main__":

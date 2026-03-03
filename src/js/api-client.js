@@ -23,6 +23,24 @@ async function liteSearchFilesApi(query, skip = 0, limit = 500) {
     return await res.json();
 }
 
+/** Verifica masivamente la existencia de rutas relativas físicas en el Media Root */
+async function liteVerifyRoutesApi(pathsArray) {
+    if (!pathsArray || !pathsArray.length) return [];
+    const mediaRoot = document.getElementById('media-path-input')?.value?.trim() || '';
+    if (!mediaRoot) return [];
+
+    try {
+        const data = await _litePost('/lite/verify_routes', {
+            folder: mediaRoot,
+            paths: pathsArray
+        });
+        return data.missing || [];
+    } catch (err) {
+        console.warn('[Lite] Error verifying routes:', err);
+        return [];
+    }
+}
+
 // ================================================================
 // [LITE] FASE B — GESTIÓN DE ARCHIVOS (Renombrar, Borrar, Mover)
 // ================================================================

@@ -60,7 +60,12 @@ function render() {
                 const timeStr = new Date(scene.startTime * 1000).toISOString().substr(11, 8);
                 timeBadge = `<div class="time-badge" style="color:#ffb74d; font-size:0.65rem; margin-right:6px; font-weight:bold; white-space:nowrap;">⏱ ${timeStr}</div>`;
             }
-            labelInner = `<div class="btn-copy-linked" data-filename="${safeShortFileName}" style="display:flex; align-items:center; gap:4px; width:100%; cursor:pointer;" title="Clic para copiar: ${shortFileName}"><span style="color:${linkColor}; flex-shrink:0;">🔗</span><span class="linked-file-name" style="color:${linkColor}; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex:1; min-width:0;">${scene.linkedFile}</span>${timeBadge}</div>`;
+
+            // Check if flagged as missing 
+            const isMissing = scene._isMissing ? 'color:#ff5252; text-decoration:line-through;' : `color:${linkColor};`;
+            const icon = scene._isMissing ? '⚠️' : '🔗';
+
+            labelInner = `<div class="btn-copy-linked" data-filename="${safeShortFileName}" style="display:flex; align-items:center; gap:4px; width:100%; cursor:pointer;" title="Clic para copiar: ${shortFileName}"><span style="color:${linkColor}; flex-shrink:0;">${icon}</span><span class="linked-file-name" style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex:1; min-width:0; ${isMissing}">${scene.linkedFile}</span>${timeBadge}</div>`;
         } else {
             labelInner = `<span style="opacity:0; user-select:none;">&nbsp;</span>`;
         }
@@ -309,10 +314,46 @@ function render() {
         }
     });
 
+    // POLLING RUTAS MUERTAS (Debounced)
+    triggerRouteVerification();
+
     document.getElementById("scene-count").innerText = projectState.scenes.length;
     if (typeof window.calculateTotalTime === 'function') window.calculateTotalTime();
     if (typeof window.updateLayoutWidth === 'function') window.updateLayoutWidth();
     if (projectState.isTimelineOutlineOpen) renderTimelineOutline();
+}
+
+// === AUDITORÍA DE ENLACES ROTOS (FASE 9) ===
+let routeVerifyTimeout = null;
+function triggerRouteVerification() {
+    clearTimeout(routeVerifyTimeout);
+    routeVerifyTimeout = setTimeout(async () => {
+        const pathsToVerify = projectState.scenes
+            .filter(s => s.linkedFile)
+            .map(s => s.linkedFile);
+
+        if (!pathsToVerify.length) return;
+
+        // Remove duplicates
+        const uniquePaths = [...new Set(pathsToVerify)];
+
+        if (typeof window.liteVerifyRoutesApi === 'function') {
+            const missing = await window.liteVerifyRoutesApi(uniquePaths);
+            let needsRender = false;
+
+            projectState.scenes.forEach(s => {
+                if (!s.linkedFile) return;
+                const isCurrentlyMissing = missing.includes(s.linkedFile);
+                if (s._isMissing !== isCurrentlyMissing) {
+                    s._isMissing = isCurrentlyMissing;
+                    needsRender = true;
+                }
+            });
+
+            // Only re-render if state changed to avoid infinite loops
+            if (needsRender) render();
+        }
+    }, 1000);
 }
 
 function renderChecklist() {
