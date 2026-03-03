@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="mobile-web-app-capable" content="yes">
+    <link rel="apple-touch-icon" href="/img/favicon.ico">
+    <link rel="icon" href="/img/favicon.ico">
+
+    <title>Smart Segment Prompter - Aplica la IA</title>
+    <link rel="stylesheet" href="/css/prompter.css">
+</head>
+
+<body>
+
+    <div id="setup-view">
+        <div class="document-panel">
+            <div class="header-controls">
+                <div class="header-left">
+                    <a href="https://www.youtube.com/channel/UCsLbSODWnK5I896EToRb12Q" target="_blank"
+                        title="Visitar Aplica la IA" class="logo-link">
+                        <img src="/img/favicon.ico" alt="Aplica la IA">
+                    </a>
+                    <select id="api-project-select" class="btn-custom-file"
+                        style="background:var(--bg-panel); color:var(--text-main); border:1px solid var(--border-color); outline:none;">
+                        <option value="">Cargando proyectos...</option>
+                    </select>
+                    <select id="api-speaker-select" class="btn-custom-file"
+                        style="background:var(--bg-panel); color:var(--text-main); border:1px solid var(--border-color); outline:none;"
+                        disabled>
+                        <option value="">Selecciona Hablante...</option>
+                    </select>
+                </div>
+                <div class="header-right">
+                    <button class="icon-btn" id="btn-undo" title="Deshacer edición (Ctrl+Z)">↩️</button>
+                    <button class="icon-btn" id="btn-save" title="Guardar Proyecto Como... (.json)">💾</button>
+                    <button class="icon-btn" id="btn-refresh"
+                        title="Recargar texto original (Borra selecciones)">🔄</button>
+                    <button class="icon-btn" id="btn-clear" title="Limpiar todo (Borra el autoguardado)">🗑️</button>
+                    <div class="global-stats" id="global-stats-header">0 car. | ~0s</div>
+                </div>
+            </div>
+            <div id="text-container" contenteditable="true" spellcheck="false">Arrastra aquí tu archivo .txt o tu
+                proyecto .json para empezar...</div>
+        </div>
+
+        <div class="sidebar-panel">
+            <div class="sidebar-header">
+                <h3 style="margin: 0 0 10px 0;">Tarjetas Generadas</h3>
+                <div class="global-stats" id="global-stats-sidebar">Tarjetas: 0</div>
+                <button id="btn-start">▶ Iniciar Modo Grabación</button>
+            </div>
+            <div id="cards-list"></div>
+        </div>
+    </div>
+
+    <div id="prompter-view">
+        <div class="touch-zone" id="zone-left" title="Atrás (Click)">
+            <div class="zone-btn-top" id="btn-exit-prompter" title="Salir de grabación">✖</div>
+            &lt;
+        </div>
+        <div id="prompter-text" contenteditable="true" spellcheck="false"></div>
+        <div id="progress-indicator"></div>
+        <div class="touch-zone" id="zone-right" title="Siguiente (Click)">
+            <div class="zone-btn-top" id="btn-menu-prompter" title="Lista de tarjetas">☰</div>
+            <div class="zone-btn-top" id="btn-font-prompter" title="Tamaño de texto">Aa</div>
+            <div class="zone-btn-top" id="btn-align-prompter" title="Alineación (Centro/Izq/Der/Justificado)">≡</div>
+            &gt;
+        </div>
+
+        <div id="font-slider-panel">
+            A- <input type="range" id="font-size-slider" min="4" max="15" step="0.5" value="8"> A+
+        </div>
+    </div>
+
+    <div id="jump-menu-overlay">
+        <div class="jump-menu-container">
+            <div class="jump-header"><span>Selecciona una tarjeta para saltar</span><button class="btn-close-menu"
+                    id="btn-close-jump">✖</button></div>
+            <div class="jump-list-content" id="jump-list-content"></div>
+        </div>
+    </div>
+    <div id="autosave-indicator">Guardado automáticamente ✓</div>
+
+    <script type="module" src="/js/prompter/app.js"></script>
+</body>
+
+</html>

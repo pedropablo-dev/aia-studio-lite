@@ -866,6 +866,10 @@ async def serve_frontend():
     html_path = Path(__file__).parent / "builder.html"
     return FileResponse(str(html_path))
 
+@app.get("/prompter")
+async def serve_prompter():
+    return FileResponse(str(Path(__file__).parent / "prompter.html"))
+
 # === SQLITE VACUUM ===
 @app.post("/optimize_storage")
 async def optimize_storage():
