@@ -7,12 +7,14 @@
 - 📂 **Hierarchical File Explorer**: Browse, link, rename, delete, and drag-and-drop media files into folders via the Lite File Modal backed by `/lite/files` and `/lite/files/*` API endpoints.
 - 🔗 **Contextual Open**: When opening the explorer from a card with a linked file, the modal navigates directly to the file's parent folder.
 - ◀▶ **Depth-Memory Navigation**: Hierarchical back/forward buttons powered by `liteDeepestPath` — no history stack, pure tree traversal.
-- 🖼️ **Auto-Thumbnails**: FFmpeg generates JPEG thumbnails on-the-fly for videos at native resolution (`-q:v 2`), cached in `.lite_cache/`. Images served directly.
+- 🖼️ **Auto-Thumbnails**: FFmpeg generates JPEG thumbnails asynchronously for videos at native resolution (`-q:v 2`), cached in `.lite_cache/`. Frontend polls via HTTP 202 with fade-in transitions.
 - 🎨 **Neon File-Type Colors**: Linked file names in the timeline use vibrant neon tinting — green for video, blue for image, magenta for audio — via CSS `data-type` attribute selectors.
-- 🚩 **Timeline Outline**: Sidebar panel listing all scenes with thumbnails (via `/thumbnail` API + `blobCache`), sections, titles, and script previews. Toggled via `Ctrl+Enter` or footer button. Uses **Zero-Flicker** selection (no full DOM re-render).
+- 🚩 **Timeline Outline**: Sidebar panel listing all scenes with thumbnails (via `/thumbnail` API), sections, titles, and script previews. Toggled via `Ctrl+Enter` or footer button. Uses **Zero-Flicker** selection (no full DOM re-render).
 - 🗨️ **Custom Async Dialogs**: `sysDialog()` and `Modal.*` replace all native `alert`/`confirm`/`prompt` with styled, Promise-based modal dialogs.
 - 🔍 **Timeline Navigator**: Fixed search bar with scene search, `|<` / `>|` start/end buttons, and a clear button.
-- 💾 **SQLite Persistence & Dual Save**: Robust relational database storage (`aia_studio.db`) with 1500ms debounced auto-save. Manual `Ctrl+S` forces a backup save.
+- 💾 **SQLite Persistence & Dual Save**: Robust relational database storage (`aia_studio.db`) with 3000ms debounced auto-save. Manual `Ctrl+S` forces a backup save.
+- ⚠️ **Dead Link Detection**: Automatic background verification of linked files via `POST /lite/verify_routes`. Missing files are flagged with a ⚠️ icon and red strikethrough.
+- 🧹 **Garbage Collection**: Automatic cleanup of orphan thumbnails at server startup/shutdown. `POST /optimize_storage` for SQLite VACUUM.
 - ⌨️ **Keyboard Shortcuts (Hotkeys 10/10)**: Comprehensive, input-protected system.
   - **Navigation**: `Home/End` (First/Last), `←/→` (Select Prev/Next), `Ctrl+←/→` (Move Card).
   - **Viewport**: `F` (Center), `Shift+F` (Fit All), `0` (Restore Zoom).
@@ -29,7 +31,6 @@
 - [API Documentation](docs/API.md)
 - [Frontend Documentation](docs/FRONTEND.md)
 - [Export System V3](docs/EXPORT_SYSTEM.md)
-- [JSON Import Spec](docs/SPEC_IMPORTACION_JSON.md)
 
 ## Quick Start
 1. **Install Dependencies**:

@@ -2,7 +2,7 @@
 
 ## Prerequisites
 - Python 3.8+
-- **FFmpeg** installed and available on PATH (required for video thumbnails and proxy transcoding).
+- **FFmpeg** installed and available on PATH (required for video thumbnail generation).
 
 ## Installation
 

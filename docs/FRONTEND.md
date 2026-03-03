@@ -1,16 +1,41 @@
 # Frontend Documentation — AIA Studio Lite
 
-**Type**: Monolithic SPA (HTML + CSS + JS, no framework)
+**Type**: Modular SPA (HTML + CSS + ES6 Modules, no framework)
 
 ## File Structure
 ```
 src/
-├── builder.html      # Main HTML shell (modals, nav bar, footer, outline sidebar)
+├── builder.html          # Main HTML shell (modals, nav bar, footer, outline sidebar)
 ├── css/
-│   └── style.css     # All CSS (dark theme, neon colors, outline panel, disabled states)
+│   └── style.css         # All CSS (dark theme, neon colors, outline panel, disabled states)
 └── js/
-    └── app.js        # All JavaScript logic (~5400+ lines)
+    ├── state.js           # ES Module — Centralized projectState (encapsulated global state)
+    ├── projectState.js    # Legacy compatibility shim for projectState
+    ├── ui-renderer.js     # ES Module — render(), renderTimelineOutline(), sysDialog(), Modal
+    ├── ui-modals.js       # Configuration modals (colors, sections, speakers, tech, checklist)
+    ├── scene-operations.js # Scene CRUD, reset, insert, duplicate (via createBaseScene)
+    ├── app.js             # Initialization, Undo/Redo, global event listeners (debounced save)
+    ├── storage.js         # SQLite sync, debouncedSaveState (3000ms), load/save pipeline
+    ├── api-client.js      # API abstraction layer (Lite CRUD, project persistence, route verification)
+    ├── lite-explorer.js   # Lite File Modal — hierarchical navigation, drag-and-drop, search
+    ├── drag-drop.js       # Timeline card drag-and-drop reordering
+    ├── shortcuts.js       # Keyboard shortcut registration and guards
+    ├── exporters.js       # DaVinci XML, EDL, SRT, TXT, MD exports (pure client-side)
+    └── projectManager.js  # Project load/save/create/delete UI (SQLite Projects API)
 ```
+
+## Module Architecture (ES6)
+All inline event handlers (`onclick`, `onchange`, `oninput`, etc.) have been **eradicated** from `builder.html`. Event binding is handled exclusively via:
+1. **Event Delegation** — A single listener on `#timeline-container` in `ui-renderer.js` handles all card-level clicks, changes, inputs, and drag events via `event.target.closest()`.
+2. **DOMContentLoaded Listeners** — Each module registers its own listeners on page load.
+3. **Global Window Exports** — Functions needed cross-module are exposed via `window.functionName = ...`.
+
+### State Management
+- `state.js` exports a singleton `projectState` object containing all mutable state (scenes, config, zoom, history).
+- The legacy `blobCache` has been encapsulated inside `projectState.setBlobCache()` with automatic `URL.revokeObjectURL()` cleanup.
+- No bare `let data = []` globals exist — all state is accessed via `projectState.propertyName`.
+
+---
 
 ## UI Structure
 
@@ -23,13 +48,33 @@ src/
 ### Timeline (Viewport)
 Flexbox container holding **Scene Cards**, each with:
 - **Drop Zone**: 16:9 area for drag-and-drop images, or auto-populated thumbnails from `/thumbnail` API. Click disabled — only drag-and-drop or 🔗 button.
-- **Linked File Label**: Shows the linked file name with neon color based on type (via `data-type` attribute and `.linked-file-name` class). Click copies filename (basename only) to clipboard.
+- **Linked File Label**: Shows the linked file name with neon color based on type (via `data-type` attribute and `.linked-file-name` class). Click copies filename (basename only) to clipboard. **Dead Link Detection**: If the file no longer exists on disk, the icon changes from 🔗 to ⚠️ and the path is displayed in red with strikethrough.
 - **Scene Stats**: Number, Title, Duration.
 - **Script Area**: Textarea for voiceover/dialogue.
 - **Visual Tags**: Shot type tab (top), Section color bar (bottom).
 - **Speaker Badge**: Assignable speaker with color.
 - **Timing Mode**: Auto (word count) / Manual (locked) / Video (synced via FFprobe).
 - **🔗 Link Button**: Opens the **Lite File Modal** to browse and link media files.
+
+### DOM Reconciliation (Zero-Flicker Rendering)
+The `render()` function in `ui-renderer.js` uses **surgical DOM patching** instead of full innerHTML rebuilds:
+1. **Orphan Purging**: Cards for deleted scenes are removed.
+2. **Attribute Diffing**: Existing cards are mutated in-place — only changed attributes are updated.
+3. **Image Stability** (`data-current-media`): Before touching a thumbnail's `src` or opacity, the renderer compares `img.dataset.currentMedia` against `scene.linkedFile`. If identical, the image is left untouched. This prevents flickering during Undo/Redo or text edits.
+4. **Geometric Reordering**: `container.insertBefore()` is used instead of `container.appendChild()` to preserve scroll position. Cards are only moved if they are out of order.
+
+### Async Thumbnail Polling
+When the `/thumbnail` API returns HTTP `202 Accepted` (FFmpeg still processing), the frontend:
+1. Shows a CSS `.loading-spinner` on the thumbnail container.
+2. Retries via `setTimeout` every 800ms (max 5 retries).
+3. On HTTP `200`, creates an Object URL and fades in the image with `opacity: 0 → 1` transition (0.4s ease-in).
+
+### Dead Link Verification (Phase 9)
+After each `render()`, a debounced (1000ms) async function `triggerRouteVerification()`:
+1. Collects all unique `linkedFile` paths from scenes.
+2. Sends them to `POST /lite/verify_routes`.
+3. Any paths returned as `missing` flag the scene with `scene._isMissing = true`.
+4. On next render, the label shows ⚠️ in red with strikethrough instead of 🔗.
 
 ### Timeline Navigator Bar (`#timeline-nav-bar`)
 Fixed at the bottom of the viewport. Contains:
@@ -49,8 +94,7 @@ Each item displays:
 - **Thumbnail** (priority order):
   1. `linkedFile` → `/thumbnail` API (video/image) or 🎵 icon (audio).
   2. `tempThumbnail` → direct URL.
-  3. `imageId` + `blobCache` → Base64 converted to lightweight Blob URL via `URL.createObjectURL()`.
-  4. Fallback → 🎬 icon.
+  3. Fallback → 🎬 icon.
 - **Section strip**: Colored bar with section name.
 - **Title line**: Scene number + title.
 - **Color + File**: Scene color dot + color name + linked file (neon-colored by type, bold).
@@ -86,22 +130,6 @@ Opened via the 🔗 button on each scene card, the 📂 Explorador button in the
 4. Results are rendered as card elements with type badges, thumbnails, and direct interaction buttons.
 5. Clicking a file calls `selectLiteFile(path)` → sets `scene.linkedFile` → re-renders.
 
-### Hierarchical Navigation (◀ / ▶)
-Instead of a temporal history stack, the system uses **depth memory**:
-- **Global**: `liteDeepestPath` — tracks the deepest folder ever visited in the current session.
-- **◀ Back**: Navigates to the parent of `currentBrowsePath` (via `lastIndexOf('/')`).
-- **▶ Forward**: Calculates the next child folder along `liteDeepestPath` from `currentBrowsePath`.
-- **Button state**: Managed by `updateHistoryButtons()` — disabled via explicit `.disabled` property + CSS `opacity: 0.3`.
-- **Reset**: `closeLiteFileModal()` clears `liteDeepestPath` to `''`.
-- **Drop to Parent**: The `..` card supports `ondrop="_onFolderDrop(event, '..')"`. The `_onFolderDrop` function dynamically resolves the parent path from `currentBrowsePath` at runtime.
-
-### Modo Organización
-When the modal is opened without a `sceneId` (via 📂 button or `Alt+E`):
-- `currentFileSceneId` is set to `null`.
-- An orange badge **📁 Modo Organización** is injected into the breadcrumb bar.
-- `selectLiteFile()` checks `currentFileSceneId`: if null, it shows a toast and aborts (no linking).
-- File CRUD refresh calls pass `currentFileSceneId` (not `null`) to preserve context when a card was the entry point.
-
 ### File Management (CRUD)
 All operations use `sysDialog()` for confirmation and `_litePost()` for API calls:
 - **Rename** (`liteRenameFile`): Prompt for new name → `POST /lite/files/rename`.
@@ -111,12 +139,6 @@ All operations use `sysDialog()` for confirmation and `_litePost()` for API call
 - **Create Folder** (`liteCreateFolder`): Prompt → `POST /lite/folders/create`.
 - **Delete Folder** (`liteDeleteFolder`): Confirm → `POST /lite/folders/delete`.
 - **Sync**: `_syncLinkedFile(oldPath, newPath)` updates all scenes referencing a moved/renamed/deleted file.
-
-### Drag & Drop Auto-Scroll
-The `_onFolderDragOver` handler uses **dynamic geometry** for auto-scroll:
-- `hitbox = rect.height * 0.40` — 40% of the visible area at each edge.
-- Only 20% of the center is a neutral (no-scroll) zone.
-- Speed: `40px` per interval tick (20ms).
 
 ---
 
@@ -128,44 +150,15 @@ Scene cards in the timeline emit a `data-type` attribute based on the linked fil
 | `.jpg`, `.jpeg`, `.png`, `.webp`, `.gif`, `.bmp` | `image` | `#00d4ff` | `#81d4fa` |
 | `.mp3`, `.wav`, `.aac`, `.flac`, `.ogg`, `.m4a` | `audio` | `#d500f9` | `#ce93d8` |
 
-CSS applies `!important` color overrides to `.linked-file-name` and the chain icon (`🔗` span) via `style.css`.
-
----
-
-## Thumbnails on Cards
-If `scene.linkedFile` is a video or image, the card's drop-zone `<img>` points to:
-```
-/thumbnail?path=<linkedFile>&folder=<media-root>
-```
-For audio files, a 🎵 icon is displayed instead. The drop-zone `onclick` is disabled — thumbnails are non-interactive.
-
----
-
-## CSS System
-Dark mode by default using CSS Variables:
-- `--bg-color`: `#121212`
-- `--accent`: `#2979ff`
-- `--card-width`: `360px`
-- `--color-video`: `#00ff41`
-- `--color-image`: `#00d4ff`
-- `--color-audio`: `#d500f9`
-
-### Notable Rules
-- `#btn-hist-back:disabled, #btn-hist-forward:disabled`: `opacity: 0.3; pointer-events: none; cursor: not-allowed` (all `!important`).
-- `.scene-card[data-type="..."] .linked-file-name`: neon color overrides.
-- `.file-card[data-type="..."]`: type-based badge backgrounds and hover glows.
-- `#timeline-outline-sidebar`: fixed right panel, slide-in via `transform: translateX`.
-- `.outline-item`: 72px height, `flex-shrink: 0`, scrollable flex column.
-
 ---
 
 ## State & Persistence
 - **SQLite ORM**: Projects are auto-saved to `aia_studio.db` in the External Media Root via `POST /api/projects`.
-- **Debounced Save**: `debouncedSaveState()` waits 1500ms after user input before pushing to SQLite, preventing API spam.
+- **Debounced Save**: `debouncedSaveState()` waits **3000ms** after user input before pushing to SQLite, preventing API spam. Global `input` and `change` listeners on `document` trigger this automatically.
 - **Cold Boot Sync**: `loadFromLocal()` fetches the database payload and blocks initial UI rendering until the DOM is synchronized.
 - **Clean JSON Export**: `Ctrl+S` → `manualBackup()` strips all Base64 traces (`imageId`) before downloading the schema-compliant JSON.
 - **Undo/Redo**: In-memory stack (max 50 states).
-- **Global State**: `selectedId` tracks the currently selected scene card (used by outline + timeline).
+- **Global State**: `projectState.selectedId` tracks the currently selected scene card (used by outline + timeline).
 
 ## Key Interactions
 - **Drag & Drop (Cards)**: Native API for images into drop zones. Drag handle (⋮⋮) for card reordering in timeline.

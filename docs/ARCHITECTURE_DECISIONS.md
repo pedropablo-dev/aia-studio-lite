@@ -5,67 +5,72 @@
 **Contexto:** La versión Lite prioriza simplicidad y arranque instantáneo sin requerir GPU, modelos de IA, ni ChromaDB/SQLite.
 **Decisión:** Se eliminaron completamente Whisper, Vision, ChromaDB, y el proceso monitor (`monitor.py`). La vinculación de archivos es manual vía el endpoint `/lite/files` + modal en el frontend.
 
-## 2. Generación de Miniaturas vía FFmpeg
-**Estado:** Aceptado
+## 2. Generación de Miniaturas vía FFmpeg (Asíncrono)
+**Estado:** Aceptado (Actualizado Fase 6-7)
 **Contexto:** Sin un proceso de ingesta automática, las miniaturas de vídeo no se pre-generan.
-**Decisión:** El endpoint `/thumbnail` genera miniaturas bajo demanda usando `subprocess.run(ffmpeg ...)`, con caché persistente en `.lite_cache/`. Las imágenes se sirven directamente sin caché. Se genera a **resolución nativa** del vídeo (sin filtro de escala) con calidad `-q:v 2`.
+**Decisión:** El endpoint `/thumbnail` genera miniaturas bajo demanda usando `asyncio` + `subprocess`. Devuelve HTTP `202 Accepted` mientras FFmpeg procesa, permitiendo al frontend hacer polling asíncrono (máx. 5 reintentos, 800ms). Las miniaturas se cachean en `.lite_cache/`. Se usa `THUMBNAIL_SEMAPHORE` (máx. 4 procesos concurrentes) para evitar saturar la CPU.
 **Riesgo:** Si FFmpeg no está instalado, las miniaturas de vídeo fallarán con 404/500. Se acepta como requisito del sistema.
 
-## 3. Procesamiento Síncrono y Bloqueante
-**Estado:** Aceptado (heredado)
-**Decisión:** Se mantiene la ejecución síncrona en `api.py` para operaciones de FFmpeg (trim, thumbnails). El bloqueo es intencional para evitar condiciones de carrera en el sistema de archivos.
+## 3. Procesamiento Asíncrono con FastAPI
+**Estado:** Actualizado (Fase 6)
+**Decisión:** Se migró el procesamiento de FFmpeg de `subprocess.run` bloqueante a `asyncio.create_subprocess_exec` con `run_in_threadpool`. El frontend maneja la respuesta `202` mediante polling para evitar timeouts en la UI.
 
-## 4. Gestión de Ciclo de Vida en Windows
-**Estado:** Aceptado (heredado)
-**Decisión:** No se implementa gestión compleja de señales (`SIGTERM`). El cierre es responsabilidad del usuario.
+## 4. Gestión de Ciclo de Vida del Servidor
+**Estado:** Actualizado (Fase 9)
+**Decisión:** Se implementaron decoradores `@app.on_event("startup")` y `@app.on_event("shutdown")`. Al arrancar: inicialización de DB + limpieza de caché. Al apagar: terminación forzada de procesos FFmpeg huérfanos en `active_tasks` + última ronda de Garbage Collection.
 
 ## 5. Sistemas de Diálogos Asíncronos
 **Estado:** Aceptado
 **Contexto:** Los diálogos nativos del navegador (`alert`, `confirm`, `prompt`) no son estilizables, bloquean el hilo principal, y resultan inconsistentes visualmente con la interfaz.
 **Decisión:** Coexisten dos sistemas de diálogos:
 1. `sysDialog()` — Función que retorna `Promise<{ confirmed, value }>`. Renderiza en `#sys-dialog-overlay`. Usado por el Lite File Explorer y gestión de carpetas.
-2. `Modal.confirm/prompt/alert` — Objeto-función que retorna `Promise`. Renderiza en `#modal-overlay`. Usado por Ingest Studio y otros módulos.
+2. `Modal.confirm/prompt/alert` — Objeto-función que retorna `Promise`. Renderiza en `#modal-overlay`. Usado por módulos secundarios.
 
 ## 6. Navegación Jerárquica con Memoria de Profundidad
 **Estado:** Aceptado
-**Contexto:** Un sistema de historial temporal (`liteNavHistory[]` + `liteNavHistoryIndex`) introducía bugs de state-overwrite cuando la navegación async y la apertura contextual colisionaban.
-**Decisión:** Se reemplazó el historial temporal por una variable de profundidad (`liteDeepestPath`). El botón ◀ sube al padre (`lastIndexOf('/')`), el botón ▶ calcula el siguiente segmento hijo dentro de la ruta más profunda visitada. No hay array de historial, no hay bugs de desbordamiento de índice.
+**Decisión:** Se reemplazó el historial temporal por una variable de profundidad (`liteDeepestPath`). El botón ◀ sube al padre, el botón ▶ calcula el siguiente segmento hijo. No hay array de historial ni bugs de desbordamiento.
 
-## 7. Motor de Auto-Scroll Dinámico (Drag & Drop)
+## 7. Colores Neón por Tipo de Archivo
 **Estado:** Aceptado
-**Contexto:** Un umbral estático en píxeles (50px, 130px, 250px) no se adaptaba a distintos tamaños de viewport/modal.
-**Decisión:** Se implementó geometría dinámica: `hitbox = rect.height * 0.40`, dejando solo un 20% de zona neutral en el centro del contenedor. La velocidad es fija a 40px/tick.
+**Decisión:** Las tarjetas emiten `data-type` basado en la extensión del `linkedFile`. CSS aplica colores neón (verde eléctrico, azul cian, magenta eléctrico). El panel Outline usa variantes suaves.
 
-## 8. Colores Neón por Tipo de Archivo
+## 8. Zero-Flicker DOM Update
 **Estado:** Aceptado
-**Contexto:** Los nombres de archivos vinculados en el timeline eran difíciles de distinguir visualmente.
-**Decisión:** Las tarjetas de escena emiten un atributo `data-type` basado en la extensión del `linkedFile`. Reglas CSS con `!important` sobrescriben el color inline para aplicar colores neón de alta saturación (verde eléctrico, azul cian, magenta eléctrico). El panel Outline usa variantes suaves (`#a5d6a7`, `#81d4fa`, `#ce93d8`).
+**Decisión:** `toggleSelection()` no llama a `render()`. Usa `classList.toggle()` directamente sobre `.scene-card` y `.outline-item`.
 
-## 9. Panel Lateral de Esquema (Timeline Outline)
-**Estado:** Aceptado
-**Contexto:** Con proyectos de muchas escenas, localizar una tarjeta específica requería scroll manual interminable por el timeline.
-**Decisión:** Panel fijo lateral (`#timeline-outline-sidebar`) que lista todas las escenas con miniatura, sección, título, archivo vinculado y extracto del guión. Se abre con `Ctrl+Enter` o el botón 🚩 Esquema. Utiliza `selectedId` para highlight bidireccional con el timeline. Las miniaturas siguen una cadena de prioridad: `linkedFile` API → `tempThumbnail` → `blobCache` → fallback 🎬.
+## 9. blobCache — Encapsulación en projectState
+**Estado:** Actualizado (Fase 1)
+**Contexto:** La variable global `blobCache = {}` era una fuga de memoria potencial.
+**Decisión:** `blobCache` fue encapsulado dentro de `projectState.setBlobCache()` en `state.js`, con limpieza automática vía `URL.revokeObjectURL()`. No existen variables globales mutables sueltas.
 
-## 10. Zero-Flicker DOM Update
-**Estado:** Aceptado
-**Contexto:** La función `toggleSelection()` llamaba a `render()` tras cada clic, reconstruyendo todo el DOM y causando micro-parpadeos visibles al seleccionar tarjetas.
-**Decisión:** Se eliminó la llamada a `render()` de `toggleSelection()`. En su lugar, se itera directamente sobre `.scene-card` y `.outline-item` usando `classList.toggle()` para aplicar/quitar las clases `.selected` y `.active`. El `outline-item` activo se centra con `scrollIntoView({ block: 'center', behavior: 'smooth' })`. Resultado: selección instantánea sin reconstrucción del DOM.
+## 10. Migración a ES6 Modules y Erradicación de Eventos Inline
+**Estado:** Aceptado (Fase 5)
+**Contexto:** El monolítico `app.js` (5400+ líneas) con eventos `onclick` inline era inmantenible.
+**Decisión:** Se extrajo la lógica en 13 módulos ES6 con responsabilidad única. Todos los atributos de eventos inline (`onclick`, `onchange`, `oninput`, etc.) fueron eliminados de `builder.html`. La vinculación se realiza mediante:
+1. **Event Delegation**: Un listener centralizado en `#timeline-container` (en `ui-renderer.js`) maneja todas las interacciones con tarjetas vía `event.target.closest()`.
+2. **DOMContentLoaded**: Cada módulo registra sus propios listeners.
+3. **window.***: Funciones accesibles entre módulos se exponen globalmente.
 
-## 11. blobCache — Prevención de Colapso de Memoria
+## 11. Reconciliación Atómica del DOM (Fase 8)
 **Estado:** Aceptado
-**Contexto:** El esquema lateral inyectaba strings Base64 completos (cientos de KB) directamente en el atributo `src` de `<img>`, multiplicado por el número de escenas. Esto provocaba un DOM extremadamente pesado.
-**Decisión:** Se creó una variable global `blobCache = {}` que convierte cada string Base64 a un `Blob` y genera una URL ligera con `URL.createObjectURL()` (~60 bytes). La conversión se realiza perezosamente (solo al primer uso de cada `imageId`). `clearBlobCache()` revoca todas las URLs al cargar o reiniciar un proyecto para evitar fugas de memoria.
+**Contexto:** `render()` reconstruía todo el `innerHTML` causando parpadeo de miniaturas y pérdida de scroll.
+**Decisión:** Se implementó un sistema quirúrgico:
+- **data-current-media**: Cada `<img>` almacena el path actual. Si no cambia, la miniatura no se toca.
+- **insertBefore condicional**: Solo se reordena un nodo DOM si está fuera de posición, preservando el scroll.
+- **removeAttribute('src')**: Al resetear una escena, se elimina el `src` y se oculta el `<img>` para evitar el ícono de imagen rota.
 
-## 12. Modo Organización en el Explorador
+## 12. Garbage Collection de Miniaturas (Fase 9)
 **Estado:** Aceptado
-**Contexto:** El explorador de archivos siempre requería un `sceneId` para funcionar. No existía forma de navegar y gestionar archivos (renombrar, mover, crear carpetas) sin estar vinculado a una tarjeta específica.
-**Decisión:** Se añadió un botón 📂 Explorador en el footer y el atajo `Alt+E`, ambos llamando a `openQuickFileModal(null, '')`. Cuando `currentFileSceneId` es `null`, se inyecta un badge naranja "📁 Modo Organización" en los breadcrumbs. `selectLiteFile()` aborta con un toast informativo si no hay escena objetivo. Todas las operaciones CRUD de refresco pasan `currentFileSceneId` en lugar de `null` para preservar el contexto si se entró desde una tarjeta.
+**Contexto:** El directorio `.lite_cache/` acumulaba archivos `.jpg` de escenas eliminadas.
+**Decisión:** `cleanup_orphan_thumbnails()` lee todos los `linkedFile` de SQLite, reconstruye los stems de cache esperados, y elimina vía `unlink()` cualquier archivo que no tenga correspondencia activa. Se ejecuta en startup y shutdown.
 
-## 13. Extirpación del Módulo Ingestor y APIs Bloqueantes
+## 13. Auditoría de Rutas Muertas (Fase 9)
 **Estado:** Aceptado
-**Contexto:** Los módulos heredados de "Ingest Studio", "Media Pool" y sus APIs correspondientes integraban una carga masiva de componentes DOM, lógica de estado cruzada innecesaria (Drag & Drop, Menús Contextuales redundantes) y endpoints I/O que generaban operaciones destructivas y lentas sobre archivos físicos (proxies, raw, asset management).
-**Decisión:** Fueron **erradicados de raíz** (FastAPI y VanillaJS).
-1. El backend (`api.py`) eliminó totalmente los endpoints heredados bajo las rutas `/raw-files`, `/assets`, `/ingest` y `/folders` convencionales (aprox. 550 líneas depuradas), consolidando todas las operaciones bajo el dominio eficiente y protegido `/lite/`.
-2. El frontend (`app.js`, `builder.html`) fue liberado del objeto `IngestStore`, sus layouts Grid CSS, y el complejo HTML de Modales y Context Menus residuales. Solo sobrevive el "Lite Explorer".
-**Consecuencia:** Aceleramiento notable al inicializar, menor consumo de memoria de navegador sin listeners de arrastre flotantes, y abstracción más robusta y segura garantizada por funciones como `_validate_lite_path` (Zero-bloqueos en UI).
+**Contexto:** Si un archivo vinculado se borraba externamente (ej. desde el explorador de Windows), la UI no tenía forma de saberlo.
+**Decisión:** Se creó `POST /lite/verify_routes` para verificación masiva de rutas. En el frontend, `triggerRouteVerification()` (debounced 1000ms) envía las rutas únicas al verificador tras cada `render()`. Los archivos faltantes se marcan con `scene._isMissing = true`, cambiando el icono de 🔗 a ⚠️ con texto rojo tachado.
+
+## 14. Extirpación del Módulo Ingestor y APIs Bloqueantes
+**Estado:** Aceptado
+**Contexto:** Los módulos heredados de "Ingest Studio", "Media Pool" y sus APIs correspondientes integraban una carga masiva de componentes DOM y endpoints I/O destructivos.
+**Decisión:** Fueron erradicados. El backend eliminó las rutas bajo `/raw-files`, `/assets`, `/ingest` y `/folders` convencionales. El frontend fue liberado del objeto `IngestStore`. Solo sobrevive el "Lite Explorer".
 

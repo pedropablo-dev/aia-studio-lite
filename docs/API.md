@@ -12,16 +12,19 @@ Lists directory contents for the hierarchical file explorer.
   - `folder` (str, optional): Absolute path to the Media Root. Falls back to `INPUT_DIR` env var → `utils.INPUT_DIR`.
   - `subpath` (str, optional): Relative subdirectory to list. Default `""` (root). Only one level is listed per call.
   - `search` (str, optional): If provided, performs a recursive `rglob` search across the entire tree, filtering by filename.
+  - `skip` (int, optional): Number of items to skip (pagination). Default `0`.
+  - `limit` (int, optional): Maximum items to return. Default `500`.
 - **Response**:
   ```json
   {
     "status": "success",
     "items": [
       {"name": "subfolder", "type": "folder", "path": "subfolder"},
-      {"name": "clip.mp4", "type": "video", "path": "subfolder/clip.mp4"},
-      {"name": "photo.jpg", "type": "image", "path": "photo.jpg"}
+      {"name": "clip.mp4", "type": "video", "path": "subfolder/clip.mp4"}
     ],
-    "current": ""
+    "current": "",
+    "total_in_page": 2,
+    "has_more": false
   }
   ```
 - **Notes**: Hidden files (`.`) are skipped. Paths use forward slashes. Folder items have `type: "folder"`.
@@ -35,11 +38,17 @@ Returns a thumbnail for a media file.
   | Type | Action |
   |------|--------|
   | Image (`.jpg`, `.jpeg`, `.png`, `.webp`) | Returned directly via `FileResponse` |
-  | Video (`.mp4`, `.mov`, `.mxf`, `.avi`, `.webm`) | FFmpeg extracts frame at `00:00:01` at native resolution with `-q:v 2`, caches as JPEG in `.lite_cache/`, returns cached file |
+  | Video (`.mp4`, `.mov`, `.mxf`, `.avi`, `.webm`) | FFmpeg extracts frame at `00:00:01` at native resolution with `-q:v 2`. Returns `202 Accepted` while processing, cached JPEG on completion |
   | Audio (`.mp3`, `.wav`, `.aac`) | Returns `404` |
-- **FFmpeg Settings**: Native resolution (no scale filter), quality `-q:v 2`, 30s timeout.
+- **Concurrency**: Controlled by `THUMBNAIL_SEMAPHORE` (max 4 concurrent FFmpeg processes).
 - **Cache**: `.lite_cache/` directory at project root. Filenames are flattened (`/` → `_`).
-- **Errors**: 400 (missing path), 404 (file not found / audio / generation failed), 504 (FFmpeg timeout).
+- **Errors**: 400 (missing path), 404 (file not found / audio / generation failed), 202 (processing), 504 (FFmpeg timeout).
+
+#### `POST /lite/verify_routes`
+Bulk verification of file existence on disk.
+- **Body**: `{ "folder": "...", "paths": ["file1.mp4", "subdir/file2.jpg"] }`
+- **Response**: `{ "status": "success", "missing": ["subdir/file2.jpg"] }`
+- **Use Case**: Frontend dead-link auditing — flags scenes whose `linkedFile` no longer exists on disk.
 
 ---
 
@@ -94,7 +103,33 @@ Lists all persisted projects.
 #### `GET /api/projects/{project_id}`
 Loads a full project schema.
 - **Response**: Complete project data. `scene_data` json columns are nested within the scene objects (frontend handles flattening).
+
+#### `DELETE /api/projects/{project_id}`
+Deletes a project and all associated scenes from the database.
+
+---
+
+### Maintenance & Optimization
+
+#### `POST /optimize_storage`
+Executes `VACUUM;` on the SQLite database to reclaim disk space and defragment the file after mass deletions.
+- **Response**: `{ "status": "success", "message": "Storage optimized." }`
+
+---
+
+## Lifecycle Events
+
+### Startup
+1. Initializes SQLite tables via SQLAlchemy.
+2. Creates cache directories (`.cache`, `.lite_cache`).
+3. Runs `cleanup_orphan_thumbnails()` — compares cached `.jpg` files against active `linkedFile` entries in SQLite, deleting orphans.
+
+### Shutdown
+1. Terminates all in-flight FFmpeg processes from `active_tasks`.
+2. Runs a final `cleanup_orphan_thumbnails()` pass.
+3. Logs clean shutdown confirmation.
+
 ## Security
 - **CORS**: Restricted to `localhost:9999`, `127.0.0.1:9999`, and `null` (for `file://`).
-- **Path Traversal**: `sanitize_filename` blocks `..` and absolute path injection.
+- **Path Traversal**: `is_safe_path()` blocks `..` traversal and verifies `os.path.commonprefix` against the allowed root.
 - **Lite Write Guard**: `_validate_lite_path()` ensures all write operations are confined within the Media Root and never touch the software installation directory (`_SW_ROOT`).

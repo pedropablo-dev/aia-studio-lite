@@ -1,38 +1,41 @@
 # Architecture Documentation — AIA Studio Lite
 
 ## Overview
-AIA Studio Lite is a stripped-down version of AIA Studio focused exclusively on **video pre-production** (scriptwriting, timeline building, DaVinci export) and **local file management** with FFmpeg-powered thumbnails. All AI, database, and monitoring components have been removed.
+AIA Studio Lite is a lightweight, local-first video pre-production toolkit focused on **scriptwriting, timeline building, and DaVinci Resolve export**, backed by a **hierarchical file manager** with full CRUD and **FFmpeg-powered** media thumbnails. All AI/DB/monitoring dependencies have been removed from the original AIA Studio.
 
 ## System Architecture
 
 ```
-User → browser opens builder.html (file:// or served via FastAPI)
+User → browser opens builder.html (served via FastAPI on port 9999)
          │
-         ├─ Timeline (app.js)
-         │    ├─ Scene CRUD, Undo/Redo, SQLite Sync (Debounced 1500ms)
-         │    ├─ ⚡ Zero-Flicker Selection → direct DOM class toggle (no full re-render)
-         │    ├─ 🔗 Lite File Explorer → hierarchical browse via GET /lite/files (paginated)
-         │    │    ├─ CRUD: rename, delete, move, create/delete/rename folders
-         │    │    ├─ Drag & Drop with dynamic auto-scroll (40% hitbox) + drop-to-parent (..)
-         │    │    ├─ Depth-memory navigation (liteDeepestPath)
-         │    │    └─ 📁 Modo Organización (Alt+E) → browse without scene context
-         │    ├─ Thumbnails → <img src="/thumbnail?path=...&folder=...">
-         │    ├─ 🎨 Neon file-type coloring via data-type CSS attributes
-         │    ├─ 🔍 Timeline Navigator → search, jump, |< >| buttons
-         │    ├─ 🚩 Timeline Outline Sidebar → blobCache + /thumbnail API (Ctrl+Enter)
-         │    ├─ 📤 Export System V3 → unified modal (TXT/MD) with speaker checkboxes
-         │    ├─ 🗨️ sysDialog() → async custom dialogs (confirm/prompt/alert)
-         │    └─ 🗨️ Modal.confirm/prompt/alert → secondary async dialog system
+         ├─ Frontend (13 ES6 Modules)
+         │    ├─ state.js           → Centralized projectState (encapsulated singleton)
+         │    ├─ ui-renderer.js     → render(), DOM reconciliation, event delegation, thumbnail polling
+         │    ├─ ui-modals.js       → Configuration modals (colors, sections, speakers, tech)
+         │    ├─ scene-operations.js → Scene CRUD (createBaseScene, reset, insert, move)
+         │    ├─ app.js             → Init, Undo/Redo, global input/change → debouncedSave
+         │    ├─ storage.js         → SQLite sync, debouncedSaveState (3000ms), schema migration
+         │    ├─ api-client.js      → API abstraction (Lite CRUD, projects, route verification)
+         │    ├─ lite-explorer.js   → Hierarchical file browser modal
+         │    ├─ drag-drop.js       → Timeline card drag-and-drop reordering
+         │    ├─ shortcuts.js       → Keyboard shortcut registration
+         │    ├─ exporters.js       → DaVinci XML, EDL, SRT, TXT, MD exports (client-side)
+         │    ├─ projectManager.js  → Project load/save/create/delete UI
+         │    └─ projectState.js    → Legacy compatibility shim
          │
          └─ FastAPI Backend (api.py, port 9999)
-              ├─ GET  /lite/files        — hierarchical directory listing + recursive search
-              ├─ POST /lite/files/*      — rename, delete, move files
-              ├─ POST /lite/folders/*    — create, delete, rename folders
-              ├─ GET  /thumbnail         — image passthrough or FFmpeg frame extraction (native res, -q:v 2)
-              ├─ GET  /raw-files         — staging area listing (paginated)
-              ├─ POST /ingest/*          — trim, move to input
-              ├─ Folder CRUD             — /folders (input & raw)
-              └─ Asset CRUD              — /assets/* (move, rename, delete, rename folder)
+              ├─ GET  /lite/files             — hierarchical directory listing + recursive search
+              ├─ POST /lite/files/*           — rename, delete, move files
+              ├─ POST /lite/folders/*         — create, delete, rename folders
+              ├─ POST /lite/verify_routes     — bulk dead-link file verification
+              ├─ GET  /thumbnail              — image passthrough or async FFmpeg extraction (HTTP 202)
+              ├─ POST /api/projects           — upsert project (SQLite ORM)
+              ├─ GET  /api/projects           — list all projects
+              ├─ GET  /api/projects/{id}      — load full project
+              ├─ DELETE /api/projects/{id}    — delete project
+              ├─ POST /optimize_storage       — SQLite VACUUM (defragment DB)
+              ├─ @startup                     — DB init + cleanup_orphan_thumbnails()
+              └─ @shutdown                    — kill FFmpeg tasks + final GC
 ```
 
 ## Decoupled Storage Pattern
@@ -42,18 +45,41 @@ User → browser opens builder.html (file:// or served via FastAPI)
 
 ## Thumbnail Cache (`.lite_cache/`)
 - **Location**: Project root → `.lite_cache/` (auto-created).
-- **Strategy**: When `/thumbnail` receives a video path, it checks for a cached JPEG. If not found, FFmpeg extracts a single frame at `00:00:01` at **native resolution** with quality `-q:v 2` and stores it with a flattened filename (slashes → underscores).
+- **Strategy**: When `/thumbnail` receives a video path, it checks for a cached JPEG. If not found, FFmpeg extracts a single frame at `00:00:01` at **native resolution** with quality `-q:v 2` and stores it with a flattened filename (slashes → underscores). The endpoint returns HTTP `202 Accepted` while FFmpeg processes, enabling the frontend to poll asynchronously.
 - **Images**: Served directly without caching.
 - **Audio**: Returns 404 (no visual thumbnail).
 - **Cache Invalidation**: Lite write endpoints (`rename`, `delete`, `move`) automatically evict stale cache entries via `_delete_cache_entry()`.
+- **Garbage Collection**: `cleanup_orphan_thumbnails()` runs at server startup and shutdown, comparing cached `.jpg` files against active `linkedFile` entries in SQLite. Orphaned files are automatically deleted.
 
 ## Persistence (SQLite ORM)
 - **Database Engine**: SQLAlchemy over SQLite. Database file `aia_studio.db` is stored cleanly in the external `AIA_MEDIA_ASSETS` root.
-- **Auto-Save Mechanism**: Silent, non-blocking `debouncedSaveState()` (1500ms delay) pushes the current memory state to `POST /api/projects`.
-- **Media Linking Pattern**: No Base64 data is stored in the database. Scenes persist only absolute/relative paths (`linkedFile`).
-- **Legacy JSON Translation**: Loading an old `ImageDB/IndexedDB` JSON file creates a seamless translation pipeline that purges obsolete `imageId/imageSrc` and standardizes the schema before pushing to SQLite.
+- **Auto-Save Mechanism**: Silent, non-blocking `debouncedSaveState()` (**3000ms** delay) pushes the current memory state to `POST /api/projects`. Global `input` and `change` event listeners on `document` trigger this automatically.
+- **Media Linking Pattern**: No Base64 data is stored in the database. Scenes persist only relative paths (`linkedFile`).
 - **Manual Export**: `Ctrl+S` forces an immediate commit + a downloadable, sanitized JSON file strictly following the new schema.
 - **Undo/Redo**: In-memory stack (max 50 states), tracks flat scene lists.
+- **Storage Optimization**: `POST /optimize_storage` executes `VACUUM;` on the SQLite database to reclaim disk space after mass deletions.
+
+## Backend Lifecycle Events
+
+### Startup (`@app.on_event("startup")`)
+1. Initializes SQLite database tables.
+2. Creates cache directories.
+3. Runs `cleanup_orphan_thumbnails()` to purge stale cached thumbnails.
+
+### Shutdown (`@app.on_event("shutdown")`)
+1. Terminates all in-flight FFmpeg processes registered in `active_tasks`.
+2. Runs a final round of `cleanup_orphan_thumbnails()`.
+3. Logs clean shutdown confirmation.
+
+## DOM Reconciliation (Zero-Flicker)
+The `render()` function in `ui-renderer.js` uses a **surgical DOM patching** strategy:
+1. **Orphan Purging**: Cards for deleted scenes are removed from the DOM.
+2. **Attribute Diffing**: Existing cards are mutated in-place — only changed attributes are updated.
+3. **Image Stability** (`data-current-media`): Before touching a thumbnail `src` or resetting opacity, the renderer compares `img.dataset.currentMedia` against the scene's `linkedFile`. If identical, no mutation occurs.
+4. **Scroll-Safe Reordering**: `container.insertBefore()` replaces `container.appendChild()` — cards are only moved in the DOM tree if they are out of order, preserving the user's scroll position.
+
+## Event Delegation
+All inline event handlers have been **fully eradicated** from `builder.html`. A single delegated listener on `#timeline-container` handles all card-level events (click, change, input, dragstart, dragover, drop) via `event.target.closest()` pattern matching.
 
 ## Dialog Systems
 The frontend uses **two coexisting** dialog systems:
@@ -62,44 +88,24 @@ The frontend uses **two coexisting** dialog systems:
 Async Promise-based modal rendered into `#sys-dialog-overlay` in `builder.html`. Supports `confirm`, `prompt`, and `alert` modes with custom icons, labels, and button classes. Used by the Lite File Explorer for all CRUD confirmation dialogs.
 
 ### `Modal.confirm/prompt/alert` (Secondary)
-Object-based dialog system using `#modal-overlay`. Supports `confirm`, `prompt`, and `alert` modes. Used by secondary modules and legacy interfaces for confirmation and input dialogs.
-
-## Timeline Outline Sidebar
-- **Toggle**: 🚩 Esquema button in footer, or `Ctrl+Enter` keyboard shortcut.
-- **Behavior**: Fixed sidebar sliding from the right. Renders a scrollable list of all scene cards with thumbnail, section color, title, linked file name (neon-colored by type), and script preview.
-- **Thumbnail Priority** (in order):
-  1. `linkedFile` exists → `/thumbnail` API for video/image, 🎵 icon for audio.
-  2. `tempThumbnail` → direct URL from camera capture.
-  3. Fallback → 🎬 icon on dark background.
-  *(Legacy Base64 object URLs have been deprecated)*
-- **Reactivity**: Re-renders via `renderTimelineOutline()` when the outline is open. Selection highlighting uses **Zero-Flicker** direct DOM class toggling + `scrollIntoView({ block: 'center', behavior: 'smooth' })` — no full `render()` call required.
+Object-based dialog system using `#modal-overlay`. Supports `confirm`, `prompt`, and `alert` modes. Used by secondary modules for confirmation and input dialogs.
 
 ## Zero-Flicker Selection
 - **Mechanism**: `toggleSelection(event, id)` does **not** call `render()`. Instead, it toggles `.selected` on `.scene-card` elements and `.active` on `.outline-item` elements via direct `classList.toggle()`, eliminating DOM reconstruction flicker.
 - **Scroll Sync**: After toggling, the active `.outline-item` is scrolled into view with `scrollIntoView({ block: 'center', behavior: 'smooth' })`.
-- **Impact**: Selection changes are instantaneous with zero visual flicker, regardless of project size.
-
-## Modo Organización (Global Explorer)
-- **Trigger**: 📂 Explorador button in footer, or `Alt+E` keyboard shortcut.
-- **Behavior**: Opens `openQuickFileModal(null, '')` without a `sceneId`. A badge **📁 Modo Organización** (orange) is injected into the breadcrumb bar.
-- **Guard**: `selectLiteFile()` checks `currentFileSceneId`; if null, it aborts with a toast instead of linking.
-- **Context Preservation**: All file CRUD operations (rename, delete, move, create/delete folder) pass `currentFileSceneId` on refresh to retain card context.
 
 ## File-Type Color System
-Scene cards in the timeline emit a `data-type` attribute (`video`, `image`, `audio`) based on the linked file extension. CSS rules in `style.css` apply neon colors:
+Scene cards emit a `data-type` attribute (`video`, `image`, `audio`) based on the linked file extension. CSS rules in `style.css` apply neon colors:
 - **Video**: `#00ff41` (electric green)
 - **Image**: `#00d4ff` (cyan blue)
 - **Audio**: `#d500f9` (electric magenta)
 
-The Timeline Outline sidebar uses softer variants for inline spans: `#a5d6a7` (video), `#81d4fa` (image), `#ce93d8` (audio).
+The Timeline Outline sidebar uses softer variants: `#a5d6a7`, `#81d4fa`, `#ce93d8`.
 
-## Naming Convention
-| Allowed | Example |
-|---------|---------|
-| Spaces in filenames | `my video.mp4` |
-| Snake case | `my_video.mp4` |
-
-The API URL-decodes `%20` automatically. `sanitize_filename` only blocks path traversal (`..`, absolute paths).
+## Security
+- **Path Traversal Protection**: `is_safe_path()` validates all incoming file paths against the configured root using `os.path.abspath` + `os.path.commonprefix`.
+- **Lite Write Guard**: `_validate_lite_path()` ensures all write operations are confined within the Media Root and never touch the software installation directory (`_SW_ROOT`).
+- **CORS**: Restricted to `localhost:9999`, `127.0.0.1:9999`, and `null` (for `file://`).
 
 ## Logging
 Python `logging` module → `app.log` (persistent, UTF-8) + console stream.
