@@ -12,6 +12,82 @@ let liteNavHistory = [];
 let liteNavHistoryIndex = -1;
 let _isHistoryNavigation = false;
 
+// ================================================================
+// ASYNC THUMBNAIL POLLING — EXPLORADOR (idéntico a loadThumbnail del timeline)
+// ================================================================
+
+/**
+ * Carga asíncronamente la miniatura de una tarjeta del explorador.
+ * Reintenta hasta MAX_RETRIES veces si el servidor devuelve HTTP 202 (FFmpeg en proceso).
+ * Aplica revokeObjectURL sobre el blob anterior para evitar fugas de RAM.
+ *
+ * @param {string} imgId    - id del elemento <img> destino
+ * @param {string} url      - URL completa del endpoint /thumbnail
+ * @param {number} retries  - Reintentos restantes (default: 10)
+ */
+async function loadExplorerThumbnail(imgId, url, retries = 10) {
+    const imgEl = document.getElementById(imgId);
+    if (!imgEl) return;
+    const container = imgEl.closest('.explorer-thumb-container');
+
+    try {
+        const timestampedUrl = url + (url.includes('?') ? '&' : '?') + 't=' + Date.now();
+        const response = await fetch(timestampedUrl);
+
+        if (response.status === 202) {
+            // FFmpeg generando la miniatura — mostrar spinner y reintentar
+            if (container) container.classList.add('loading-spinner');
+            if (retries > 0) {
+                setTimeout(() => loadExplorerThumbnail(imgId, url, retries - 1), 1000);
+            } else {
+                // Retries agotados: spinner eterno prevenido — mostrar fallback definitivo
+                if (container) container.classList.remove('loading-spinner');
+                imgEl.style.display = 'none';
+                if (container && !container.querySelector('.thumb-fallback-icon')) {
+                    const fb = document.createElement('div');
+                    fb.className = 'thumb-fallback-icon';
+                    fb.style.cssText = 'width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:2rem;background:#111;border-radius:5px;';
+                    fb.textContent = '\uD83C\uDFAC';
+                    container.appendChild(fb);
+                }
+            }
+            return;
+        }
+
+        if (response.ok) {
+            const blob = await response.blob();
+            // Liberar blob URL anterior para evitar fugas acumuladas en sesiones largas
+            if (imgEl.src && imgEl.src.startsWith('blob:')) URL.revokeObjectURL(imgEl.src);
+            imgEl.src = URL.createObjectURL(blob);
+            imgEl.style.display = 'block';
+            imgEl.style.opacity = '0';
+            if (container) container.classList.remove('loading-spinner');
+            requestAnimationFrame(() => { imgEl.style.opacity = '1'; });
+            return;
+        }
+
+        // 4xx/5xx — ocultar imagen, sin reintentar
+        if (container) container.classList.remove('loading-spinner');
+        imgEl.style.display = 'none';
+
+    } catch (e) {
+        if (container) container.classList.remove('loading-spinner');
+        imgEl.style.display = 'none';
+    }
+}
+
+/**
+ * Inicia el polling de miniaturas para todos los `<img data-explorer-thumb-url>` presentes
+ * en el grid del explorador. Se llama después de cada render del grid.
+ */
+function _kickExplorerThumbnailPolling() {
+    document.querySelectorAll('img[data-explorer-thumb-url]').forEach(img => {
+        if (img.dataset.pollingStarted === 'true') return;
+        img.dataset.pollingStarted = 'true';
+        loadExplorerThumbnail(img.id, img.dataset.explorerThumbUrl);
+    });
+}
+
 /** Cierra el modal del explorador y limpia el estado de navegación. */
 function closeLiteFileModal() {
     document.getElementById('quick-file-modal').style.display = 'none';
@@ -83,6 +159,20 @@ function _renderBreadcrumbs(subpath) {
     });
 
     bar.innerHTML = html;
+
+    // Botón de Actualizar directorio actual (no altera la ruta)
+    const refreshBtn = document.createElement('button');
+    refreshBtn.id = 'btn-explorer-refresh';
+    refreshBtn.title = 'Actualizar directorio actual';
+    refreshBtn.style.cssText = 'margin-left:auto;padding:2px 8px;background:transparent;border:1px solid #444;border-radius:4px;color:#aaa;cursor:pointer;font-size:1rem;flex-shrink:0;';
+    refreshBtn.textContent = '↻';
+    refreshBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        openQuickFileModal(currentFileSceneId, explorerState.currentBrowsePath);
+    });
+    bar.style.display = 'flex';
+    bar.style.alignItems = 'center';
+    bar.appendChild(refreshBtn);
 }
 
 /**
@@ -119,13 +209,22 @@ function _renderGridItems(items, mediaRoot) {
         // ── MEDIA FILE CARD ─────────────────────────────────────────
         const isVideo = /\.(mp4|mov|mxf|avi|webm)$/i.test(item.name);
         const isAudio = /\.(mp3|wav|aac)$/i.test(item.name);
-        const thumbUrl = (isVideo || !isAudio)
+        const needsThumb = !isAudio; // videos e imágenes necesitan miniatura async
+        const thumbUrl = needsThumb
             ? `http://127.0.0.1:9999/thumbnail?path=${encodeURIComponent(item.path)}&folder=${encodeURIComponent(mediaRoot)}`
             : null;
 
+        // ID único y estable para el <img> de esta tarjeta (basado en path sanitizado)
+        const thumbImgId = `explorer-thumb-${item.path.replace(/[^a-zA-Z0-9]/g, '_')}`;
+
         const mediaEl = isAudio
             ? `<div class="file-icon" style="height:90px;width:100%;display:flex;align-items:center;justify-content:center;background:#111;border-radius:5px;margin-bottom:7px;font-size:2.2rem;">🎧</div>`
-            : `<img src="${thumbUrl}" loading="lazy" alt="" onerror="this.style.display='none'">`;
+            : `<div class="explorer-thumb-container loading-spinner" style="position:relative;width:100%;height:90px;border-radius:5px;overflow:hidden;background:#111;margin-bottom:7px;">
+                   <img id="${thumbImgId}"
+                        data-explorer-thumb-url="${thumbUrl}"
+                        alt=""
+                        style="width:100%;height:100%;object-fit:cover;display:none;opacity:0;transition:opacity 0.3s ease-in;">
+               </div>`;
 
         const badge = `<span class="file-type-badge">${item.type}</span>`;
 
@@ -316,6 +415,9 @@ async function openQuickFileModal(sceneId, subpath = '') {
 
         grid.innerHTML = goUp + _renderGridItems(items, mediaRoot);
 
+        // Arrancar polling asíncrono de miniaturas tras el render del grid
+        _kickExplorerThumbnailPolling();
+
         if (hasMoreExplorerFiles) {
             grid.insertAdjacentHTML('beforeend', '<div id="explorer-sentinel" style="height: 50px; width: 100%;"></div>');
             _setupExplorerObserver(mediaRoot, 'browse');
@@ -384,6 +486,9 @@ async function filterQuickFiles() {
 
         if (counter) counter.textContent = `${items.length}${hasMoreExplorerFiles ? '+' : ''} resultado${items.length !== 1 ? 's' : ''}`;
         grid.innerHTML = _renderGridItems(items, mediaRoot);
+
+        // Arrancar polling asíncrono de miniaturas tras el render de búsqueda
+        _kickExplorerThumbnailPolling();
 
         if (hasMoreExplorerFiles) {
             grid.insertAdjacentHTML('beforeend', '<div id="explorer-sentinel" style="height: 50px; width: 100%;"></div>');
@@ -511,8 +616,14 @@ window.selectLiteFile = selectLiteFile;
 window.liteCreateFolder = liteCreateFolder;
 window.liteDeleteFolder = liteDeleteFolder;
 window.liteSortFiles = liteSortFiles;
+window.loadExplorerThumbnail = loadExplorerThumbnail;
 
 document.addEventListener('DOMContentLoaded', () => {
     // Bind Cancel Button in Lite Explorer
     document.getElementById('btn-close-explorer')?.addEventListener('click', closeLiteFileModal);
+
+    // Bind static Refresh button (barra de búsqueda)
+    document.getElementById('btn-explorer-refresh-bar')?.addEventListener('click', () => {
+        openQuickFileModal(currentFileSceneId, explorerState.currentBrowsePath);
+    });
 });

@@ -1337,6 +1337,7 @@ footer {
     padding: 1px 5px;
     border-radius: 3px;
     text-transform: uppercase;
+    z-index: 10; /* Stacking fix: siempre encima del <img> cargado asincrónamente */
 }
 
 /* "Go up" card */
