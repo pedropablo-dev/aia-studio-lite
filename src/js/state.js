@@ -110,7 +110,10 @@ export class ProjectState {
             }
         };
         this.undoStack.push(state);
-        if (this.undoStack.length > this.MAX_HISTORY) this.undoStack.shift();
+        // Límite dinámico: proyectos grandes (>300 escenas) usan cap reducido para evitar OOM.
+        // Cada snapshot de 300 escenas ocupa ~300KB; con cap=50 serían ~15MB; con cap=10 → ~3MB.
+        const effectiveCap = this.scenes.length > 300 ? 10 : this.MAX_HISTORY;
+        if (this.undoStack.length > effectiveCap) this.undoStack.shift();
         this.redoStack = [];
 
         // ---> Disparar auto-guardado a BBDD 

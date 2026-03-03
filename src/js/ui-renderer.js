@@ -670,12 +670,27 @@ window.loadThumbnail = async function (sceneId, url, retries = 5) {
             if (retries > 0) {
                 setTimeout(() => window.loadThumbnail(sceneId, url, retries - 1), 800);
             } else {
+                // Retries agotados (ej. video 4K muy largo, disco lento).
+                // Mostrar fallback definitivo para evitar spinner infinito.
                 if (container) container.classList.remove('loading-spinner');
+                imgEl.removeAttribute('src');
                 imgEl.style.display = 'none';
+                // Inyectar icono de fallback en el contenedor
+                if (container && !container.querySelector('.thumb-fallback-icon')) {
+                    const fallback = document.createElement('div');
+                    fallback.className = 'thumb-fallback-icon';
+                    fallback.style.cssText = 'width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:1.8rem;background:#111;';
+                    fallback.textContent = '🎬';
+                    container.appendChild(fallback);
+                }
             }
         } else if (response.ok) {
             // Ready status -> Render object URL and fade-in
             const blob = await response.blob();
+            // Liberar blob URL anterior antes de crear una nueva (previene fugas de RAM en sesiones largas)
+            if (imgEl.src && imgEl.src.startsWith('blob:')) {
+                URL.revokeObjectURL(imgEl.src);
+            }
             const objectUrl = URL.createObjectURL(blob);
             imgEl.src = objectUrl;
             imgEl.style.display = 'block';
