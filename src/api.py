@@ -11,8 +11,9 @@ import logging
 import asyncio
 from urllib.parse import unquote
 from fastapi import FastAPI, HTTPException, Body
+from fastapi import FastAPI, HTTPException, Body, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel
@@ -81,6 +82,21 @@ def sanitize_filename(filename: str) -> str:
         raise ValueError("Absolute paths not allowed")
     return clean
 
+def is_safe_path(path: str, root: str) -> bool:
+    """
+    Verifica que la ruta solicitada se encuentre estrictamente dentro del directorio permitido.
+    Usa os.path.abspath y os.path.commonprefix para prevenir path traversal (escalamiento de directorios).
+    """
+    try:
+        abs_root = os.path.abspath(str(root))
+        abs_path = os.path.abspath(str(path))
+        prefix = os.path.commonprefix([abs_path, abs_root])
+        # Aseguramos que coincide exactamente con el root (y evitamos falsos positivos tipo /usr/lib vs /usr/lib64)
+        return prefix == abs_root and (len(abs_path) == len(abs_root) or abs_path[len(abs_root)] == os.path.sep)
+    except Exception:
+        return False
+
+
 
 def get_media_type(filename: str) -> str:
     ext = os.path.splitext(filename)[1].lower()
@@ -90,7 +106,13 @@ def get_media_type(filename: str) -> str:
     return "unknown"
 
 
+# === GESTION DE SUBPROCESOS (FFmpeg Async) ===
+active_tasks = {}
+
 # === PYDANTIC MODELS ===
+
+class CancelTaskRequest(BaseModel):
+    task_id: str
 
 class RawFileRequest(BaseModel):
     filename: str
@@ -199,6 +221,10 @@ async def get_thumbnail(path: str, folder: Optional[str] = None):
 
     abs_path = scan_root / path
 
+    if not is_safe_path(str(abs_path), str(scan_root)):
+        logger.warning(f"Path traversal attempt blocked: {abs_path}")
+        raise HTTPException(status_code=403, detail="Directory traversal detected. Access denied.")
+
     if not abs_path.exists() or not abs_path.is_file():
         raise HTTPException(status_code=404, detail=f"File not found: {path}")
 
@@ -222,36 +248,68 @@ async def get_thumbnail(path: str, folder: Optional[str] = None):
         if cache_path.exists():
             return FileResponse(str(cache_path), media_type="image/jpeg")
 
-        # Generate with FFmpeg
-        try:
-            cmd = [
-                "ffmpeg", "-y",
-                "-ss", "00:00:01",
-                "-i", str(abs_path),
-                "-vframes", "1",
-                "-q:v", "2",
-                str(cache_path)
-            ]
-            async with THUMBNAIL_SEMAPHORE:
-                result = await run_in_threadpool(
-                    subprocess.run,
-                    cmd,
-                    capture_output=True,
-                    timeout=30
-                )
-            if result.returncode == 0 and cache_path.exists():
-                return FileResponse(str(cache_path), media_type="image/jpeg")
-            else:
-                logger.warning(f"FFmpeg thumbnail failed for '{path}': {result.stderr.decode(errors='replace')[:300]}")
-                raise HTTPException(status_code=404, detail="Thumbnail generation failed")
-        except subprocess.TimeoutExpired:
-            logger.error(f"FFmpeg timeout generating thumbnail for '{path}'")
-            raise HTTPException(status_code=504, detail="Thumbnail generation timed out")
-        except Exception as e:
-            logger.error(f"Unexpected error generating thumbnail for '{path}': {e}")
-            raise HTTPException(status_code=500, detail=str(e))
+        # Generate with FFmpeg asynchronously (asyncio Subprocess)
+        task_id = f"thumb_{uuid.uuid4().hex[:8]}"
+
+        async def generate_thumbnail_bg():
+            try:
+                cmd = [
+                    "ffmpeg", "-y",
+                    "-ss", "00:00:01",
+                    "-i", str(abs_path),
+                    "-vframes", "1",
+                    "-q:v", "2",
+                    str(cache_path)
+                ]
+                async with THUMBNAIL_SEMAPHORE:
+                    proc = await asyncio.create_subprocess_exec(
+                        *cmd,
+                        stdout=asyncio.subprocess.PIPE,
+                        stderr=asyncio.subprocess.PIPE
+                    )
+                    active_tasks[task_id] = proc
+                    
+                    try:
+                        stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=30.0)
+                        if proc.returncode != 0:
+                            logger.warning(f"FFmpeg thumbnail failed for '{path}': {stderr.decode(errors='replace')[:300]}")
+                    except asyncio.TimeoutError:
+                        proc.kill()
+                        logger.error(f"FFmpeg timeout generating thumbnail for '{path}'")
+                    finally:
+                        active_tasks.pop(task_id, None)
+
+            except Exception as e:
+                logger.error(f"Unexpected error generating thumbnail for '{path}': {e}")
+                active_tasks.pop(task_id, None)
+
+        # Disparamos tarea asincrona al bucle de eventos sin bloquear la respuesta
+        asyncio.create_task(generate_thumbnail_bg())
+        
+        # Respondemos inmediatamente HTTP 202 Accepted
+        return JSONResponse(
+            status_code=202, 
+            content={"status": "processing", "task_id": task_id, "message": "Thumbnail generation accepted and running in background"}
+        )
 
     raise HTTPException(status_code=404, detail="Unsupported media type for thumbnail")
+
+@app.post("/cancel_task")
+async def cancel_task(payload: CancelTaskRequest):
+    """
+    Cancela un subproceso de FFmpeg pesado en ejecución usando su task_id.
+    """
+    pid = payload.task_id
+    if pid in active_tasks:
+        proc = active_tasks.pop(pid)
+        try:
+            proc.kill()
+            logger.info(f"Task {pid} successfully killed by user request.")
+            return {"status": "cancelled", "message": f"Task {pid} terminated"}
+        except Exception as e:
+            logger.error(f"Failed to kill task {pid}: {e}")
+            raise HTTPException(status_code=500, detail=str(e))
+    raise HTTPException(status_code=404, detail="Task not found or already finished")
 
 
 # === CORE LITE ENDPOINT ===
