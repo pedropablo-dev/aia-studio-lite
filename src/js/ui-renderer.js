@@ -29,6 +29,10 @@ function render() {
     });
 
     // B) Verificación y Mutación Quirúrgica
+    // O(1) node lookup: pre-construir un Map<id, Element> evita O(n²) por querySelector dentro del bucle.
+    const cardMap = new Map();
+    container.querySelectorAll('.scene-card').forEach(c => cardMap.set(c.dataset.id, c));
+
     projectState.scenes.forEach((scene, index) => {
         const isSelected = (scene.id === projectState.selectedId);
 
@@ -75,8 +79,8 @@ function render() {
         if (mode === 'manual') { timeColor = '#ff9100'; timeIcon = '🔒'; timeTitle = 'Manual (Bloqueado)'; }
         else if (mode === 'video') { timeColor = '#00e676'; timeIcon = '📽️'; timeTitle = 'Sincronizado con Vídeo'; }
 
-        // Localizar Nodo Existente
-        let card = container.querySelector(`.scene-card[data-id="${scene.id}"]`);
+        // Localizar Nodo Existente — O(1) via cardMap pre-escaneado antes del bucle
+        let card = cardMap.get(String(scene.id));
 
         if (!card) {
             // NODO NUEVO: Instanciación Completa

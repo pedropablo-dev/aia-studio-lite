@@ -27,6 +27,36 @@ function triggerAutoSave() {
  * Construye el payload completo y lo envía al backend SQLite.
  * Sustituye a 'saveProjectSafe' y elimina completamente IndexedDB.
  */
+// ================================================================
+// TESTIGO VISUAL DE INTEGRIDAD DE BASE DE DATOS
+// ================================================================
+
+/**
+ * Muestra un badge persistente en la cabecera avisando que el último guardado falló.
+ * Se elimina automáticamente cuando el guardado posterior tiene éxito.
+ */
+function showDbSyncWarning() {
+    if (document.getElementById('db-sync-warning')) return; // Ya existe
+    const badge = document.createElement('div');
+    badge.id = 'db-sync-warning';
+    badge.title = 'El último intento de guardar en la base de datos falló. Los cambios solo están en RAM.';
+    badge.style.cssText = [
+        'position:fixed', 'bottom:16px', 'right:16px', 'z-index:99999',
+        'background:#b71c1c', 'color:#fff', 'font-size:0.78rem',
+        'padding:6px 12px', 'border-radius:6px',
+        'box-shadow:0 2px 8px rgba(0,0,0,0.6)',
+        'display:flex', 'align-items:center', 'gap:6px',
+        'cursor:default', 'user-select:none'
+    ].join(';');
+    badge.textContent = '⚠️ Sin guardar (Error de Disco)';
+    document.body.appendChild(badge);
+}
+
+function hideDbSyncWarning() {
+    const badge = document.getElementById('db-sync-warning');
+    if (badge) badge.remove();
+}
+
 async function saveState() {
     if (!scenes || !Array.isArray(scenes)) {
         console.error("[Storage] Abortando guardado: escenas corruptas o nulas.");
@@ -55,15 +85,18 @@ async function saveState() {
 
     try {
         await liteSaveProjectApi(payload);
-        // showToast('Proyecto guardado', 'success'); // Silenced per request
+        // Guardado exitoso: eliminar badge de advertencia si estaba visible
+        hideDbSyncWarning();
 
-        // Limpiamos errores previos si los hubiera
+        // Limpiamos errores previos del toast si los hubiera
         const toastEl = document.getElementById("toast");
         if (toastEl && toastEl.innerText.includes("Desconexión")) {
             toastEl.className = "toast";
         }
     } catch (error) {
         console.error("[Storage] Fallo al guardar en SQLite:", error);
+        // Mostrar badge persistente (más visible que el toast que desaparece en 1.5s)
+        showDbSyncWarning();
         showToast("❌ Error crítico: Desconexión del Servidor local", "error");
     }
 }
