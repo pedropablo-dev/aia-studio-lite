@@ -354,7 +354,7 @@ async function openQuickFileModal(sceneId, subpath = '') {
         const bar = document.getElementById('lite-breadcrumb');
         if (bar) {
             const badge = document.createElement('span');
-            badge.style.cssText = 'margin-left:10px;padding:2px 8px;background:#ff9100;color:#000;border-radius:4px;font-size:0.7rem;font-weight:700;letter-spacing:0.5px;vertical-align:middle;';
+            badge.style.cssText = 'margin-left: auto; padding:2px 8px;background:#ff9100;color:#000;border-radius:4px;font-size:0.7rem;font-weight:700;letter-spacing:0.5px;vertical-align:middle;';
             badge.textContent = '📂 Modo Organización';
             bar.appendChild(badge);
         }
