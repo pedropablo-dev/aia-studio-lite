@@ -60,7 +60,7 @@ function render() {
                 const timeStr = new Date(scene.startTime * 1000).toISOString().substr(11, 8);
                 timeBadge = `<div class="time-badge" style="color:#ffb74d; font-size:0.65rem; margin-right:6px; font-weight:bold; white-space:nowrap;">⏱ ${timeStr}</div>`;
             }
-            labelInner = `<div style="display:flex; align-items:center; gap:4px; width:100%; cursor:pointer;" title="Clic para copiar: ${shortFileName}" onclick="copyLinkedText('${safeShortFileName}')"><span style="color:${linkColor}; flex-shrink:0;">🔗</span><span class="linked-file-name" style="color:${linkColor}; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex:1; min-width:0;">${scene.linkedFile}</span>${timeBadge}</div>`;
+            labelInner = `<div class="btn-copy-linked" data-filename="${safeShortFileName}" style="display:flex; align-items:center; gap:4px; width:100%; cursor:pointer;" title="Clic para copiar: ${shortFileName}"><span style="color:${linkColor}; flex-shrink:0;">🔗</span><span class="linked-file-name" style="color:${linkColor}; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex:1; min-width:0;">${scene.linkedFile}</span>${timeBadge}</div>`;
         } else {
             labelInner = `<span style="opacity:0; user-select:none;">&nbsp;</span>`;
         }
@@ -78,6 +78,7 @@ function render() {
             card = document.createElement("div");
             card.className = `scene-card ${scene.done ? 'completed' : ''} ${isSelected ? 'selected' : ''}`;
             card.dataset.id = scene.id;
+            card.dataset.index = index;
             if (fileType) card.dataset.type = fileType;
             card.style.borderTopColor = scene.color;
             card.style.background = `linear-gradient(180deg, ${scene.color}11 0%, #1e1e1e 20%)`;
@@ -91,14 +92,14 @@ function render() {
                     <div class="header-left" style="flex-direction:column; align-items:flex-start; gap:0; width: 100%;">
                         <div style="display:flex; align-items:center; width:100%; justify-content: space-between;">
                              <div style="display:flex; align-items:center; gap:8px; flex:1; min-width: 0;">
-                                <span class="drag-handle" draggable="true" ondragstart="handleDragStart(event, ${index})">⋮⋮</span>
+                                <span class="drag-handle" draggable="true" data-index="${index}">⋮⋮</span>
                                 <span class="scene-number">#${index + 1}</span>
-                                <input type="text" class="scene-title-input" title="${scene.title || ''}" placeholder="Título..." value="${scene.title || ''}" oninput="updateData('${scene.id}', 'title', this.value)" style="text-overflow: ellipsis; overflow: hidden; white-space: nowrap; min-width: 0; flex: 1;">
+                                <input type="text" class="scene-title-input" title="${scene.title || ''}" placeholder="Título..." value="${scene.title || ''}" data-id="${scene.id}" style="text-overflow: ellipsis; overflow: hidden; white-space: nowrap; min-width: 0; flex: 1;">
                              </div>
                              
                              <div class="card-controls">
-                                <div class="color-picker-trigger" style="background-color:${scene.color}" onclick="openQuickColorModal('${scene.id}')" title="Color"></div>
-                                <button class="btn-danger" style="padding:2px 8px; border-radius:4px;" onclick="deleteScene('${scene.id}')">✕</button>
+                                <div class="color-picker-trigger" style="background-color:${scene.color}" data-id="${scene.id}" title="Color"></div>
+                                <button class="btn-danger btn-delete-scene" style="padding:2px 8px; border-radius:4px;" data-id="${scene.id}">✕</button>
                              </div>
                         </div>
                         ${linkedLabel}
@@ -106,7 +107,7 @@ function render() {
                 </div>
 
                 <div class="drop-zone ${scene.linkedFile && !/\.(wav|mp3|flac|ogg|m4a|aac)$/i.test(scene.linkedFile) ? 'has-image' : (imgSrc ? 'has-image' : '')}" 
-                     ondragover="event.preventDefault()" ondrop="handleImageDrop(event, '${scene.id}')">
+                     data-id="${scene.id}">
                     ${(scene.linkedFile && /\.(wav|mp3|flac|ogg|m4a|aac)$/i.test(scene.linkedFile)) ? `
                         <div class="audio-wrap" style="width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; background:#1a1a1a;">
                              <div style="font-size:1.8rem; margin-bottom:0;">🎵</div>
@@ -118,60 +119,61 @@ function render() {
                     ` : `
                         <span>Imagen</span><img src="${imgSrc}" id="img-${scene.id}">
                     `}
-                    <input type="file" id="file-${scene.id}" class="hidden-file-input" accept="image/*" onchange="handleImageSelect(this, '${scene.id}')">
+                    <input type="file" id="file-${scene.id}" class="hidden-file-input" accept="image/*" data-id="${scene.id}">
                 </div>
 
                 <div class="full-row" style="display:flex; align-items:center; gap:6px; margin-bottom:12px;">
                     <div class="time-box-wrapper" style="display:flex; align-items:center; background:#222; border:1px solid ${timeColor === '#e0e0e0' ? '#444' : timeColor + '66'}; border-radius:4px; padding:0 8px; height: 28px; box-sizing: border-box;">
                         <span style="font-size:0.9rem; margin-right:5px; opacity:0.7;">⏱</span>
-                        <input type="number" class="time-inp" value="${scene.duration}" min="0" step="0.1" style="width:50px; text-align:center; border:none; background:transparent; color:${timeColor}; font-weight: normal; font-size: 0.85rem; padding:0; font-family: inherit;" oninput="updateData('${scene.id}', 'duration', this.value)" title="${timeTitle}">
+                        <input type="number" class="time-inp" value="${scene.duration}" min="0" step="0.1" style="width:50px; text-align:center; border:none; background:transparent; color:${timeColor}; font-weight: normal; font-size: 0.85rem; padding:0; font-family: inherit;" data-id="${scene.id}" title="${timeTitle}">
                         <span style="font-size:0.75rem; color:#666; margin-left:2px;">s</span>
-                        <div class="time-icon-wrapper" onclick="toggleTimingMode('${scene.id}')" style="cursor:pointer; font-size:0.75rem; margin-left:6px; opacity:0.8; display:flex; align-items:center;" title="${mode === 'auto' ? 'Clic para Bloquear' : 'Clic para Desbloquear'}">${timeIcon}</div>
+                        <div class="time-icon-wrapper btn-toggle-timing" data-id="${scene.id}" style="cursor:pointer; font-size:0.75rem; margin-left:6px; opacity:0.8; display:flex; align-items:center;" title="${mode === 'auto' ? 'Clic para Bloquear' : 'Clic para Desbloquear'}">${timeIcon}</div>
                     </div>
 
-                    <button onclick="openTimeMenu(event, '${scene.id}')" title="Herramientas de Tiempo" style="height: 28px; width: 28px; padding: 0; display: flex; align-items: center; justify-content: center; background: #222; border: 1px solid #444; border-radius: 4px; font-size: 0.9rem; cursor: pointer;">⚡</button>
+                    <button class="btn-time-menu" data-id="${scene.id}" title="Herramientas de Tiempo" style="height: 28px; width: 28px; padding: 0; display: flex; align-items: center; justify-content: center; background: #222; border: 1px solid #444; border-radius: 4px; font-size: 0.9rem; cursor: pointer;">⚡</button>
 
-                    <div class="speaker-badge" onclick="openQuickSpeakerModal('${scene.id}')" style="flex-grow:0; margin-left:auto; width:135px;">
+                    <div class="speaker-badge" data-id="${scene.id}" style="flex-grow:0; margin-left:auto; width:135px;">
                         <div class="speaker-dot" style="background-color: ${spkColor}"></div>
                         <span class="speaker-name">${spkName}</span>
                     </div>
-                    <button title="Opciones de Reset" class="view-btn" style="padding: 0 2px; margin-right: -2px; border: none; background: transparent; font-size: 1.1rem; flex-shrink: 0; color: #aaa; cursor: pointer;" onclick="openResetMenu(event, '${scene.id}')">↺</button>
-                    <button class="check-btn" onclick="toggleCheck('${scene.id}')" title="Listo (Shift+Espacio)">${scene.done ? '✓' : ''}</button>
+                    <button title="Opciones de Reset" class="view-btn btn-reset-menu" data-id="${scene.id}" style="padding: 0 2px; margin-right: -2px; border: none; background: transparent; font-size: 1.1rem; flex-shrink: 0; color: #aaa; cursor: pointer;">↺</button>
+                    <button class="check-btn" data-id="${scene.id}" title="Listo (Shift+Espacio)">${scene.done ? '✓' : ''}</button>
                 </div>
                 
                 <div class="tech-row">
-                    <select class="shot-sel" onchange="updateData('${scene.id}', 'shot', this.value)">${presetShots.map(t => `<option ${t === scene.shot ? 'selected' : ''}>${t}</option>`).join('')}</select>
-                    <select class="move-sel" onchange="updateData('${scene.id}', 'move', this.value)">${presetMoves.map(m => `<option ${m === scene.move ? 'selected' : ''}>${m}</option>`).join('')}</select>
+                    <select class="shot-sel" data-id="${scene.id}">${presetShots.map(t => `<option ${t === scene.shot ? 'selected' : ''}>${t}</option>`).join('')}</select>
+                    <select class="move-sel" data-id="${scene.id}">${presetMoves.map(m => `<option ${m === scene.move ? 'selected' : ''}>${m}</option>`).join('')}</select>
                 </div>
 
-                <textarea class="desc-textarea" placeholder="Descripción breve..." oninput="updateData('${scene.id}', 'description', this.value)">${scene.description}</textarea>
+                <textarea class="desc-textarea" placeholder="Descripción breve..." data-id="${scene.id}">${scene.description}</textarea>
 
                 <div class="script-area-container">
-                    <textarea class="script-preview" placeholder="Diálogo..." oninput="updateData('${scene.id}', 'script', this.value)">${scene.script}</textarea>
-                    <button class="expand-btn" onclick="openModal('${scene.id}')" title="Expandir (Shift+O)">⤢</button>
+                    <textarea class="script-preview" placeholder="Diálogo..." data-id="${scene.id}">${scene.script}</textarea>
+                    <button class="expand-btn view-modal-btn" data-id="${scene.id}" title="Expandir (Shift+O)">⤢</button>
                 </div>
 
                 <div class="move-controls" style="display:flex; justify-content: space-between; align-items: center; margin-top: 10px; margin-bottom: 10px;">
                     <div class="move-group">
-                        <button ${index === 0 ? 'disabled' : ''} onclick="moveScene(${index}, -1)" title="Mover a la izquierda (Ctrl+←)">←</button>
-                        <button class="dup-btn" onclick="openAddSceneMenu(event, '${scene.id}', -1)">+</button>
+                        <button class="btn-move-left" ${index === 0 ? 'disabled' : ''} data-index="${index}" title="Mover a la izquierda (Ctrl+←)">←</button>
+                        <button class="dup-btn btn-dup-left" data-id="${scene.id}">+</button>
                     </div>
                     <div style="display:flex; gap:5px;">
-                        <button onclick="projectState.selectedId='${scene.id}'; render(); openQuickFileModal('${scene.id}')" title="Vincular archivo multimedia (Ctrl+L)" style="background:#222; border:1px solid #444; color:#ccc; width:30px; height:28px; border-radius:4px; display:flex; align-items:center; justify-content:center; cursor:pointer;">🔗</button>
+                        <button class="btn-link-media" data-id="${scene.id}" title="Vincular archivo multimedia (Ctrl+L)" style="background:#222; border:1px solid #444; color:#ccc; width:30px; height:28px; border-radius:4px; display:flex; align-items:center; justify-content:center; cursor:pointer;">🔗</button>
                     </div>
                     <div class="move-group">
-                        <button class="dup-btn" onclick="openAddSceneMenu(event, '${scene.id}', 1)">+</button>
-                        <button ${index === projectState.scenes.length - 1 ? 'disabled' : ''} onclick="moveScene(${index}, 1)" title="Mover a la derecha (Ctrl+→)">→</button>
+                        <button class="dup-btn btn-dup-right" data-id="${scene.id}">+</button>
+                        <button class="btn-move-right" ${index === projectState.scenes.length - 1 ? 'disabled' : ''} data-index="${index}" title="Mover a la derecha (Ctrl+→)">→</button>
                     </div>
                 </div>
 
-                <div class="section-bar" style="background-color: ${scene.sectionColor || 'transparent'}; border-radius: 0 0 4px 4px; margin-top:0;" onclick="openQuickSectionModal('${scene.id}')">
+                <div class="section-bar qt-section-btn" style="background-color: ${scene.sectionColor || 'transparent'}; border-radius: 0 0 4px 4px; margin-top:0;" data-id="${scene.id}">
                     <span class="section-label" style="color: ${scene.sectionName === 'SECCIÓN' ? '#666' : '#222'}">${scene.sectionName}</span>
                 </div>
             `;
         } else {
             // NODO VIVO: Mutación Quirúrgica
             card.className = `scene-card ${scene.done ? 'completed' : ''} ${isSelected ? 'selected' : ''}`;
+            card.dataset.index = index;
             if (fileType) card.dataset.type = fileType; else delete card.dataset.type;
             card.style.borderTopColor = scene.color;
             card.style.background = `linear-gradient(180deg, ${scene.color}11 0%, #1e1e1e 20%)`;
@@ -221,10 +223,10 @@ function render() {
 
                     let currentIsAudio = dropZone.querySelector('.audio-wrap') !== null;
                     if (isAudio && !currentIsAudio) {
-                        dropZone.innerHTML = `<div class="audio-wrap" style="width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; background:#1a1a1a;"><div style="font-size:1.8rem; margin-bottom:0;">🎵</div></div><img src="" id="img-${scene.id}" style="display:none"><input type="file" id="file-${scene.id}" class="hidden-file-input" accept="image/*" onchange="handleImageSelect(this, '${scene.id}')">`;
+                        dropZone.innerHTML = `<div class="audio-wrap" style="width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; background:#1a1a1a;"><div style="font-size:1.8rem; margin-bottom:0;">🎵</div></div><img src="" id="img-${scene.id}" style="display:none"><input type="file" id="file-${scene.id}" class="hidden-file-input" accept="image/*" data-id="${scene.id}">`;
                     } else if (!isAudio && currentIsAudio) {
-                        if (isVideoOrImg) { dropZone.innerHTML = `<img src="${newSrc}" id="img-${scene.id}" style="width:100%; height:100%; object-fit:cover;" onerror="this.style.display='none'; this.previousElementSibling && (this.previousElementSibling.style.display='flex');"><input type="file" id="file-${scene.id}" class="hidden-file-input" accept="image/*" onchange="handleImageSelect(this, '${scene.id}')">`; }
-                        else { dropZone.innerHTML = `<span>Imagen</span><img src="${newSrc}" id="img-${scene.id}"><input type="file" id="file-${scene.id}" class="hidden-file-input" accept="image/*" onchange="handleImageSelect(this, '${scene.id}')">`; }
+                        if (isVideoOrImg) { dropZone.innerHTML = `<img src="${newSrc}" id="img-${scene.id}" style="width:100%; height:100%; object-fit:cover;" onerror="this.style.display='none'; this.previousElementSibling && (this.previousElementSibling.style.display='flex');"><input type="file" id="file-${scene.id}" class="hidden-file-input" accept="image/*" data-id="${scene.id}">`; }
+                        else { dropZone.innerHTML = `<span>Imagen</span><img src="${newSrc}" id="img-${scene.id}"><input type="file" id="file-${scene.id}" class="hidden-file-input" accept="image/*" data-id="${scene.id}">`; }
                     } else {
                         // Comparativa Crítica: evita recarga parpadeante de base64
                         const baseSrc = img.getAttribute('src');
@@ -249,15 +251,17 @@ function render() {
             const spkNameEl = card.querySelector('.speaker-name'); if (spkNameEl) spkNameEl.innerText = spkName;
             const checkBtn = card.querySelector('.check-btn'); if (checkBtn) checkBtn.innerText = scene.done ? '✓' : '';
 
-            const dragHandle = card.querySelector('.drag-handle'); if (dragHandle) { dragHandle.setAttribute('ondragstart', `handleDragStart(event, ${index})`); }
+            const dragHandle = card.querySelector('.drag-handle');
+            if (dragHandle) { dragHandle.dataset.index = index; }
+
             const moveBtns = card.querySelectorAll('.move-group button');
             if (moveBtns.length >= 4) {
                 moveBtns[0].disabled = (index === 0);
-                moveBtns[0].setAttribute('onclick', `moveScene(${index}, -1)`);
-                moveBtns[1].setAttribute('onclick', `openAddSceneMenu(event, '${scene.id}', -1)`);
-                moveBtns[2].setAttribute('onclick', `openAddSceneMenu(event, '${scene.id}', 1)`);
+                moveBtns[0].dataset.index = index;
+                moveBtns[1].dataset.id = scene.id;
+                moveBtns[2].dataset.id = scene.id;
                 moveBtns[3].disabled = (index === projectState.scenes.length - 1);
-                moveBtns[3].setAttribute('onclick', `moveScene(${index}, 1)`);
+                moveBtns[3].dataset.index = index;
             }
 
             const secBar = card.querySelector('.section-bar');
@@ -268,14 +272,10 @@ function render() {
             }
         }
 
-        // Reconexiones dinámicas invariables
-        card.onclick = (e) => toggleSelection(e, scene.id);
-        card.ondrop = (e) => handleDrop(e, index);
-        card.ondragover = (e) => e.preventDefault();
-
         // C) Reordenación Geométrica de Elementos Nativos (Asegura Drag & Drop en orden)
         container.appendChild(card);
     });
+
     document.getElementById("scene-count").innerText = projectState.scenes.length;
     if (typeof window.calculateTotalTime === 'function') window.calculateTotalTime();
     if (typeof window.updateLayoutWidth === 'function') window.updateLayoutWidth();
@@ -589,3 +589,132 @@ window.showToast = showToast;
 window.updateZoom = updateZoom;
 window.sysDialog = sysDialog;
 window.Modal = Modal;
+
+// ================================================================
+// EVENT DELEGATION (LIFECYCLE & DYNAMIC BINDS)
+// ================================================================
+document.addEventListener('DOMContentLoaded', () => {
+    const container = document.getElementById("timeline-container");
+    if (!container) return;
+
+    // --- CLICK DELEGATION ---
+    container.addEventListener('click', (e) => {
+        const target = e.target;
+
+        let el = target.closest('.btn-copy-linked');
+        if (el) { if (typeof window.copyLinkedText === 'function') window.copyLinkedText(el.dataset.filename); return; }
+
+        el = target.closest('.color-picker-trigger');
+        if (el) { if (typeof window.openQuickColorModal === 'function') window.openQuickColorModal(el.dataset.id); return; }
+
+        el = target.closest('.btn-delete-scene');
+        if (el) { if (typeof window.deleteScene === 'function') window.deleteScene(el.dataset.id); return; }
+
+        el = target.closest('.btn-toggle-timing');
+        if (el) { if (typeof window.toggleTimingMode === 'function') window.toggleTimingMode(el.dataset.id); return; }
+
+        el = target.closest('.btn-time-menu');
+        if (el) { if (typeof window.openTimeMenu === 'function') window.openTimeMenu(e, el.dataset.id); return; }
+
+        el = target.closest('.speaker-badge');
+        if (el) { if (typeof window.openQuickSpeakerModal === 'function') window.openQuickSpeakerModal(el.dataset.id); return; }
+
+        el = target.closest('.btn-reset-menu');
+        if (el) { if (typeof window.openResetMenu === 'function') window.openResetMenu(e, el.dataset.id); return; }
+
+        el = target.closest('.check-btn');
+        if (el) { if (typeof window.toggleCheck === 'function') window.toggleCheck(el.dataset.id); return; }
+
+        el = target.closest('.view-modal-btn');
+        if (el) { if (typeof window.openModal === 'function') window.openModal(el.dataset.id); return; }
+
+        el = target.closest('.btn-move-left');
+        if (el) { if (typeof window.moveScene === 'function') window.moveScene(parseInt(el.dataset.index, 10), -1); return; }
+
+        el = target.closest('.btn-dup-left');
+        if (el) { if (typeof window.openAddSceneMenu === 'function') window.openAddSceneMenu(e, el.dataset.id, -1); return; }
+
+        el = target.closest('.btn-move-right');
+        if (el) { if (typeof window.moveScene === 'function') window.moveScene(parseInt(el.dataset.index, 10), 1); return; }
+
+        el = target.closest('.btn-dup-right');
+        if (el) { if (typeof window.openAddSceneMenu === 'function') window.openAddSceneMenu(e, el.dataset.id, 1); return; }
+
+        el = target.closest('.btn-link-media');
+        if (el) {
+            projectState.selectedId = el.dataset.id;
+            render();
+            if (typeof window.openQuickFileModal === 'function') window.openQuickFileModal(el.dataset.id);
+            return;
+        }
+
+        el = target.closest('.qt-section-btn');
+        if (el) { if (typeof window.openQuickSectionModal === 'function') window.openQuickSectionModal(el.dataset.id); return; }
+
+        el = target.closest('.scene-card');
+        if (el) {
+            if (typeof window.toggleSelection === 'function') window.toggleSelection(e, el.dataset.id);
+        }
+    });
+
+    // --- CHANGE DELEGATION ---
+    container.addEventListener('change', (e) => {
+        const target = e.target;
+
+        let el = target.closest('.hidden-file-input');
+        if (el) { if (typeof window.handleImageSelect === 'function') window.handleImageSelect(el, el.dataset.id); return; }
+
+        el = target.closest('.shot-sel');
+        if (el) { if (typeof window.updateData === 'function') window.updateData(el.dataset.id, 'shot', el.value); return; }
+
+        el = target.closest('.move-sel');
+        if (el) { if (typeof window.updateData === 'function') window.updateData(el.dataset.id, 'move', el.value); return; }
+    });
+
+    // --- INPUT DELEGATION ---
+    container.addEventListener('input', (e) => {
+        const target = e.target;
+
+        let el = target.closest('.scene-title-input');
+        if (el) { if (typeof window.updateData === 'function') window.updateData(el.dataset.id, 'title', el.value); return; }
+
+        el = target.closest('.time-inp');
+        if (el) { if (typeof window.updateData === 'function') window.updateData(el.dataset.id, 'duration', el.value); return; }
+
+        el = target.closest('.desc-textarea');
+        if (el) { if (typeof window.updateData === 'function') window.updateData(el.dataset.id, 'description', el.value); return; }
+
+        el = target.closest('.script-preview');
+        if (el) { if (typeof window.updateData === 'function') window.updateData(el.dataset.id, 'script', el.value); return; }
+    });
+
+    // --- DRAG & DROP DELEGATION ---
+    container.addEventListener('dragstart', (e) => {
+        const target = e.target;
+        let el = target.closest('.drag-handle');
+        if (el) { if (typeof window.handleDragStart === 'function') window.handleDragStart(e, parseInt(el.dataset.index, 10)); }
+    });
+
+    container.addEventListener('dragover', (e) => {
+        if (e.target.closest('.scene-card') || e.target.closest('.drop-zone')) {
+            e.preventDefault();
+        }
+    });
+
+    container.addEventListener('drop', (e) => {
+        const target = e.target;
+        let dropZone = target.closest('.drop-zone');
+        if (dropZone) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (typeof window.handleImageDrop === 'function') window.handleImageDrop(e, dropZone.dataset.id);
+            return;
+        }
+
+        let card = target.closest('.scene-card');
+        if (card) {
+            e.preventDefault();
+            if (typeof window.handleDrop === 'function') window.handleDrop(e, parseInt(card.dataset.index, 10));
+        }
+    });
+});

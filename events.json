@@ -1,0 +1,198 @@
+[
+  {
+    "line": 6,
+    "tag": "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">"
+  },
+  {
+    "line": 39,
+    "tag": "<button class=\"history-btn\" onclick=\"undo()\" title=\"Deshacer (Ctrl+Z)\">"
+  },
+  {
+    "line": 40,
+    "tag": "<button class=\"history-btn\" onclick=\"redo()\" title=\"Rehacer (Ctrl+Y)\">"
+  },
+  {
+    "line": 47,
+    "tag": "<button class=\"config-gear-btn\" onclick=\"openChecklistConfig()\" title=\"Configurar Estados\">"
+  },
+  {
+    "line": 52,
+    "tag": "<button class=\"view-btn\" onclick=\"focusSelection()\" title=\"Centrar tarjeta (F)\">"
+  },
+  {
+    "line": 54,
+    "tag": "<button class=\"view-btn\" onclick=\"fitAll()\" title=\"Ver todas las tarjetas (Shift+F)\">"
+  },
+  {
+    "line": 55,
+    "tag": "<button class=\"view-btn\" onclick=\"resetView()\" title=\"Vista trabajo 100% (0)\">"
+  },
+  {
+    "line": 67,
+    "tag": "<div id=\"viewport\" onclick=\"clearSelection(event)\">"
+  },
+  {
+    "line": 109,
+    "tag": "<button onclick=\"openShortcutsModal()\" title=\"Atajos de teclado (Shift+?)\">"
+  },
+  {
+    "line": 111,
+    "tag": "<button class=\"btn-accent\" onclick=\"addScene()\" title=\"A\u00f1adir nueva escena (Alt+Enter)\">"
+  },
+  {
+    "line": 113,
+    "tag": "<button onclick=\"openColorConfig()\">"
+  },
+  {
+    "line": 114,
+    "tag": "<button onclick=\"openSectionConfig()\">"
+  },
+  {
+    "line": 115,
+    "tag": "<button onclick=\"openSpeakerConfig()\">"
+  },
+  {
+    "line": 116,
+    "tag": "<button onclick=\"openTechConfig()\">"
+  },
+  {
+    "line": 118,
+    "tag": "<button onclick=\"openExportModal('txt')\" title=\"Exportar di\u00e1logos (Alt+D)\">"
+  },
+  {
+    "line": 119,
+    "tag": "<button onclick=\"openExportModal('md')\" title=\"Exportar guion t\u00e9cnico (Alt+G)\">"
+  },
+  {
+    "line": 121,
+    "tag": "<button onclick=\"openQuickFileModal(null, '')\" title=\"Explorador Global (Alt + E)\">"
+  },
+  {
+    "line": 140,
+    "tag": "<div class=\"close-modal-x\" onclick=\"closeModal(false)\">"
+  },
+  {
+    "line": 145,
+    "tag": "<button onclick=\"closeModal(false)\">"
+  },
+  {
+    "line": 146,
+    "tag": "<button class=\"btn-accent\" onclick=\"closeModal(true)\">"
+  },
+  {
+    "line": 153,
+    "tag": "<div class=\"close-modal-x\" onclick=\"document.getElementById('color-config-modal').style.display='none'\">"
+  },
+  {
+    "line": 159,
+    "tag": "<button class=\"add-row-btn\" onclick=\"addConfigItem('color')\">"
+  },
+  {
+    "line": 161,
+    "tag": "<button onclick=\"document.getElementById('color-config-modal').style.display='none'\">"
+  },
+  {
+    "line": 162,
+    "tag": "<button class=\"btn-accent\" onclick=\"saveColorConfig()\">"
+  },
+  {
+    "line": 169,
+    "tag": "<div class=\"close-modal-x\" onclick=\"document.getElementById('section-config-modal').style.display='none'\">"
+  },
+  {
+    "line": 174,
+    "tag": "<button class=\"add-row-btn\" onclick=\"addConfigItem('section')\">"
+  },
+  {
+    "line": 176,
+    "tag": "<button onclick=\"document.getElementById('section-config-modal').style.display='none'\">"
+  },
+  {
+    "line": 177,
+    "tag": "<button class=\"btn-accent\" onclick=\"saveSectionConfig()\">"
+  },
+  {
+    "line": 184,
+    "tag": "<div class=\"close-modal-x\" onclick=\"document.getElementById('speaker-config-modal').style.display='none'\">"
+  },
+  {
+    "line": 189,
+    "tag": "<button class=\"add-row-btn\" onclick=\"addConfigItem('speaker')\">"
+  },
+  {
+    "line": 191,
+    "tag": "<button onclick=\"document.getElementById('speaker-config-modal').style.display='none'\">"
+  },
+  {
+    "line": 192,
+    "tag": "<button class=\"btn-accent\" onclick=\"saveSpeakerConfig()\">"
+  },
+  {
+    "line": 199,
+    "tag": "<div class=\"close-modal-x\" onclick=\"document.getElementById('tech-config-modal').style.display='none'\">"
+  },
+  {
+    "line": 208,
+    "tag": "<button class=\"add-row-btn\" onclick=\"addTechItem('shot')\">"
+  },
+  {
+    "line": 216,
+    "tag": "<button class=\"add-row-btn\" onclick=\"addTechItem('move')\">"
+  },
+  {
+    "line": 221,
+    "tag": "<button onclick=\"document.getElementById('tech-config-modal').style.display='none'\">"
+  },
+  {
+    "line": 222,
+    "tag": "<button class=\"btn-accent\" onclick=\"saveTechConfig()\">"
+  },
+  {
+    "line": 229,
+    "tag": "<div class=\"close-modal-x\" onclick=\"document.getElementById('checklist-config-modal').style.display='none'\">"
+  },
+  {
+    "line": 235,
+    "tag": "<button class=\"add-row-btn\" onclick=\"addChecklistRow()\">"
+  },
+  {
+    "line": 240,
+    "tag": "<button class=\"btn-accent\" onclick=\"saveChecklistConfig()\">"
+  },
+  {
+    "line": 247,
+    "tag": "<div class=\"close-modal-x\" onclick=\"document.getElementById('quick-color-modal').style.display='none'\">"
+  },
+  {
+    "line": 270,
+    "tag": "<div class=\"close-modal-x\" onclick=\"document.getElementById('quick-section-modal').style.display='none'\">"
+  },
+  {
+    "line": 280,
+    "tag": "<div class=\"close-modal-x\" onclick=\"document.getElementById('quick-speaker-modal').style.display='none'\">"
+  },
+  {
+    "line": 291,
+    "tag": "<div class=\"close-modal-x\" onclick=\"closeLiteFileModal()\">"
+  },
+  {
+    "line": 300,
+    "tag": "<span class=\"crumb\" onclick=\"openQuickFileModal(currentFileSceneId, '')\">"
+  },
+  {
+    "line": 338,
+    "tag": "<button onclick=\"closeLiteFileModal()\">"
+  },
+  {
+    "line": 348,
+    "tag": "<div class=\"close-modal-x\" onclick=\"document.getElementById('media-config-modal').style.display='none'\">"
+  },
+  {
+    "line": 423,
+    "tag": "<div class=\"close-modal-x\" onclick=\"closeShortcutsModal()\">"
+  },
+  {
+    "line": 445,
+    "tag": "<button onclick=\"toggleTimelineOutline()\" class=\"btn-danger\">"
+  }
+]

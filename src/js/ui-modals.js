@@ -310,3 +310,62 @@ window.focusSelection = focusSelection;
 window.centerOnIndex = centerOnIndex;
 window.openShortcutsModal = openShortcutsModal;
 window.closeShortcutsModal = closeShortcutsModal;
+
+// ================================================================
+// EVENT BINDINGS (ECMA MODULES MIGRATION)
+// ================================================================
+document.addEventListener('DOMContentLoaded', () => {
+    // Zoom Controls
+    document.getElementById('btn-zoom-focus')?.addEventListener('click', focusSelection);
+    document.getElementById('btn-zoom-fit')?.addEventListener('click', fitAll);
+    document.getElementById('btn-zoom-reset')?.addEventListener('click', resetView);
+    document.getElementById('zoom-slider')?.addEventListener('input', (e) => manualZoom(e.target.value));
+
+    // Global Config Modals (Footer)
+    document.getElementById('btn-config-checklist')?.addEventListener('click', openChecklistConfig);
+    document.getElementById('btn-open-color-config')?.addEventListener('click', openColorConfig);
+    document.getElementById('btn-open-section-config')?.addEventListener('click', openSectionConfig);
+    document.getElementById('btn-open-speaker-config')?.addEventListener('click', openSpeakerConfig);
+    document.getElementById('btn-open-tech-config')?.addEventListener('click', openTechConfig);
+    document.getElementById('btn-shortcuts')?.addEventListener('click', openShortcutsModal);
+
+    // Close / Action buttons inside Modals
+    // COLOR
+    document.getElementById('btn-close-color-config-x')?.addEventListener('click', () => { document.getElementById('color-config-modal').style.display = 'none'; });
+    document.getElementById('btn-close-color-config-cancel')?.addEventListener('click', () => { document.getElementById('color-config-modal').style.display = 'none'; });
+    document.getElementById('btn-save-color-config')?.addEventListener('click', saveColorConfig);
+    document.getElementById('btn-add-color-config')?.addEventListener('click', () => addConfigItem('color'));
+
+    // SECTION
+    document.getElementById('btn-close-section-config-x')?.addEventListener('click', () => { document.getElementById('section-config-modal').style.display = 'none'; });
+    document.getElementById('btn-close-section-config-cancel')?.addEventListener('click', () => { document.getElementById('section-config-modal').style.display = 'none'; });
+    document.getElementById('btn-save-section-config')?.addEventListener('click', saveSectionConfig);
+    document.getElementById('btn-add-section-config')?.addEventListener('click', () => addConfigItem('section'));
+
+    // SPEAKER
+    document.getElementById('btn-close-speaker-config-x')?.addEventListener('click', () => { document.getElementById('speaker-config-modal').style.display = 'none'; });
+    document.getElementById('btn-close-speaker-config-cancel')?.addEventListener('click', () => { document.getElementById('speaker-config-modal').style.display = 'none'; });
+    document.getElementById('btn-save-speaker-config')?.addEventListener('click', saveSpeakerConfig);
+    document.getElementById('btn-add-speaker-config')?.addEventListener('click', () => addConfigItem('speaker'));
+
+    // TECH
+    document.getElementById('btn-close-tech-config-x')?.addEventListener('click', () => { document.getElementById('tech-config-modal').style.display = 'none'; });
+    document.getElementById('btn-close-tech-config-cancel')?.addEventListener('click', () => { document.getElementById('tech-config-modal').style.display = 'none'; });
+    document.getElementById('btn-save-tech-config')?.addEventListener('click', saveTechConfig);
+    document.getElementById('btn-add-tech-shot')?.addEventListener('click', () => addTechItem('shot'));
+    document.getElementById('btn-add-tech-move')?.addEventListener('click', () => addTechItem('move'));
+
+    // CHECKLIST
+    document.getElementById('btn-close-checklist-config-x')?.addEventListener('click', () => { document.getElementById('checklist-config-modal').style.display = 'none'; });
+    document.getElementById('btn-close-checklist-config-cancel')?.addEventListener('click', () => { document.getElementById('checklist-config-modal').style.display = 'none'; });
+    document.getElementById('btn-save-checklist-config')?.addEventListener('click', saveChecklistConfig);
+    document.getElementById('btn-add-checklist-config')?.addEventListener('click', addChecklistRow);
+
+    // QUICK MODALS (Close only)
+    document.getElementById('btn-close-quick-color-x')?.addEventListener('click', () => { document.getElementById('quick-color-modal').style.display = 'none'; });
+    document.getElementById('btn-close-quick-section-x')?.addEventListener('click', () => { document.getElementById('quick-section-modal').style.display = 'none'; });
+    document.getElementById('btn-close-quick-speaker-x')?.addEventListener('click', () => { document.getElementById('quick-speaker-modal').style.display = 'none'; });
+
+    // SHORTCUTS
+    document.getElementById('btn-close-shortcuts-x')?.addEventListener('click', closeShortcutsModal);
+});

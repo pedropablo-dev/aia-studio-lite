@@ -36,35 +36,34 @@
         </div>
 
         <div class="header-history-controls">
-            <button class="history-btn" onclick="undo()" title="Deshacer (Ctrl+Z)">↩</button>
-            <button class="history-btn" onclick="redo()" title="Rehacer (Ctrl+Y)">↪</button>
+            <button id="btn-history-undo" class="history-btn" title="Deshacer (Ctrl+Z)">↩</button>
+            <button id="btn-history-redo" class="history-btn" title="Rehacer (Ctrl+Y)">↪</button>
         </div>
 
         <div class="vertical-separator"></div>
 
         <div class="header-checklist-container" id="global-checklist-container">
         </div>
-        <button class="config-gear-btn" onclick="openChecklistConfig()" title="Configurar Estados">⚙️</button>
+        <button id="btn-config-checklist" class="config-gear-btn" title="Configurar Estados">⚙️</button>
 
         <div class="vertical-separator"></div>
 
         <div class="zoom-controls">
-            <button class="view-btn" onclick="focusSelection()" title="Centrar tarjeta (F)">CENTRAR</button>
+            <button id="btn-zoom-focus" class="view-btn" title="Centrar tarjeta (F)">CENTRAR</button>
             <div style="width:1px; height:20px; background:#444; margin:0 5px;"></div>
-            <button class="view-btn" onclick="fitAll()" title="Ver todas las tarjetas (Shift+F)">FIT ZOOM</button>
-            <button class="view-btn" onclick="resetView()" title="Vista trabajo 100% (0)">RESTAURAR</button>
+            <button id="btn-zoom-fit" class="view-btn" title="Ver todas las tarjetas (Shift+F)">FIT ZOOM</button>
+            <button id="btn-zoom-reset" class="view-btn" title="Vista trabajo 100% (0)">RESTAURAR</button>
             <div style="width:1px; height:20px; background:#444; margin:0 5px;"></div>
 
             <span style="font-size:0.7rem; opacity:0.6; font-weight:bold; letter-spacing:1px;">ZOOM</span>
-            <input type="range" id="zoom-slider" min="0.1" max="1.5" step="0.05" value="1"
-                oninput="manualZoom(this.value)" style="width: 70px;">
+            <input type="range" id="zoom-slider" min="0.1" max="1.5" step="0.05" value="1" style="width: 70px;">
             <span id="zoom-display">100%</span>
         </div>
 
         <!-- NUEVO MIGRADO AL PROJECT MANAGER -->
     </header>
 
-    <div id="viewport" onclick="clearSelection(event)">
+    <div id="viewport">
         <div id="timeline-container"></div>
     </div>
 
@@ -79,10 +78,9 @@
         <button id="lite-nav-start" title="Ir al inicio (Inicio / Home)"
             style="background:none; border:none; color:var(--accent); cursor:pointer; font-size:1rem; padding:0 4px;">|&lt;</button>
         <span style="font-size:0.7rem; color:#555; letter-spacing:1px; font-weight:600; flex-shrink:0;">IR A</span>
-        <input type="text" id="timeline-nav-input" placeholder="Escena # o texto…"
-            oninput="timelineNavSearch(this.value)" onkeydown="if(event.key==='Enter') timelineNavJump()" style="background:transparent; border:none; color:#ccc; font-size:0.82rem;
+        <input type="text" id="timeline-nav-input" placeholder="Escena # o texto…" style="background:transparent; border:none; color:#ccc; font-size:0.82rem;
                       width:360px; outline:none; padding:2px 4px;">
-        <button onclick="timelineNavJump()" title="Ir a escena o resultado"
+        <button id="lite-nav-jump" title="Ir a escena o resultado"
             style="background:none; border:none; color:var(--accent); cursor:pointer; font-size:1rem; padding:0 4px;">⏎</button>
         <button id="lite-nav-clear" title="Limpiar búsqueda"
             style="background:none; border:none; color:#555; cursor:pointer; font-size:0.85rem; padding:0 4px; line-height:1;">✕</button>
@@ -106,30 +104,29 @@
     </div>
 
     <footer>
-        <button onclick="openShortcutsModal()" title="Atajos de teclado (Shift+?)">⌨️</button>
+        <button id="btn-shortcuts" title="Atajos de teclado (Shift+?)">⌨️</button>
         <div style="width: 1px; background: #444; margin: 0 10px;"></div>
-        <button class="btn-accent" onclick="addScene()" title="Añadir nueva escena (Alt+Enter)">+ AÑADIR ESCENA</button>
+        <button id="btn-add-scene" class="btn-accent" title="Añadir nueva escena (Alt+Enter)">+ AÑADIR ESCENA</button>
         <div style="width: 1px; background: #444; margin: 0 10px;"></div>
-        <button onclick="openColorConfig()">🎞️ Tipo Visual</button>
-        <button onclick="openSectionConfig()">🚥 Secciones</button>
-        <button onclick="openSpeakerConfig()">🗣️ Hablantes</button>
-        <button onclick="openTechConfig()">🎥 Técnica</button>
+        <button id="btn-open-color-config">🎞️ Tipo Visual</button>
+        <button id="btn-open-section-config">🚥 Secciones</button>
+        <button id="btn-open-speaker-config">🗣️ Hablantes</button>
+        <button id="btn-open-tech-config">🎥 Técnica</button>
         <div style="width: 1px; background: #444; margin: 0 10px;"></div>
-        <button onclick="openExportModal('txt')" title="Exportar diálogos (Alt+D)">📄 Diálogos (.txt)</button>
-        <button onclick="openExportModal('md')" title="Exportar guion técnico (Alt+G)">⬇️ Guion (.md)</button>
+        <button id="btn-export-txt" title="Exportar diálogos (Alt+D)">📄 Diálogos (.txt)</button>
+        <button id="btn-export-md" title="Exportar guion técnico (Alt+G)">⬇️ Guion (.md)</button>
         <!-- JSON LEGACY BOTONES ELIMINADOS -->
-        <button onclick="openQuickFileModal(null, '')" title="Explorador Global (Alt + E)">📂 Explorador</button>
-        <button id="toggle-outline-btn" onclick="toggleTimelineOutline()"
-            title="Ver esquema de tarjetas (Ctrl+Enter)">🚩
+        <button id="btn-quick-file-global" title="Explorador Global (Alt + E)">📂 Explorador</button>
+        <button id="toggle-outline-btn" title="Ver esquema de tarjetas (Ctrl+Enter)">🚩
             Esquema</button>
         <div style="width: 1px; background: #444; margin: 0 10px;"></div>
-        <button onclick="openMediaConfig()" style="border: 1px solid #fca211c5; color: #fca311;"
+        <button id="btn-media-config" style="border: 1px solid #fca211c5; color: #fca311;"
             title="Configurar Ruta de Archivos">📁</button>
-        <button onclick="exportDaVinci()" style="border: 1px solid #fca211c5; color: #fca311;"
+        <button id="btn-export-davinci" style="border: 1px solid #fca211c5; color: #fca311;"
             title="Exportar XML para DaVinci Resolve">🎬</button>
-        <button onclick="exportMarkersEDL()" style="border: 1px solid #fca211c5; color: #fca311;"
+        <button id="btn-export-markers" style="border: 1px solid #fca211c5; color: #fca311;"
             title="Importar como Marcadores de Timeline">📍</button>
-        <button onclick="exportSRT()" style="border: 1px solid #fca211c5; color: #fca311;"
+        <button id="btn-export-srt" style="border: 1px solid #fca211c5; color: #fca311;"
             title="Descargar Guion como Subtítulos">📝</button>
         <!-- CARGA JSON ELIMINADA -->
     </footer>
@@ -137,59 +134,59 @@
 
     <div class="modal-overlay" id="edit-modal">
         <div class="modal-content">
-            <div class="close-modal-x" onclick="closeModal(false)">×</div>
+            <div id="btn-close-edit-modal-x" class="close-modal-x">×</div>
             <h3 style="margin:0; color:var(--accent);">Editor de Diálogo - Escena <span id="modal-scene-num"></span>
             </h3>
             <textarea id="modal-text" class="modal-textarea" placeholder="Escribe tu guion aquí..."></textarea>
             <div style="display:flex; justify-content:flex-end; gap:10px;">
-                <button onclick="closeModal(false)">Cancelar</button>
-                <button class="btn-accent" onclick="closeModal(true)">GUARDAR</button>
+                <button id="btn-close-edit-modal-cancel">Cancelar</button>
+                <button id="btn-close-edit-modal-save" class="btn-accent">GUARDAR</button>
             </div>
         </div>
     </div>
 
     <div class="modal-overlay" id="color-config-modal">
         <div class="modal-content" style="height: auto; max-width: 450px; max-height: 90vh; overflow-y: auto;">
-            <div class="close-modal-x" onclick="document.getElementById('color-config-modal').style.display='none'">×
+            <div id="btn-close-color-config-x" class="close-modal-x">×
             </div>
             <h3 style="margin:0; color:var(--accent);">Configurar Tipos Visuales</h3>
             <p style="font-size:0.8rem; color:#aaa; margin-top:0;">Define los tipos visuales por defecto para tus
                 escenas.</p>
             <div id="color-rows-container"></div>
-            <button class="add-row-btn" onclick="addConfigItem('color')">+ Agregar Color</button>
+            <button id="btn-add-color-config" class="add-row-btn">+ Agregar Color</button>
             <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
-                <button onclick="document.getElementById('color-config-modal').style.display='none'">Cancelar</button>
-                <button class="btn-accent" onclick="saveColorConfig()">Aplicar y Guardar</button>
+                <button id="btn-close-color-config-cancel">Cancelar</button>
+                <button id="btn-save-color-config" class="btn-accent">Aplicar y Guardar</button>
             </div>
         </div>
     </div>
 
     <div class="modal-overlay" id="section-config-modal">
         <div class="modal-content" style="height: auto; max-width: 450px; max-height: 90vh; overflow-y: auto;">
-            <div class="close-modal-x" onclick="document.getElementById('section-config-modal').style.display='none'">×
+            <div id="btn-close-section-config-x" class="close-modal-x">×
             </div>
             <h3 style="margin:0; color:var(--accent);">Configurar Secciones</h3>
             <p style="font-size:0.8rem; color:#aaa; margin-top:0;">Define las secciones de tus escenas.</p>
             <div id="section-rows-container"></div>
-            <button class="add-row-btn" onclick="addConfigItem('section')">+ Agregar Sección</button>
+            <button id="btn-add-section-config" class="add-row-btn">+ Agregar Sección</button>
             <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
-                <button onclick="document.getElementById('section-config-modal').style.display='none'">Cancelar</button>
-                <button class="btn-accent" onclick="saveSectionConfig()">Aplicar y Guardar</button>
+                <button id="btn-close-section-config-cancel">Cancelar</button>
+                <button id="btn-save-section-config" class="btn-accent">Aplicar y Guardar</button>
             </div>
         </div>
     </div>
 
     <div class="modal-overlay" id="speaker-config-modal">
         <div class="modal-content" style="height: auto; max-width: 450px; max-height: 90vh; overflow-y: auto;">
-            <div class="close-modal-x" onclick="document.getElementById('speaker-config-modal').style.display='none'">×
+            <div id="btn-close-speaker-config-x" class="close-modal-x">×
             </div>
             <h3 style="margin:0; color:var(--accent);">Configurar Hablantes</h3>
             <p style="font-size:0.8rem; color:#aaa; margin-top:0;">Define los interlocutores.</p>
             <div id="speaker-rows-container"></div>
-            <button class="add-row-btn" onclick="addConfigItem('speaker')">+ Agregar Hablante</button>
+            <button id="btn-add-speaker-config" class="add-row-btn">+ Agregar Hablante</button>
             <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
-                <button onclick="document.getElementById('speaker-config-modal').style.display='none'">Cancelar</button>
-                <button class="btn-accent" onclick="saveSpeakerConfig()">Aplicar y Guardar</button>
+                <button id="btn-close-speaker-config-cancel">Cancelar</button>
+                <button id="btn-save-speaker-config" class="btn-accent">Aplicar y Guardar</button>
             </div>
         </div>
     </div>
@@ -258,7 +255,7 @@
                             style="background:conic-gradient(red, yellow, lime, aqua, blue, magenta, red)"></div>
                         <span>Nuevo Color Personalizado...</span>
                     </button>
-                    <input type="color" onchange="applyCustomColor(this.value)"
+                    <input type="color" id="input-quick-color-custom"
                         style="position: absolute; top:0; left:0; width:100%; height:100%; opacity:0; cursor:pointer;">
                 </div>
             </div>
@@ -302,7 +299,7 @@
 
             <!-- Search + counter row -->
             <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
-                <button onclick="toggleLiteViewMode()" title="Alternar Vista (Grid/Lista)"
+                <button id="btn-lite-explorer-toggle-view" title="Alternar Vista (Grid/Lista)"
                     style="background:#222; border:1px solid #444; color:#ccc; padding:6px 10px; border-radius:4px; cursor:pointer;">⊞
                     / ≡</button>
                 <select id="lite-sort-select" class="lite-select"
@@ -310,12 +307,10 @@
                     <option value="name">Ordenar por Nombre</option>
                     <option value="type">Ordenar por Tipo</option>
                 </select>
-                <input type="text" id="lite-file-search" oninput="filterQuickFiles()"
-                    placeholder="🔍 Buscar en toda la biblioteca..."
+                <input type="text" id="lite-file-search" placeholder="🔍 Buscar en toda la biblioteca..."
                     style="flex:1; background:#1a1a1a; border:1px solid #333; color:#fff; padding:7px 12px; border-radius:4px; font-size:0.85rem;">
                 <button id="lite-search-clear" title="Limpiar búsqueda"
-                    style="background:none; border:none; color:#888; cursor:pointer; font-size:0.9rem; padding:0 4px; line-height:1; flex-shrink:0; transition:color 0.2s;"
-                    onmouseover="this.style.color='#fff'" onmouseout="this.style.color='#888'">✕</button>
+                    style="background:none; border:none; color:#888; cursor:pointer; font-size:0.9rem; padding:0 4px; line-height:1; flex-shrink:0; transition:color 0.2s;">✕</button>
                 <span id="lite-file-count" style="font-size:0.75rem; color:#666; white-space:nowrap;">—</span>
                 <button id="btn-hist-back" disabled title="Atrás"
                     style="background:#222; border:1px solid #444; color:#ccc; padding:4px 10px; border-radius:4px; cursor:pointer; font-size:0.85rem; line-height:1; flex-shrink:0;">◀</button>
@@ -333,9 +328,9 @@
             <!-- Footer -->
             <div
                 style="display:flex; justify-content:space-between; align-items:center; margin-top:12px; padding-top:10px; border-top:1px solid #222;">
-                <button onclick="liteCreateFolder()" title="Crear nueva carpeta en el directorio actual"
+                <button id="btn-lite-explorer-create-folder" title="Crear nueva carpeta en el directorio actual"
                     style="background:#1a2a1a; border:1px solid #2a4a2a; color:#a5d6a7;">📁 Nueva Carpeta</button>
-                <button onclick="closeLiteFileModal()">Cancelar</button>
+                <button id="btn-lite-explorer-cancel">Cancelar</button>
             </div>
         </div>
     </div>
@@ -392,7 +387,7 @@
             </div>
 
             <div style="display:flex; justify-content:flex-end;">
-                <button class="btn-accent" onclick="document.getElementById('media-config-modal').style.display='none'"
+                <button id="btn-close-media-config-done" class="btn-accent"
                     style="padding: 10px 30px; border-radius:6px; font-size:0.9rem; letter-spacing:1px; box-shadow: 0 4px 15px rgba(41, 121, 255, 0.3); transition: transform 0.1s;">
                     LISTO
                 </button>
@@ -420,7 +415,7 @@
     <!-- KEYBOARD SHORTCUTS MODAL -->
     <div class="modal-overlay" id="shortcuts-modal">
         <div class="modal-content" style="max-width: 500px;">
-            <div class="close-modal-x" onclick="closeShortcutsModal()">×</div>
+            <div id="btn-close-shortcuts-x" class="close-modal-x">×</div>
             <h3 style="margin:0 0 20px 0; color:var(--accent);">⌨️ Atajos de Teclado</h3>
             <div id="shortcuts-list-container" style="overflow-y: auto; max-height: 60vh; padding-right: 20px;">
             </div>
@@ -442,7 +437,7 @@
     <div id="timeline-outline-sidebar">
         <div class="outline-header">
             <h3>🚩 Esquema de Tarjetas</h3>
-            <button onclick="toggleTimelineOutline()" class="btn-danger">✕</button>
+            <button id="btn-outline-sidebar-close" class="btn-danger">✕</button>
         </div>
         <div id="outline-list-container"></div>
     </div>

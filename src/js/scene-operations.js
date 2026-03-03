@@ -254,3 +254,11 @@ window.openAddSceneMenu = function (event, sourceId, direction = 1) {
 
     document.body.appendChild(menu);
 };
+
+// ================================================================
+// EVENT BINDINGS (ECMA MODULES MIGRATION)
+// ================================================================
+document.addEventListener('DOMContentLoaded', () => {
+    // Escenas
+    document.getElementById('btn-add-scene')?.addEventListener('click', addScene);
+});

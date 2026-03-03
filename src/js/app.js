@@ -233,7 +233,7 @@ function timelineNavSearch(query) {
     dropdown.innerHTML = _navResults.map((s, i) => {
         const num = scenes.indexOf(s) + 1;
         const preview = (s.script || s.title || '').substring(0, 60);
-        return `<div class="nav-result-item" onclick="timelineNavGoTo('${s.id}')">
+        return `<div class="nav-result-item" data-id="${s.id}">
             <b>#${num}</b> ${s.title || '(sin título)'} <span style="color:#555;">— ${preview}…</span>
         </div>`;
     }).join('');
@@ -285,10 +285,20 @@ function timelineNavGoTo(sceneId) {
     render();
 }
 
-// Close nav dropdown on click outside
+// Close nav dropdown on click outside and handle delegated clicks
 document.addEventListener('click', (e) => {
     const dropdown = document.getElementById('timeline-nav-results');
     const bar = document.getElementById('timeline-nav-bar');
+
+    const navItem = e.target.closest('.nav-result-item');
+    if (navItem) {
+        timelineNavGoTo(navItem.dataset.id);
+        if (dropdown) dropdown.style.display = 'none';
+        const input = document.getElementById('timeline-nav-input');
+        if (input) input.value = '';
+        return;
+    }
+
     if (dropdown && bar && !bar.contains(e.target)) {
         dropdown.style.display = 'none';
     }
@@ -320,6 +330,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnZoomReset = document.getElementById('btn-zoom-reset');
     if (btnZoomReset) {
         btnZoomReset.addEventListener('click', () => { updateZoom(1.0); });
+    }
+
+    const navInput = document.getElementById('timeline-nav-input');
+    if (navInput) {
+        navInput.addEventListener('input', (e) => timelineNavSearch(e.target.value));
+        navInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') timelineNavJump();
+        });
     }
 
     // Historial jerárquico del explorador de archivos
@@ -543,4 +561,50 @@ function toggleTimelineOutline() {
         }
     }
 }
+
+// ================================================================
+// EVENT BINDINGS (ECMA MODULES MIGRATION)
+// ================================================================
+document.addEventListener('DOMContentLoaded', () => {
+    // Top Bar Global Actions
+    document.getElementById('btn-history-undo')?.addEventListener('click', undo);
+    document.getElementById('btn-history-redo')?.addEventListener('click', redo);
+
+    // Viewport
+    document.getElementById('viewport')?.addEventListener('click', clearSelection);
+
+    // Footer Exporters / Media
+    function openExportTxt() { if (typeof window.openExportModal === 'function') window.openExportModal('txt'); }
+    function openExportMd() { if (typeof window.openExportModal === 'function') window.openExportModal('md'); }
+
+    document.getElementById('btn-export-txt')?.addEventListener('click', openExportTxt);
+    document.getElementById('btn-export-md')?.addEventListener('click', openExportMd);
+    document.getElementById('btn-quick-file-global')?.addEventListener('click', () => { if (typeof window.openQuickFileModal === 'function') window.openQuickFileModal(null, ''); });
+    document.getElementById('toggle-outline-btn')?.addEventListener('click', toggleTimelineOutline);
+    document.getElementById('btn-media-config')?.addEventListener('click', openMediaConfig);
+    document.getElementById('btn-export-davinci')?.addEventListener('click', () => { if (typeof window.exportDaVinci === 'function') window.exportDaVinci(); });
+    document.getElementById('btn-export-markers')?.addEventListener('click', () => { if (typeof window.exportMarkersEDL === 'function') window.exportMarkersEDL(); });
+    document.getElementById('btn-export-srt')?.addEventListener('click', () => { if (typeof window.exportSRT === 'function') window.exportSRT(); });
+
+    // Modals internal controls
+    document.getElementById('btn-close-edit-modal-x')?.addEventListener('click', () => closeModal(false));
+    document.getElementById('btn-close-edit-modal-cancel')?.addEventListener('click', () => closeModal(false));
+    document.getElementById('btn-close-edit-modal-save')?.addEventListener('click', () => closeModal(true));
+    document.getElementById('btn-close-media-config-x')?.addEventListener('click', () => { document.getElementById('media-config-modal').style.display = 'none'; });
+    document.getElementById('btn-close-media-config-done')?.addEventListener('click', () => { document.getElementById('media-config-modal').style.display = 'none'; });
+
+    // Custom Modal System bindings are inside sysDialog in app.js
+    document.getElementById('btn-outline-sidebar-close')?.addEventListener('click', toggleTimelineOutline);
+
+    // Lite file explorer direct bindings outside lite-explorer.js when used from header/footer
+    document.getElementById('btn-lite-explorer-toggle-view')?.addEventListener('click', () => { if (typeof window.toggleLiteViewMode === 'function') window.toggleLiteViewMode(); });
+    document.getElementById('lite-file-search')?.addEventListener('input', () => { if (typeof window.filterQuickFiles === 'function') window.filterQuickFiles(); });
+    document.getElementById('btn-lite-explorer-create-folder')?.addEventListener('click', () => { if (typeof window.liteCreateFolder === 'function') window.liteCreateFolder(); });
+    document.getElementById('btn-close-lite-explorer-x')?.addEventListener('click', () => { if (typeof window.closeLiteFileModal === 'function') window.closeLiteFileModal(); });
+    document.getElementById('btn-close-lite-explorer-cancel')?.addEventListener('click', () => { if (typeof window.closeLiteFileModal === 'function') window.closeLiteFileModal(); });
+
+    document.getElementById('input-quick-color-custom')?.addEventListener('change', (e) => {
+        if (typeof window.applyCustomColor === 'function') window.applyCustomColor(e.target.value);
+    });
+});
 
