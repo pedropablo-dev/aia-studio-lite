@@ -511,3 +511,8 @@ window.selectLiteFile = selectLiteFile;
 window.liteCreateFolder = liteCreateFolder;
 window.liteDeleteFolder = liteDeleteFolder;
 window.liteSortFiles = liteSortFiles;
+
+document.addEventListener('DOMContentLoaded', () => {
+    // Bind Cancel Button in Lite Explorer
+    document.getElementById('btn-close-explorer')?.addEventListener('click', closeLiteFileModal);
+});

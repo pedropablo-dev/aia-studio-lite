@@ -7,6 +7,28 @@
     <title>AIA Studio</title>
     <link rel="icon" type="image/x-icon" href="img/favicon.ico">
     <link rel="stylesheet" href="css/style.css">
+    <style>
+        /* === DYNAMIC THUMBNAIL ANIMATIONS === */
+        .thumb-loader-container.loading-spinner::after {
+            content: "";
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 24px;
+            height: 24px;
+            margin: -12px 0 0 -12px;
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            border-top-color: #4fc3f7;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
 </head>
 
 <body>
@@ -330,7 +352,7 @@
                 style="display:flex; justify-content:space-between; align-items:center; margin-top:12px; padding-top:10px; border-top:1px solid #222;">
                 <button id="btn-lite-explorer-create-folder" title="Crear nueva carpeta en el directorio actual"
                     style="background:#1a2a1a; border:1px solid #2a4a2a; color:#a5d6a7;">📁 Nueva Carpeta</button>
-                <button id="btn-lite-explorer-cancel">Cancelar</button>
+                <button id="btn-close-explorer">Cancelar</button>
             </div>
         </div>
     </div>

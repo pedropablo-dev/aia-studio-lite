@@ -19,6 +19,14 @@ window.onload = async () => {
         }
     }, { passive: false });
 
+    // ATOMIC PERSISTENCE GLOBALS (Debounced 3s inactivity)
+    document.addEventListener('input', () => {
+        if (typeof window.debouncedSaveState === 'function') window.debouncedSaveState();
+    });
+    document.addEventListener('change', () => {
+        if (typeof window.debouncedSaveState === 'function') window.debouncedSaveState();
+    });
+
     // ---> ESPERAR CARGA DE BBDD
     const loaded = await loadFromLocal();
 

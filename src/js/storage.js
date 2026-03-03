@@ -13,7 +13,7 @@ function debouncedSaveState() {
     if (debounceSaveTimer) clearTimeout(debounceSaveTimer);
     debounceSaveTimer = setTimeout(() => {
         saveState();
-    }, 1500);
+    }, 3000);
 }
 
 function triggerAutoSave() {

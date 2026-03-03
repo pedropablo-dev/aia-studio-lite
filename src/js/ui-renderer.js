@@ -114,62 +114,64 @@ function render() {
                         </div>
                         <img src="" id="img-${scene.id}" style="display:none">
                     ` : (scene.linkedFile && /\.(mp4|mov|mxf|avi|webm|jpg|jpeg|png|webp)$/i.test(scene.linkedFile)) ? `
-                        <img src="http://127.0.0.1:9999/thumbnail?path=${encodeURIComponent(scene.linkedFile)}&folder=${encodeURIComponent(document.getElementById('media-path-input')?.value || '')}" 
-                             id="img-${scene.id}" style="width:100%; height:100%; object-fit:cover;" onerror="this.style.display='none'; this.previousElementSibling && (this.previousElementSibling.style.display='flex');">
+                        <div class="thumb-loader-container" id="thumb-container-${scene.id}" style="width:100%; height:100%; position:relative; overflow:hidden; background:#111;">
+                            <img data-thumb-url="http://127.0.0.1:9999/thumbnail?path=${encodeURIComponent(scene.linkedFile)}&folder=${encodeURIComponent(document.getElementById('media-path-input')?.value || '')}" 
+                                 id="img-${scene.id}" style="width:100%; height:100%; object-fit:cover; display:none; opacity:0; transition:opacity 0.4s ease-in;" alt="Thumbnail">
+                        </div>
                     ` : `
                         <span>Imagen</span><img src="${imgSrc}" id="img-${scene.id}">
                     `}
                     <input type="file" id="file-${scene.id}" class="hidden-file-input" accept="image/*" data-id="${scene.id}">
                 </div>
 
-                <div class="full-row" style="display:flex; align-items:center; gap:6px; margin-bottom:12px;">
-                    <div class="time-box-wrapper" style="display:flex; align-items:center; background:#222; border:1px solid ${timeColor === '#e0e0e0' ? '#444' : timeColor + '66'}; border-radius:4px; padding:0 8px; height: 28px; box-sizing: border-box;">
-                        <span style="font-size:0.9rem; margin-right:5px; opacity:0.7;">⏱</span>
-                        <input type="number" class="time-inp" value="${scene.duration}" min="0" step="0.1" style="width:50px; text-align:center; border:none; background:transparent; color:${timeColor}; font-weight: normal; font-size: 0.85rem; padding:0; font-family: inherit;" data-id="${scene.id}" title="${timeTitle}">
-                        <span style="font-size:0.75rem; color:#666; margin-left:2px;">s</span>
-                        <div class="time-icon-wrapper btn-toggle-timing" data-id="${scene.id}" style="cursor:pointer; font-size:0.75rem; margin-left:6px; opacity:0.8; display:flex; align-items:center;" title="${mode === 'auto' ? 'Clic para Bloquear' : 'Clic para Desbloquear'}">${timeIcon}</div>
-                    </div>
+                        <div class="full-row" style="display:flex; align-items:center; gap:6px; margin-bottom:12px;">
+                            <div class="time-box-wrapper" style="display:flex; align-items:center; background:#222; border:1px solid ${timeColor === '#e0e0e0' ? '#444' : timeColor + '66'}; border-radius:4px; padding:0 8px; height: 28px; box-sizing: border-box;">
+                                <span style="font-size:0.9rem; margin-right:5px; opacity:0.7;">⏱</span>
+                                <input type="number" class="time-inp" value="${scene.duration}" min="0" step="0.1" style="width:50px; text-align:center; border:none; background:transparent; color:${timeColor}; font-weight: normal; font-size: 0.85rem; padding:0; font-family: inherit;" data-id="${scene.id}" title="${timeTitle}">
+                                    <span style="font-size:0.75rem; color:#666; margin-left:2px;">s</span>
+                                    <div class="time-icon-wrapper btn-toggle-timing" data-id="${scene.id}" style="cursor:pointer; font-size:0.75rem; margin-left:6px; opacity:0.8; display:flex; align-items:center;" title="${mode === 'auto' ? 'Clic para Bloquear' : 'Clic para Desbloquear'}">${timeIcon}</div>
+                            </div>
 
-                    <button class="btn-time-menu" data-id="${scene.id}" title="Herramientas de Tiempo" style="height: 28px; width: 28px; padding: 0; display: flex; align-items: center; justify-content: center; background: #222; border: 1px solid #444; border-radius: 4px; font-size: 0.9rem; cursor: pointer;">⚡</button>
+                            <button class="btn-time-menu" data-id="${scene.id}" title="Herramientas de Tiempo" style="height: 28px; width: 28px; padding: 0; display: flex; align-items: center; justify-content: center; background: #222; border: 1px solid #444; border-radius: 4px; font-size: 0.9rem; cursor: pointer;">⚡</button>
 
-                    <div class="speaker-badge" data-id="${scene.id}" style="flex-grow:0; margin-left:auto; width:135px;">
-                        <div class="speaker-dot" style="background-color: ${spkColor}"></div>
-                        <span class="speaker-name">${spkName}</span>
-                    </div>
-                    <button title="Opciones de Reset" class="view-btn btn-reset-menu" data-id="${scene.id}" style="padding: 0 2px; margin-right: -2px; border: none; background: transparent; font-size: 1.1rem; flex-shrink: 0; color: #aaa; cursor: pointer;">↺</button>
-                    <button class="check-btn" data-id="${scene.id}" title="Listo (Shift+Espacio)">${scene.done ? '✓' : ''}</button>
-                </div>
-                
-                <div class="tech-row">
-                    <select class="shot-sel" data-id="${scene.id}">${presetShots.map(t => `<option ${t === scene.shot ? 'selected' : ''}>${t}</option>`).join('')}</select>
-                    <select class="move-sel" data-id="${scene.id}">${presetMoves.map(m => `<option ${m === scene.move ? 'selected' : ''}>${m}</option>`).join('')}</select>
-                </div>
+                            <div class="speaker-badge" data-id="${scene.id}" style="flex-grow:0; margin-left:auto; width:135px;">
+                                <div class="speaker-dot" style="background-color: ${spkColor}"></div>
+                                <span class="speaker-name">${spkName}</span>
+                            </div>
+                            <button title="Opciones de Reset" class="view-btn btn-reset-menu" data-id="${scene.id}" style="padding: 0 2px; margin-right: -2px; border: none; background: transparent; font-size: 1.1rem; flex-shrink: 0; color: #aaa; cursor: pointer;">↺</button>
+                            <button class="check-btn" data-id="${scene.id}" title="Listo (Shift+Espacio)">${scene.done ? '✓' : ''}</button>
+                        </div>
 
-                <textarea class="desc-textarea" placeholder="Descripción breve..." data-id="${scene.id}">${scene.description}</textarea>
+                        <div class="tech-row">
+                            <select class="shot-sel" data-id="${scene.id}">${presetShots.map(t => `<option ${t === scene.shot ? 'selected' : ''}>${t}</option>`).join('')}</select>
+                            <select class="move-sel" data-id="${scene.id}">${presetMoves.map(m => `<option ${m === scene.move ? 'selected' : ''}>${m}</option>`).join('')}</select>
+                        </div>
 
-                <div class="script-area-container">
-                    <textarea class="script-preview" placeholder="Diálogo..." data-id="${scene.id}">${scene.script}</textarea>
-                    <button class="expand-btn view-modal-btn" data-id="${scene.id}" title="Expandir (Shift+O)">⤢</button>
-                </div>
+                        <textarea class="desc-textarea" placeholder="Descripción breve..." data-id="${scene.id}">${scene.description}</textarea>
 
-                <div class="move-controls" style="display:flex; justify-content: space-between; align-items: center; margin-top: 10px; margin-bottom: 10px;">
-                    <div class="move-group">
-                        <button class="btn-move-left" ${index === 0 ? 'disabled' : ''} data-index="${index}" title="Mover a la izquierda (Ctrl+←)">←</button>
-                        <button class="dup-btn btn-dup-left" data-id="${scene.id}">+</button>
-                    </div>
-                    <div style="display:flex; gap:5px;">
-                        <button class="btn-link-media" data-id="${scene.id}" title="Vincular archivo multimedia (Ctrl+L)" style="background:#222; border:1px solid #444; color:#ccc; width:30px; height:28px; border-radius:4px; display:flex; align-items:center; justify-content:center; cursor:pointer;">🔗</button>
-                    </div>
-                    <div class="move-group">
-                        <button class="dup-btn btn-dup-right" data-id="${scene.id}">+</button>
-                        <button class="btn-move-right" ${index === projectState.scenes.length - 1 ? 'disabled' : ''} data-index="${index}" title="Mover a la derecha (Ctrl+→)">→</button>
-                    </div>
-                </div>
+                        <div class="script-area-container">
+                            <textarea class="script-preview" placeholder="Diálogo..." data-id="${scene.id}">${scene.script}</textarea>
+                            <button class="expand-btn view-modal-btn" data-id="${scene.id}" title="Expandir (Shift+O)">⤢</button>
+                        </div>
 
-                <div class="section-bar qt-section-btn" style="background-color: ${scene.sectionColor || 'transparent'}; border-radius: 0 0 4px 4px; margin-top:0;" data-id="${scene.id}">
-                    <span class="section-label" style="color: ${scene.sectionName === 'SECCIÓN' ? '#666' : '#222'}">${scene.sectionName}</span>
-                </div>
-            `;
+                        <div class="move-controls" style="display:flex; justify-content: space-between; align-items: center; margin-top: 10px; margin-bottom: 10px;">
+                            <div class="move-group">
+                                <button class="btn-move-left" ${index === 0 ? 'disabled' : ''} data-index="${index}" title="Mover a la izquierda (Ctrl+←)">←</button>
+                                <button class="dup-btn btn-dup-left" data-id="${scene.id}">+</button>
+                            </div>
+                            <div style="display:flex; gap:5px;">
+                                <button class="btn-link-media" data-id="${scene.id}" title="Vincular archivo multimedia (Ctrl+L)" style="background:#222; border:1px solid #444; color:#ccc; width:30px; height:28px; border-radius:4px; display:flex; align-items:center; justify-content:center; cursor:pointer;">🔗</button>
+                            </div>
+                            <div class="move-group">
+                                <button class="dup-btn btn-dup-right" data-id="${scene.id}">+</button>
+                                <button class="btn-move-right" ${index === projectState.scenes.length - 1 ? 'disabled' : ''} data-index="${index}" title="Mover a la derecha (Ctrl+→)">→</button>
+                            </div>
+                        </div>
+
+                        <div class="section-bar qt-section-btn" style="background-color: ${scene.sectionColor || 'transparent'}; border-radius: 0 0 4px 4px; margin-top:0;" data-id="${scene.id}">
+                            <span class="section-label" style="color: ${scene.sectionName === 'SECCIÓN' ? '#666' : '#222'}">${scene.sectionName}</span>
+                        </div>
+                        `;
         } else {
             // NODO VIVO: Mutación Quirúrgica
             card.className = `scene-card ${scene.done ? 'completed' : ''} ${isSelected ? 'selected' : ''}`;
@@ -225,15 +227,24 @@ function render() {
                     if (isAudio && !currentIsAudio) {
                         dropZone.innerHTML = `<div class="audio-wrap" style="width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; background:#1a1a1a;"><div style="font-size:1.8rem; margin-bottom:0;">🎵</div></div><img src="" id="img-${scene.id}" style="display:none"><input type="file" id="file-${scene.id}" class="hidden-file-input" accept="image/*" data-id="${scene.id}">`;
                     } else if (!isAudio && currentIsAudio) {
-                        if (isVideoOrImg) { dropZone.innerHTML = `<img src="${newSrc}" id="img-${scene.id}" style="width:100%; height:100%; object-fit:cover;" onerror="this.style.display='none'; this.previousElementSibling && (this.previousElementSibling.style.display='flex');"><input type="file" id="file-${scene.id}" class="hidden-file-input" accept="image/*" data-id="${scene.id}">`; }
+                        if (isVideoOrImg) { dropZone.innerHTML = `<div class="thumb-loader-container" id="thumb-container-${scene.id}" style="width:100%; height:100%; position:relative; overflow:hidden; background:#111;"><img data-thumb-url="${newSrc}" id="img-${scene.id}" style="width:100%; height:100%; object-fit:cover; display:none; opacity:0; transition:opacity 0.4s ease-in;" alt="Thumbnail"></div><input type="file" id="file-${scene.id}" class="hidden-file-input" accept="image/*" data-id="${scene.id}">`; }
                         else { dropZone.innerHTML = `<span>Imagen</span><img src="${newSrc}" id="img-${scene.id}"><input type="file" id="file-${scene.id}" class="hidden-file-input" accept="image/*" data-id="${scene.id}">`; }
                     } else {
                         // Comparativa Crítica: evita recarga parpadeante de base64
-                        const baseSrc = img.getAttribute('src');
+                        const baseSrc = img.getAttribute('src') || img.dataset.thumbUrl;
                         if (baseSrc !== newSrc) {
-                            img.src = newSrc;
-                            img.setAttribute('src', newSrc);
-                            if (newSrc) img.style.display = 'block';
+                            if (isVideoOrImg) {
+                                img.dataset.thumbUrl = newSrc;
+                                delete img.dataset.polling;
+                                img.style.display = 'none';
+                                img.style.opacity = '0';
+                                const c = document.getElementById(`thumb-container-${scene.id}`);
+                                if (c) c.classList.remove('loading-spinner');
+                            } else {
+                                img.src = newSrc;
+                                img.setAttribute('src', newSrc);
+                                if (newSrc) img.style.display = 'block';
+                            }
                         }
                     }
                 }
@@ -276,6 +287,17 @@ function render() {
         container.appendChild(card);
     });
 
+    // POLLING THUMBNAILS: Disparar retries para asincronía FFmpeg
+    document.querySelectorAll('img[data-thumb-url]').forEach(img => {
+        const sceneId = img.id.replace('img-', '');
+        if (img.dataset.polling !== 'true') {
+            img.dataset.polling = 'true';
+            if (typeof window.loadThumbnail === 'function') {
+                window.loadThumbnail(sceneId, img.dataset.thumbUrl);
+            }
+        }
+    });
+
     document.getElementById("scene-count").innerText = projectState.scenes.length;
     if (typeof window.calculateTotalTime === 'function') window.calculateTotalTime();
     if (typeof window.updateLayoutWidth === 'function') window.updateLayoutWidth();
@@ -285,11 +307,11 @@ function render() {
 function renderChecklist() {
     const container = document.getElementById('global-checklist-container');
     container.innerHTML = projectState.projectChecklist.map((item, index) => `
-            <div class="checklist-item ${item.checked ? 'checked' : ''}" onclick="toggleGlobalCheck(${index})">
-                <div class="header-check-circle">${item.checked ? '✓' : ''}</div>
-                <span>${item.name}</span>
-            </div>
-        `).join('');
+                        <div class="checklist-item ${item.checked ? 'checked' : ''}" onclick="toggleGlobalCheck(${index})">
+                            <div class="header-check-circle">${item.checked ? '✓' : ''}</div>
+                            <span>${item.name}</span>
+                        </div>
+                        `).join('');
 }
 
 function sysDialog({ title = '', message = '', icon = '❓', type = 'confirm',
@@ -569,17 +591,57 @@ function generateOutlineHTML(s, i) {
     const scriptText = (s.script || s.description || 'Sin guion...').replace(/(\r\n|\n|\r)/gm, " ");
 
     return `<div class="outline-item ${s.id === projectState.selectedId ? 'active' : ''}" data-id="${s.id}" onclick="timelineNavGoTo('${s.id}')">
-            <div class="outline-left">
-                <div class="outline-thumb">${thumbHTML}</div>
-                <div class="outline-sec" style="background:${secColor}; color:${secName === 'SECCIÓN' ? '#666' : '#000'}">${secName}</div>
-            </div>
-            <div class="outline-right">
-                <div class="outline-line-1"><b>#${i + 1}</b> - ${s.title || 'Sin título'}</div>
-                <div class="outline-line-2"><span style="color:${s.color}">⬤</span> <b>${colorName}</b> - <span style="color:${linkColor}; font-weight:600;">${shortName}</span></div>
-                <div class="outline-line-3">${scriptText}</div>
-            </div>
-        </div>`;
+                                    <div class="outline-left">
+                                        <div class="outline-thumb">${thumbHTML}</div>
+                                        <div class="outline-sec" style="background:${secColor}; color:${secName === 'SECCIÓN' ? '#666' : '#000'}">${secName}</div>
+                                    </div>
+                                    <div class="outline-right">
+                                        <div class="outline-line-1"><b>#${i + 1}</b> - ${s.title || 'Sin título'}</div>
+                                        <div class="outline-line-2"><span style="color:${s.color}">⬤</span> <b>${colorName}</b> - <span style="color:${linkColor}; font-weight:600;">${shortName}</span></div>
+                                        <div class="outline-line-3">${scriptText}</div>
+                                    </div>
+                                </div>`;
 }
+
+// === ASYNC THUMBNAIL POLLING (FFmpeg 202 Handler) ===
+window.loadThumbnail = async function (sceneId, url, retries = 5) {
+    const imgEl = document.getElementById(`img-${sceneId}`);
+    if (!imgEl) return;
+    const container = document.getElementById(`thumb-container-${sceneId}`);
+
+    try {
+        const timestampedUrl = url + (url.includes('?') ? '&' : '?') + 't=' + new Date().getTime();
+        const response = await fetch(timestampedUrl);
+        if (response.status === 202) {
+            // Processing status -> Apply spinner and poll
+            if (container) container.classList.add('loading-spinner');
+            if (retries > 0) {
+                setTimeout(() => window.loadThumbnail(sceneId, url, retries - 1), 800);
+            } else {
+                if (container) container.classList.remove('loading-spinner');
+                imgEl.style.display = 'none';
+            }
+        } else if (response.ok) {
+            // Ready status -> Render object URL and fade-in
+            const blob = await response.blob();
+            const objectUrl = URL.createObjectURL(blob);
+            imgEl.src = objectUrl;
+            imgEl.style.display = 'block';
+            if (container) container.classList.remove('loading-spinner');
+
+            // Fade-in trigger
+            requestAnimationFrame(() => {
+                imgEl.style.opacity = '1';
+            });
+        } else {
+            if (container) container.classList.remove('loading-spinner');
+            imgEl.style.display = 'none';
+        }
+    } catch (e) {
+        if (container) container.classList.remove('loading-spinner');
+        imgEl.style.display = 'none';
+    }
+};
 
 // EXPOSITOR GLOBAL RETROCOMPATIBILIDAD
 window.render = render;
