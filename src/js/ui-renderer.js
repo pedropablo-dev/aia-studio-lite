@@ -1,3 +1,5 @@
+import { projectState } from './state.js';
+
 function showToast(message) {
     const toast = document.getElementById("toast");
     toast.innerText = message;
@@ -6,11 +8,11 @@ function showToast(message) {
 }
 
 function updateZoom(val) {
-    currentZoom = val;
-    document.getElementById('zoom-slider').value = currentZoom;
-    document.getElementById('zoom-display').innerText = Math.round(currentZoom * 100) + "%";
+    projectState.currentZoom = val;
+    document.getElementById('zoom-slider').value = projectState.currentZoom;
+    document.getElementById('zoom-display').innerText = Math.round(projectState.currentZoom * 100) + "%";
     const container = document.getElementById('timeline-container');
-    container.style.transform = `scale(${currentZoom})`;
+    container.style.transform = `scale(${projectState.currentZoom})`;
     updateLayoutWidth();
 }
 
@@ -18,7 +20,7 @@ function render() {
     const container = document.getElementById("timeline-container");
 
     // A) Purgado de Huérfanos
-    const validIds = new Set(scenes.map(s => s.id));
+    const validIds = new Set(projectState.scenes.map(s => s.id));
     const existingCards = Array.from(container.querySelectorAll('.scene-card'));
     existingCards.forEach(card => {
         if (!validIds.has(card.dataset.id)) {
@@ -27,15 +29,15 @@ function render() {
     });
 
     // B) Verificación y Mutación Quirúrgica
-    scenes.forEach((scene, index) => {
-        const isSelected = (scene.id === selectedId);
+    projectState.scenes.forEach((scene, index) => {
+        const isSelected = (scene.id === projectState.selectedId);
 
         let imgSrc = '';
-        if (scene.imageId && imageBank[scene.imageId]) imgSrc = imageBank[scene.imageId];
+        if (scene.imageId && projectState.imageBank[scene.imageId]) imgSrc = projectState.imageBank[scene.imageId];
         else if (scene.tempThumbnail) imgSrc = scene.tempThumbnail;
         else if (scene.imageSrc) imgSrc = scene.imageSrc;
 
-        const colorName = (presetColors.find(c => c.code === scene.color) || {}).name || '';
+        const colorName = (projectState.presetColors.find(c => c.code === scene.color) || {}).name || '';
         const spkColor = scene.speakerColor || 'transparent';
         const spkName = scene.speakerName || 'Voz';
 
@@ -155,11 +157,11 @@ function render() {
                         <button class="dup-btn" onclick="openAddSceneMenu(event, '${scene.id}', -1)">+</button>
                     </div>
                     <div style="display:flex; gap:5px;">
-                        <button onclick="selectedId='${scene.id}'; render(); openQuickFileModal('${scene.id}')" title="Vincular archivo multimedia (Ctrl+L)" style="background:#222; border:1px solid #444; color:#ccc; width:30px; height:28px; border-radius:4px; display:flex; align-items:center; justify-content:center; cursor:pointer;">🔗</button>
+                        <button onclick="projectState.selectedId='${scene.id}'; render(); openQuickFileModal('${scene.id}')" title="Vincular archivo multimedia (Ctrl+L)" style="background:#222; border:1px solid #444; color:#ccc; width:30px; height:28px; border-radius:4px; display:flex; align-items:center; justify-content:center; cursor:pointer;">🔗</button>
                     </div>
                     <div class="move-group">
                         <button class="dup-btn" onclick="openAddSceneMenu(event, '${scene.id}', 1)">+</button>
-                        <button ${index === scenes.length - 1 ? 'disabled' : ''} onclick="moveScene(${index}, 1)" title="Mover a la derecha (Ctrl+→)">→</button>
+                        <button ${index === projectState.scenes.length - 1 ? 'disabled' : ''} onclick="moveScene(${index}, 1)" title="Mover a la derecha (Ctrl+→)">→</button>
                     </div>
                 </div>
 
@@ -254,7 +256,7 @@ function render() {
                 moveBtns[0].setAttribute('onclick', `moveScene(${index}, -1)`);
                 moveBtns[1].setAttribute('onclick', `openAddSceneMenu(event, '${scene.id}', -1)`);
                 moveBtns[2].setAttribute('onclick', `openAddSceneMenu(event, '${scene.id}', 1)`);
-                moveBtns[3].disabled = (index === scenes.length - 1);
+                moveBtns[3].disabled = (index === projectState.scenes.length - 1);
                 moveBtns[3].setAttribute('onclick', `moveScene(${index}, 1)`);
             }
 
@@ -274,15 +276,15 @@ function render() {
         // C) Reordenación Geométrica de Elementos Nativos (Asegura Drag & Drop en orden)
         container.appendChild(card);
     });
-    document.getElementById("scene-count").innerText = scenes.length;
-    calculateTotalTime();
-    updateLayoutWidth();
-    if (isTimelineOutlineOpen) renderTimelineOutline();
+    document.getElementById("scene-count").innerText = projectState.scenes.length;
+    if (typeof window.calculateTotalTime === 'function') window.calculateTotalTime();
+    if (typeof window.updateLayoutWidth === 'function') window.updateLayoutWidth();
+    if (projectState.isTimelineOutlineOpen) renderTimelineOutline();
 }
 
 function renderChecklist() {
     const container = document.getElementById('global-checklist-container');
-    container.innerHTML = projectChecklist.map((item, index) => `
+    container.innerHTML = projectState.projectChecklist.map((item, index) => `
             <div class="checklist-item ${item.checked ? 'checked' : ''}" onclick="toggleGlobalCheck(${index})">
                 <div class="header-check-circle">${item.checked ? '✓' : ''}</div>
                 <span>${item.name}</span>
@@ -433,84 +435,73 @@ const Modal = {
 };
 
 function renderTimelineOutline() {
-    if (!isTimelineOutlineOpen) return;
+    if (!projectState.isTimelineOutlineOpen) return;
     const container = document.getElementById('outline-list-container');
     if (!container) return;
 
-    const htmlString = scenes.map((s, i) => {
-        const shortName = s.linkedFile ? s.linkedFile.split('/').pop() : 'Vacío';
-        const colorName = (presetColors.find(c => c.code === s.color) || {}).name || 'Sin Color';
-        const secColor = s.sectionColor || 'transparent';
-        const secName = s.sectionName || 'SECCIÓN';
-        let linkColor = '#888';
-        if (s.linkedFile) {
-            const _ext = s.linkedFile.split('.').pop().toLowerCase();
-            if (['mp4', 'mov', 'avi', 'mkv', 'mxf', 'webm'].includes(_ext)) linkColor = '#a5d6a7';
-            else if (['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp'].includes(_ext)) linkColor = '#81d4fa';
-            else if (['mp3', 'wav', 'aac', 'flac', 'ogg', 'm4a'].includes(_ext)) linkColor = '#ce93d8';
-        }
+    // Obtener nodos existentes para reconciliación (Zero-Flicker DOM Diffing)
+    const existingNodes = Array.from(container.querySelectorAll('.outline-item'));
+    const isDesynced = existingNodes.length !== projectState.scenes.length ||
+        projectState.scenes.some((s, i) => !existingNodes[i] || existingNodes[i].dataset.id !== s.id);
 
-        let thumb = '';
-        const _mediaFolder = document.getElementById('media-path-input')?.value || '';
-        if (s.linkedFile) {
-            const _ext = s.linkedFile.split('.').pop().toLowerCase();
-            const _audioExts = ['wav', 'mp3', 'flac', 'ogg', 'm4a', 'aac'];
-            if (_audioExts.includes(_ext)) {
-                thumb = `<div style="width:100%; height:100%; background:#1a1a2e; display:flex; align-items:center; justify-content:center; font-size:1.5rem;">🎵</div>`;
-            } else {
-                const _thumbUrl = `http://127.0.0.1:9999/thumbnail?path=${encodeURIComponent(s.linkedFile)}&folder=${encodeURIComponent(_mediaFolder)}`;
-                thumb = `<img src="${_thumbUrl}" style="width:100%; height:100%; object-fit:cover;" loading="lazy">`;
+    if (isDesynced) {
+        // FALLBACK: Desincronización estructural (creación, borrado o reordenación masiva) => Reconstruir DOM
+        const htmlString = projectState.scenes.map((s, i) => generateOutlineHTML(s, i)).join('');
+        container.innerHTML = htmlString;
+    } else {
+        // RECONCILIACIÓN ZERO-FLICKER: Actualizar in-place sin destruir el DOM
+        projectState.scenes.forEach((s, i) => {
+            const node = existingNodes[i];
+
+            // Reconciliación de clases (activo/inactivo)
+            const isActive = s.id === projectState.selectedId;
+            if (isActive && !node.classList.contains('active')) node.classList.add('active');
+            else if (!isActive && node.classList.contains('active')) node.classList.remove('active');
+
+            // Actualizar miniatura si es necesario
+            const thumbHTML = generateThumbnailHTML(s);
+            const thumbContainer = node.querySelector('.outline-thumb');
+            if (thumbContainer && thumbContainer.innerHTML.trim() !== thumbHTML.trim()) {
+                thumbContainer.innerHTML = thumbHTML;
             }
-        } else if (s.tempThumbnail) {
-            thumb = `<img src="${s.tempThumbnail}" style="width:100%; height:100%; object-fit:cover;">`;
-        } else if (s.imageId && imageBank[s.imageId]) {
-            // Use a cached Blob URL if available; otherwise convert Base64 → Blob URL once
-            if (!blobCache[s.imageId]) {
-                const raw = imageBank[s.imageId];
-                if (raw && raw.startsWith('data:image')) {
-                    try {
-                        const [header, b64] = raw.split(',');
-                        const mime = header.match(/:(.*?);/)[1];
-                        const byteChars = atob(b64);
-                        const byteArr = new Uint8Array(byteChars.length);
-                        for (let _b = 0; _b < byteChars.length; _b++) byteArr[_b] = byteChars.charCodeAt(_b);
-                        const blob = new Blob([byteArr], { type: mime });
-                        blobCache[s.imageId] = URL.createObjectURL(blob);
-                    } catch (_) {
-                        blobCache[s.imageId] = raw;
-                    }
-                } else {
-                    blobCache[s.imageId] = raw;
-                }
+
+            // Actualizar barra de sección
+            const secName = s.sectionName || 'SECCIÓN';
+            const secColor = s.sectionColor || 'transparent';
+            const secContainer = node.querySelector('.outline-sec');
+            if (secContainer) {
+                secContainer.style.background = secColor;
+                secContainer.style.color = secName === 'SECCIÓN' ? '#666' : '#000';
+                if (secContainer.innerText !== secName) secContainer.innerText = secName;
             }
-            thumb = `<img src="${blobCache[s.imageId]}" style="width:100%; height:100%; object-fit:cover;">`;
-        } else {
-            thumb = `<div style="width:100%; height:100%; background:#111; display:flex; align-items:center; justify-content:center; font-size:1.5rem;">🎬</div>`;
-        }
 
-        const scriptText = (s.script || s.description || 'Sin guion...').replace(/(\r\n|\n|\r)/gm, " ");
-        let checkOverlay = s.done ? `<div class="outline-thumb-check">✓</div>` : '';
+            // Actualizar líneas de texto de la derecha
+            const shortName = s.linkedFile ? s.linkedFile.split('/').pop() : 'Vacío';
+            const colorName = (projectState.presetColors.find(c => c.code === s.color) || {}).name || 'Sin Color';
+            let linkColor = '#888';
+            if (s.linkedFile) {
+                const _ext = s.linkedFile.split('.').pop().toLowerCase();
+                if (['mp4', 'mov', 'avi', 'mkv', 'mxf', 'webm'].includes(_ext)) linkColor = '#a5d6a7';
+                else if (['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp'].includes(_ext)) linkColor = '#81d4fa';
+                else if (['mp3', 'wav', 'aac', 'flac', 'ogg', 'm4a'].includes(_ext)) linkColor = '#ce93d8';
+            }
+            const scriptText = (s.script || s.description || 'Sin guion...').replace(/(\r\n|\n|\r)/gm, " ");
 
-        return `<div class="outline-item ${s.id === selectedId ? 'active' : ''}" data-id="${s.id}" onclick="timelineNavGoTo('${s.id}')">
-                <div class="outline-left">
-                    <div class="outline-thumb">
-                        ${thumb}
-                        ${checkOverlay}
-                    </div>
-                    <div class="outline-sec" style="background:${secColor}; color:${secName === 'SECCIÓN' ? '#666' : '#000'}">${secName}</div>
-                </div>
-                <div class="outline-right">
-                    <div class="outline-line-1"><b>#${i + 1}</b> - ${s.title || 'Sin título'}</div>
-                    <div class="outline-line-2"><span style="color:${s.color}">⬤</span> <b>${colorName}</b> - <span style="color:${linkColor}; font-weight:600;">${shortName}</span></div>
-                    <div class="outline-line-3">${scriptText}</div>
-                </div>
-            </div>`;
-    }).join('');
+            const line1 = node.querySelector('.outline-line-1');
+            const newTitleLine = `<b>#${i + 1}</b> - ${s.title || 'Sin título'}`;
+            if (line1 && line1.innerHTML !== newTitleLine) line1.innerHTML = newTitleLine;
 
-    console.log("[DEBUG OUTLINE] HTML Generado: ", htmlString);
-    container.innerHTML = htmlString;
+            const line2 = node.querySelector('.outline-line-2');
+            const newMetaLine = `<span style="color:${s.color}">⬤</span> <b>${colorName}</b> - <span style="color:${linkColor}; font-weight:600;">${shortName}</span>`;
+            if (line2 && line2.innerHTML !== newMetaLine) line2.innerHTML = newMetaLine;
 
-    if (selectedId) {
+            const line3 = node.querySelector('.outline-line-3');
+            if (line3 && line3.innerText !== scriptText) line3.innerText = scriptText;
+        });
+    }
+
+    // Scroll sincronizado solo si fue necesario recrear o hacer un jump fuerte
+    if (projectState.selectedId && isDesynced) {
         setTimeout(() => {
             const activeEl = container.querySelector('.outline-item.active');
             if (activeEl) activeEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -518,3 +509,83 @@ function renderTimelineOutline() {
     }
 }
 
+// === UTILS EXTRACCIÓN ZERO-FLICKER ===
+function generateThumbnailHTML(s) {
+    let thumb = '';
+    const _mediaFolder = document.getElementById('media-path-input')?.value || '';
+    if (s.linkedFile) {
+        const _ext = s.linkedFile.split('.').pop().toLowerCase();
+        const _audioExts = ['wav', 'mp3', 'flac', 'ogg', 'm4a', 'aac'];
+        if (_audioExts.includes(_ext)) {
+            thumb = `<div style="width:100%; height:100%; background:#1a1a2e; display:flex; align-items:center; justify-content:center; font-size:1.5rem;">🎵</div>`;
+        } else {
+            const _thumbUrl = `http://127.0.0.1:9999/thumbnail?path=${encodeURIComponent(s.linkedFile)}&folder=${encodeURIComponent(_mediaFolder)}`;
+            thumb = `<img src="${_thumbUrl}" style="width:100%; height:100%; object-fit:cover;" loading="lazy">`;
+        }
+    } else if (s.tempThumbnail) {
+        thumb = `<img src="${s.tempThumbnail}" style="width:100%; height:100%; object-fit:cover;">`;
+    } else if (s.imageId && projectState.imageBank[s.imageId]) {
+        if (!projectState.blobCache[s.imageId]) {
+            const raw = projectState.imageBank[s.imageId];
+            if (raw && raw.startsWith('data:image')) {
+                try {
+                    const [header, b64] = raw.split(',');
+                    const mime = header.match(/:(.*?);/)[1];
+                    const byteChars = atob(b64);
+                    const byteArr = new Uint8Array(byteChars.length);
+                    for (let _b = 0; _b < byteChars.length; _b++) byteArr[_b] = byteChars.charCodeAt(_b);
+                    const blob = new Blob([byteArr], { type: mime });
+                    projectState.setBlobCache(s.imageId, blob);
+                } catch (_) {
+                    projectState.setBlobCache(s.imageId, raw);
+                }
+            } else {
+                projectState.setBlobCache(s.imageId, raw);
+            }
+        }
+        thumb = `<img src="${projectState.blobCache[s.imageId]}" style="width:100%; height:100%; object-fit:cover;">`;
+    } else {
+        thumb = `<div style="width:100%; height:100%; background:#111; display:flex; align-items:center; justify-content:center; font-size:1.5rem;">🎬</div>`;
+    }
+
+    let checkOverlay = s.done ? `<div class="outline-thumb-check">✓</div>` : '';
+    return thumb + checkOverlay;
+}
+
+function generateOutlineHTML(s, i) {
+    const shortName = s.linkedFile ? s.linkedFile.split('/').pop() : 'Vacío';
+    const colorName = (projectState.presetColors.find(c => c.code === s.color) || {}).name || 'Sin Color';
+    const secColor = s.sectionColor || 'transparent';
+    const secName = s.sectionName || 'SECCIÓN';
+    let linkColor = '#888';
+    if (s.linkedFile) {
+        const _ext = s.linkedFile.split('.').pop().toLowerCase();
+        if (['mp4', 'mov', 'avi', 'mkv', 'mxf', 'webm'].includes(_ext)) linkColor = '#a5d6a7';
+        else if (['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp'].includes(_ext)) linkColor = '#81d4fa';
+        else if (['mp3', 'wav', 'aac', 'flac', 'ogg', 'm4a'].includes(_ext)) linkColor = '#ce93d8';
+    }
+
+    const thumbHTML = generateThumbnailHTML(s);
+    const scriptText = (s.script || s.description || 'Sin guion...').replace(/(\r\n|\n|\r)/gm, " ");
+
+    return `<div class="outline-item ${s.id === projectState.selectedId ? 'active' : ''}" data-id="${s.id}" onclick="timelineNavGoTo('${s.id}')">
+            <div class="outline-left">
+                <div class="outline-thumb">${thumbHTML}</div>
+                <div class="outline-sec" style="background:${secColor}; color:${secName === 'SECCIÓN' ? '#666' : '#000'}">${secName}</div>
+            </div>
+            <div class="outline-right">
+                <div class="outline-line-1"><b>#${i + 1}</b> - ${s.title || 'Sin título'}</div>
+                <div class="outline-line-2"><span style="color:${s.color}">⬤</span> <b>${colorName}</b> - <span style="color:${linkColor}; font-weight:600;">${shortName}</span></div>
+                <div class="outline-line-3">${scriptText}</div>
+            </div>
+        </div>`;
+}
+
+// EXPOSITOR GLOBAL RETROCOMPATIBILIDAD
+window.render = render;
+window.renderTimelineOutline = renderTimelineOutline;
+window.renderChecklist = renderChecklist;
+window.showToast = showToast;
+window.updateZoom = updateZoom;
+window.sysDialog = sysDialog;
+window.Modal = Modal;
