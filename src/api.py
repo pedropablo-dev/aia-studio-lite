@@ -10,7 +10,6 @@ import subprocess
 import logging
 import asyncio
 from urllib.parse import unquote
-from fastapi import FastAPI, HTTPException, Body
 from fastapi import FastAPI, HTTPException, Body, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
@@ -30,6 +29,7 @@ import database
 import models
 import schemas
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 from fastapi import Depends
 from routes import projects_api
 
@@ -867,21 +867,20 @@ async def serve_frontend():
 @app.post("/optimize_storage")
 async def optimize_storage():
     """
-    [LITE] Forzar VACUUM en la base de datos de SQLite para reducir su tamaño y recomponer fragmentos
-    tras masivas eliminaciones o reescrituras del editor. 
+    [LITE] Forzar VACUUM en la base de datos SQLite.
+    VACUUM no puede ejecutarse dentro de una transacción estándar de SQLite.
+    Se usa una conexión raw en modo AUTOCOMMIT para cumplir esta restricción.
     """
-    db: Session = database.SessionLocal()
     try:
-        # En SQLite crudo o sqlalchemy text:
-        db.execute(database.text("VACUUM;"))
-        db.commit()
+        # AUTOCOMMIT obligatorio: SQLite prohíbe VACUUM dentro de transacción
+        with database.engine.connect() as conn:
+            conn = conn.execution_options(isolation_level="AUTOCOMMIT")
+            conn.execute(text("VACUUM;"))
         logger.info("[Database] Comando VACUUM ejecutado exitosamente.")
         return {"status": "success", "message": "Storage optimized."}
     except Exception as e:
         logger.error(f"Fallo al ejecutar VACUUM: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to optimize storage: {e}")
-    finally:
-        db.close()
 
 
 if __name__ == "__main__":

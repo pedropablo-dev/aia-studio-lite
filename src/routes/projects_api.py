@@ -88,34 +88,42 @@ async def save_project(project: schemas.ProjectSchema, db: Session = Depends(dat
             "scene_data": clean_s_data
         })
 
-    # 2. Upsert Proyecto
-    db_proj = db.query(models.Project).filter(models.Project.id == project.id).first()
-    if db_proj:
-        db_proj.title = project.title
-        db_proj.metadata_config = clean_meta
-    else:
-        db_proj = models.Project(
-            id=project.id,
-            title=project.title,
-            metadata_config=clean_meta
-        )
-        db.add(db_proj)
+    # 2. Operación COMPLETA dentro de una única transacción atómica
+    # Si cualquier paso falla, db.rollback() devuelve el estado anterior intacto.
+    try:
+        # Upsert Proyecto
+        db_proj = db.query(models.Project).filter(models.Project.id == project.id).first()
+        if db_proj:
+            db_proj.title = project.title
+            db_proj.metadata_config = clean_meta
+        else:
+            db_proj = models.Project(
+                id=project.id,
+                title=project.title,
+                metadata_config=clean_meta
+            )
+            db.add(db_proj)
 
-    db.commit()
+        # Reemplazo completo de escenas (borrado + inserción)
+        db.query(models.Scene).filter(models.Scene.project_id == project.id).delete()
+        
+        for scene_item in clean_scenes:
+            new_scene = models.Scene(
+                id=scene_item["id"],
+                project_id=project.id,
+                order_index=scene_item["order_index"],
+                scene_data=scene_item["scene_data"]
+            )
+            db.add(new_scene)
+        
+        # Commit Único — si falla cualquier paso anterior, nada se persiste
+        db.commit()
 
-    # 3. Reemplazo Completo de Escenas (Evita des-sincronización de índices)
-    db.query(models.Scene).filter(models.Scene.project_id == project.id).delete()
-    
-    for scene_item in clean_scenes:
-        new_scene = models.Scene(
-            id=scene_item["id"],
-            project_id=project.id,
-            order_index=scene_item["order_index"],
-            scene_data=scene_item["scene_data"]
-        )
-        db.add(new_scene)
-    
-    db.commit()
+    except Exception as e:
+        db.rollback()
+        logger.error(f"[save_project] Error crítico al guardar proyecto {project.id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Error al guardar el proyecto: {str(e)}")
+
     return {"status": "success", "message": "Proyecto guardado"}
 
 
