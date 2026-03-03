@@ -120,7 +120,7 @@ function render() {
                                  id="img-${scene.id}" style="width:100%; height:100%; object-fit:cover; display:none; opacity:0; transition:opacity 0.4s ease-in;" alt="Thumbnail">
                         </div>
                     ` : `
-                        <span>Imagen</span><img src="${imgSrc}" data-current-media="${imgSrc}" id="img-${scene.id}">
+                        <span>Imagen</span><img ${imgSrc ? `src="${imgSrc}"` : ''} data-current-media="${imgSrc}" id="img-${scene.id}" style="${imgSrc ? 'display:block;' : 'display:none;'}">
                     `}
                     <input type="file" id="file-${scene.id}" class="hidden-file-input" accept="image/*" data-id="${scene.id}">
                 </div>
@@ -229,7 +229,7 @@ function render() {
                         dropZone.innerHTML = `<div class="audio-wrap" style="width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; background:#1a1a1a;"><div style="font-size:1.8rem; margin-bottom:0;">🎵</div></div><img src="" id="img-${scene.id}" style="display:none"><input type="file" id="file-${scene.id}" class="hidden-file-input" accept="image/*" data-id="${scene.id}">`;
                     } else if (!isAudio && currentIsAudio) {
                         if (isVideoOrImg) { dropZone.innerHTML = `<div class="thumb-loader-container" id="thumb-container-${scene.id}" style="width:100%; height:100%; position:relative; overflow:hidden; background:#111;"><img data-thumb-url="${newSrc}" data-current-media="${scene.linkedFile.replace(/"/g, '&quot;')}" id="img-${scene.id}" style="width:100%; height:100%; object-fit:cover; display:none; opacity:0; transition:opacity 0.4s ease-in;" alt="Thumbnail"></div><input type="file" id="file-${scene.id}" class="hidden-file-input" accept="image/*" data-id="${scene.id}">`; }
-                        else { dropZone.innerHTML = `<span>Imagen</span><img src="${newSrc}" data-current-media="${imgSrc}" id="img-${scene.id}"><input type="file" id="file-${scene.id}" class="hidden-file-input" accept="image/*" data-id="${scene.id}">`; }
+                        else { dropZone.innerHTML = `<span>Imagen</span><img ${newSrc ? `src="${newSrc}"` : ''} data-current-media="${imgSrc}" id="img-${scene.id}" style="${newSrc ? 'display:block;' : 'display:none;'}"><input type="file" id="file-${scene.id}" class="hidden-file-input" accept="image/*" data-id="${scene.id}">`; }
                     } else {
                         // Comparativa Crítica: evita recarga parpadeante en base al media path actual
                         const targetMedia = scene.linkedFile || imgSrc || '';
@@ -245,9 +245,14 @@ function render() {
                                 const c = document.getElementById(`thumb-container-${scene.id}`);
                                 if (c) c.classList.remove('loading-spinner');
                             } else {
-                                img.src = newSrc;
-                                img.setAttribute('src', newSrc);
-                                if (newSrc) img.style.display = 'block';
+                                if (newSrc) {
+                                    img.src = newSrc;
+                                    img.setAttribute('src', newSrc);
+                                    img.style.display = 'block';
+                                } else {
+                                    img.removeAttribute('src');
+                                    img.style.display = 'none';
+                                }
                             }
                         }
                     }
