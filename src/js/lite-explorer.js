@@ -159,20 +159,6 @@ function _renderBreadcrumbs(subpath) {
     });
 
     bar.innerHTML = html;
-
-    // Botón de Actualizar directorio actual (no altera la ruta)
-    const refreshBtn = document.createElement('button');
-    refreshBtn.id = 'btn-explorer-refresh';
-    refreshBtn.title = 'Actualizar directorio actual';
-    refreshBtn.style.cssText = 'margin-left:auto;padding:2px 8px;background:transparent;border:1px solid #444;border-radius:4px;color:#aaa;cursor:pointer;font-size:1rem;flex-shrink:0;';
-    refreshBtn.textContent = '↻';
-    refreshBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        openQuickFileModal(currentFileSceneId, explorerState.currentBrowsePath);
-    });
-    bar.style.display = 'flex';
-    bar.style.alignItems = 'center';
-    bar.appendChild(refreshBtn);
 }
 
 /**
