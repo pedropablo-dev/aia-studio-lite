@@ -180,8 +180,8 @@ function renderSelectedScenes(selectedSpeakers) {
         const cardSpeaker = (selectedSpeakers.length > 1 && sceneSpeakerName)
             ? `&nbsp;•&nbsp; 🗣️ ${sceneSpeakerName}` : '';
 
-        newHtml += `<div contenteditable="false" style="color: #7a7a7a; font-size: 0.8rem; font-weight: bold; margin-top: 35px; margin-bottom: 10px; user-select: none; border-bottom: 1px solid #333; padding-bottom: 4px; letter-spacing: 0.5px;">`;
-        newHtml += `<span style="color: #b026ff; font-weight: 900;">TARJETA #${absoluteIndex}</span>${cardTitle}${cardSection}${cardSpeaker}`;
+        newHtml += `<div contenteditable="false" style="color: #7a7a7a; font-size: 0.8rem; margin-top: 35px; margin-bottom: 10px; user-select: none; border-bottom: 1px solid #333; padding-bottom: 4px; letter-spacing: 0.5px;">`;
+        newHtml += `<span style="color: #b026ff;">TARJETA #${absoluteIndex}</span>${cardTitle}${cardSection}${cardSpeaker}`;
         newHtml += `</div>`;
 
         // 4b. Cruzar scriptText con tarjetas existentes para re-envolver marks
@@ -349,10 +349,10 @@ textContainer.addEventListener('mouseup', function () {
 
     // 3. Formateo de Salida
     let metaText = startMeta;
-    if (startMeta && endMeta && startMeta !== endMeta) {
+    if (startMeta && endMeta && startMeta.trim() !== endMeta.trim()) {
         // Remover "TARJETA " del destino para ser más conciso (ej: "TARJETA #1 ... ➔ #2 ...")
         let cleanEndMeta = endMeta.replace('TARJETA ', '').trim();
-        metaText = `${startMeta} ➔ ${cleanEndMeta}`;
+        metaText = `${startMeta.trim()} ➔ ${cleanEndMeta}`;
     } else if (!startMeta && endMeta) {
         metaText = endMeta;
     }
