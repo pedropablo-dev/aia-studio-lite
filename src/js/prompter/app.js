@@ -185,6 +185,24 @@ function renderSelectedScenes(selectedSpeakers) {
 
         // 4b. Cruzar scriptText con tarjetas existentes para re-envolver marks
         let bodyHtml = scriptText.trim();
+
+        // PARSER: Metadato limpio para nuevas tarjetas auto-generadas
+        const cleanMeta = `TARJETA #${absoluteIndex}${titleText ? ' • ' + titleText : ''}${sectionText ? ' • ' + sectionText : ''}${sceneSpeakerName ? ' • 🗣️ ' + sceneSpeakerName : ''}`;
+
+        // Convertir corchetes [texto] en tarjetas operativas y <mark> visuales
+        bodyHtml = bodyHtml.replace(/\[([^\]]+)\]/g, (match, content) => {
+            const cleanText = content.trim();
+            if (!cleanText) return match;
+            const cardId = Date.now() + Math.floor(Math.random() * 10000);
+            // Evitar duplicados en re-render
+            if (!state.cardsData.some(c => c.text === cleanText && c.metadata === cleanMeta)) {
+                state.cardsData.push({ id: cardId, text: cleanText, metadata: cleanMeta, completed: false });
+            }
+            const colorClass = `highlight c${state.colorIndex % 4}`;
+            state.colorIndex++;
+            return `<mark class="${colorClass}" id="mark-${cardId}">${cleanText}</mark>`;
+        });
+
         state.cardsData.forEach(card => {
             // Solo cruzar tarjetas cuyo metadata apunte a este bloque
             if (!bodyHtml.includes(card.text)) return;
