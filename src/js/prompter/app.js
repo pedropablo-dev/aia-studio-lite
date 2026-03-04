@@ -73,10 +73,27 @@ document.getElementById('api-speaker-select').addEventListener('change', (e) => 
     let newHtml = '';
 
     filteredScenes.forEach((scene, index) => {
-        const script = scene.scene_data?.script;
-        if (script && script.trim() !== '') {
-            newHtml += '<div contenteditable="false" style="color: #666; font-size: 0.8rem; font-weight: bold; margin-top: 25px; margin-bottom: 8px; user-select: none; border-bottom: 1px solid #333; padding-bottom: 3px;">ESCENA ' + (index + 1) + '</div>';
-            newHtml += script.trim() + '<br><br>';
+        const scriptText = scene.script || (scene.scene_data && scene.scene_data.script) || '';
+
+        if (scriptText.trim() !== '') {
+            // 1. Calcular número de tarjeta absoluto
+            const absoluteIndex = currentApiProject.scenes.findIndex(s => s.id === scene.id) + 1;
+
+            // 2. Búsqueda profunda de Título
+            const titleText = scene.title || (scene.scene_data && scene.scene_data.title) || '';
+            const cardTitle = titleText ? `&nbsp;•&nbsp; ${titleText}` : '';
+
+            // 3. Búsqueda profunda de Sección (comprobando múltiples claves)
+            const sectionText = scene.sectionName || scene.section || (scene.scene_data && (scene.scene_data.sectionName || scene.scene_data.section)) || '';
+            const cardSection = sectionText ? `&nbsp;•&nbsp; ${sectionText}` : '';
+
+            // 4. Construir cabecera enriquecida (incluyendo el símbolo #)
+            newHtml += `<div contenteditable="false" style="color: #7a7a7a; font-size: 0.8rem; font-weight: bold; margin-top: 35px; margin-bottom: 10px; user-select: none; border-bottom: 1px solid #333; padding-bottom: 4px; letter-spacing: 0.5px;">`;
+            newHtml += `TARJETA #${absoluteIndex} ${cardTitle} ${cardSection}`;
+            newHtml += `</div>`;
+
+            // 5. Inyectar texto
+            newHtml += scriptText.trim() + '<br><br>';
         }
     });
 
