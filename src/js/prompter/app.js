@@ -193,11 +193,16 @@ function renderSelectedScenes(selectedSpeakers) {
         bodyHtml = bodyHtml.replace(/\[+([^\]]+)\]+/g, (match, content) => {
             const cleanText = content.trim();
             if (!cleanText) return match;
-            const cardId = Date.now() + Math.floor(Math.random() * 10000);
-            // Evitar duplicados en re-render
-            if (!state.cardsData.some(c => c.text === cleanText && c.metadata === cleanMeta)) {
+
+            // 1. Buscar correspondencia exacta en la memoria (reutilizar ID si existe)
+            const existingCard = state.cardsData.find(c => c.text === cleanText && c.metadata === cleanMeta);
+            const cardId = existingCard ? existingCard.id : (Date.now() + Math.floor(Math.random() * 10000));
+
+            // 2. Registrar solo si es tarjeta huérfana (nueva)
+            if (!existingCard) {
                 state.cardsData.push({ id: cardId, text: cleanText, metadata: cleanMeta, completed: false });
             }
+
             const colorClass = `highlight c${state.colorIndex % 4}`;
             state.colorIndex++;
             return `<mark class="${colorClass}" id="mark-${cardId}">${cleanText}</mark>`;
