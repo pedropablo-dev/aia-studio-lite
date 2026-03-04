@@ -323,8 +323,13 @@ textContainer.addEventListener('mouseup', function () {
     const range = selection.getRangeAt(0);
 
     // 1. Helper: DOM Traversal para buscar cabecera gris hacia atrás desde un nodo
-    const getHeaderFromNode = (node) => {
+    const getHeaderFromNode = (node, offset) => {
         let curr = node;
+        // Normalización para selecciones ancladas en el contenedor principal
+        if (curr && curr.id === 'text-container') {
+            curr = curr.childNodes[offset > 0 ? offset - 1 : 0] || curr;
+        }
+
         while (curr && curr.parentNode && curr.parentNode.id !== 'text-container') {
             curr = curr.parentNode;
         }
@@ -344,8 +349,8 @@ textContainer.addEventListener('mouseup', function () {
     };
 
     // 2. Escaneo de rango extendido (Origen y Destino)
-    let startMeta = getHeaderFromNode(range.startContainer);
-    let endMeta = getHeaderFromNode(range.endContainer);
+    let startMeta = getHeaderFromNode(range.startContainer, range.startOffset);
+    let endMeta = getHeaderFromNode(range.endContainer, range.endOffset);
 
     // 3. Formateo de Salida
     let metaText = startMeta;
