@@ -135,6 +135,9 @@ export function swapCards(idA, idB) {
     state.cardsData[indexB] = tempCard;
 
     // El panel de texto izquierdo permanece INMUTABLE (Phase 5.4.8).
+    // Al mover manualmente, el selector vuelve a "manual" para evitar confusión de UI.
+    const sorter = document.getElementById('sidebar-sorter');
+    if (sorter) sorter.value = 'manual';
     renderSidebar();
     saveToLocal();
     historyManager.pushHistory();

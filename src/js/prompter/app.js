@@ -451,12 +451,10 @@ document.getElementById('btn-save').addEventListener('click', () => {
 });
 
 // --- SORTING DINÁMICO DE TARJETAS ---
-document.getElementById('sidebar-sorter').addEventListener('change', (e) => {
-    const mode = e.target.value;
-    if (mode === 'manual') {
-        // No reordenar; solo refrescar con el orden de creación actual
-        renderSidebar(); return;
-    }
+function applyCurrentSorting() {
+    const mode = document.getElementById('sidebar-sorter').value;
+    if (mode === 'manual') { renderSidebar(); return; }
+
     if (mode === 'number') {
         state.cardsData.sort((a, b) => {
             const matchA = (a.metadata || '').match(/#(\d+)/);
@@ -465,23 +463,22 @@ document.getElementById('sidebar-sorter').addEventListener('change', (e) => {
         });
     } else if (mode === 'speaker') {
         state.cardsData.sort((a, b) => {
-            // Extraer nombre del hablante (tras el icono 🗣️ o tras el separador •)
             const getSpeaker = (meta) => {
                 const m = (meta || '').match(/🗣️\s*([^\u25ba\n]+)/);
                 return m ? m[1].trim() : (meta || '').split('•').slice(-1)[0].trim();
             };
             const getNum = (meta) => { const m = (meta || '').match(/#(\d+)/); return m ? parseInt(m[1]) : Infinity; };
             const spkCmp = getSpeaker(a.metadata).localeCompare(getSpeaker(b.metadata), 'es');
-            // Si el hablante es el mismo, ordenar por número de tarjeta
             return spkCmp !== 0 ? spkCmp : getNum(a.metadata) - getNum(b.metadata);
         });
     } else if (mode === 'status') {
-        // Pendientes (false) primero, completados (true) al final
         state.cardsData.sort((a, b) => (a.completed ? 1 : 0) - (b.completed ? 1 : 0));
     }
     saveToLocal();
     renderSidebar();
-});
+}
+document.getElementById('sidebar-sorter').addEventListener('change', applyCurrentSorting);
+document.getElementById('btn-refresh-sorter').addEventListener('click', applyCurrentSorting);
 
 // --- ATAJOS GLOBALES DEL TECLADO ---
 document.addEventListener('keydown', function (e) {
