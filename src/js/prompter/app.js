@@ -21,6 +21,11 @@ const jumpMenuOverlay = document.getElementById('jump-menu-overlay');
 
 let currentApiProject = null;
 
+// --- PERSISTENCIA DE SESIÓN ---
+let lastProjectId = localStorage.getItem('prompter_lastProjectId') || '';
+let activeSpeakers = JSON.parse(localStorage.getItem('prompter_activeSpeakers') || '[]');
+let isAutoLoading = false; // true durante restauraciones programáticas (evita confirm)
+
 async function fetchProjects() {
     try {
         const res = await fetch('/api/projects');
@@ -32,6 +37,13 @@ async function fetchProjects() {
             opt.value = p.id; opt.textContent = p.title;
             sel.appendChild(opt);
         });
+        // --- Auto-restauración: recargar último proyecto ---
+        if (lastProjectId) {
+            sel.value = lastProjectId;
+            isAutoLoading = true;
+            sel.dispatchEvent(new Event('change'));
+            isAutoLoading = false;
+        }
     } catch (err) {
         console.error('Error al cargar proyectos:', err);
         document.getElementById('api-project-select').innerHTML = '<option value="">Error al conectar con el servidor</option>';
@@ -40,9 +52,37 @@ async function fetchProjects() {
 
 document.getElementById('api-project-select').addEventListener('change', async (e) => {
     const id = e.target.value;
-    const speakerSel = document.getElementById('api-speaker-select');
-    speakerSel.disabled = true;
-    speakerSel.innerHTML = '<option value="">Selecciona Hablante...</option>';
+    const projectSel = e.target;
+
+    // --- Guardarraíl: proteger tarjetas en proceso ---
+    if (!isAutoLoading && state.cardsData.length > 0) {
+        if (!window.confirm('Cambiar de proyecto eliminará las tarjetas actuales. ¿Continuar?')) {
+            projectSel.value = lastProjectId;
+            return;
+        }
+    }
+
+    // Persistir selección y limpiar estado manualmente (sin btn-clear.click)
+    lastProjectId = id;
+    localStorage.setItem('prompter_lastProjectId', id);
+    activeSpeakers = [];
+    localStorage.setItem('prompter_activeSpeakers', '[]');
+    state.originalTextContent = '';
+    textContainer.innerHTML = '';
+    state.cardsData = []; cardsList.innerHTML = ''; state.colorIndex = 0;
+    updateGlobalStats();
+    historyManager.pushHistory();
+
+    // Resetear custom dropdown
+    const speakerDropdown = document.getElementById('speaker-dropdown-menu');
+    const speakerLabel = document.getElementById('speaker-select-label');
+    const customSelect = document.getElementById('custom-speaker-select');
+    speakerDropdown.innerHTML = '';
+    speakerDropdown.style.display = 'none';
+    speakerLabel.textContent = 'Selecciona Hablante...';
+    customSelect.style.opacity = '0.5';
+    customSelect.style.pointerEvents = 'none';
+
     currentApiProject = null;
     if (!id) return;
     try {
@@ -51,28 +91,70 @@ document.getElementById('api-project-select').addEventListener('change', async (
         const speakers = [...new Set(
             (currentApiProject.scenes || []).map(s => s.scene_data?.speakerName).filter(Boolean)
         )];
+
+        // Construir checkboxes en el dropdown
+        speakerDropdown.innerHTML = '';
         speakers.forEach(sp => {
-            const opt = document.createElement('option');
-            opt.value = sp; opt.textContent = sp;
-            speakerSel.appendChild(opt);
+            const label = document.createElement('label');
+            label.style.cssText = 'display:flex; align-items:center; gap:6px; padding:4px 6px; cursor:pointer; white-space:nowrap;';
+            const cb = document.createElement('input');
+            cb.type = 'checkbox'; cb.value = sp;
+            // Restaurar estado persistido
+            if (activeSpeakers.includes(sp)) cb.checked = true;
+            label.appendChild(cb);
+            label.appendChild(document.createTextNode(sp));
+            speakerDropdown.appendChild(label);
         });
-        speakerSel.disabled = false;
+
+        customSelect.style.opacity = '1';
+        customSelect.style.pointerEvents = 'auto';
+
+        // --- Auto-restauración: recargar hablantes previos ---
+        const validRestored = activeSpeakers.filter(s => speakers.includes(s));
+        if (validRestored.length > 0) {
+            isAutoLoading = true;
+            renderSelectedScenes(validRestored);
+            isAutoLoading = false;
+            updateSpeakerLabel(validRestored);
+        }
     } catch (err) {
         console.error('Error al cargar el proyecto:', err);
     }
 });
 
-document.getElementById('api-speaker-select').addEventListener('change', (e) => {
-    const speaker = e.target.value;
-    if (!speaker || !currentApiProject) return;
+// --- FUNCIÓN CENTRALIZADA DE RENDERIZADO ---
+function updateSpeakerLabel(selected) {
+    const label = document.getElementById('speaker-select-label');
+    if (!label) return;
+    if (selected.length === 0) { label.textContent = 'Selecciona Hablante...'; }
+    else if (selected.length === 1) { label.textContent = selected[0]; }
+    else if (selected.length <= 3) { label.textContent = selected.join(', '); }
+    else { label.textContent = `${selected.length} hablantes seleccionados`; }
+}
+
+function renderSelectedScenes(selectedSpeakers) {
+    if (!currentApiProject) return;
+
+    // Guardarraíl (solo en cambios manuales)
+    if (!isAutoLoading && state.cardsData.length > 0) {
+        if (!window.confirm('Cambiar la selección eliminará las tarjetas actuales. ¿Continuar?')) {
+            return false; // señal de cancelación
+        }
+    }
+
+    // Persistir selección
+    activeSpeakers = selectedSpeakers;
+    localStorage.setItem('prompter_activeSpeakers', JSON.stringify(activeSpeakers));
+
     const filteredScenes = (currentApiProject.scenes || [])
-        .filter(s => s.scene_data?.speakerName === speaker);
+        .filter(s => selectedSpeakers.includes(s.scene_data?.speakerName));
 
     state.cardsData = [];
+    cardsList.innerHTML = '';
     state.colorIndex = 0;
     let newHtml = '';
 
-    filteredScenes.forEach((scene, index) => {
+    filteredScenes.forEach((scene) => {
         const scriptText = scene.script || (scene.scene_data && scene.scene_data.script) || '';
 
         if (scriptText.trim() !== '') {
@@ -83,16 +165,21 @@ document.getElementById('api-speaker-select').addEventListener('change', (e) => 
             const titleText = scene.title || (scene.scene_data && scene.scene_data.title) || '';
             const cardTitle = titleText ? `&nbsp;•&nbsp; ${titleText}` : '';
 
-            // 3. Búsqueda profunda de Sección (comprobando múltiples claves)
+            // 3. Búsqueda profunda de Sección
             const sectionText = scene.sectionName || scene.section || (scene.scene_data && (scene.scene_data.sectionName || scene.scene_data.section)) || '';
             const cardSection = sectionText ? `&nbsp;•&nbsp; ${sectionText}` : '';
 
-            // 4. Construir cabecera enriquecida (incluyendo el símbolo #)
+            // 4. Hablante (solo si hay múltiples seleccionados)
+            const sceneSpeakerName = scene.scene_data?.speakerName || '';
+            const cardSpeaker = (selectedSpeakers.length > 1 && sceneSpeakerName)
+                ? `&nbsp;•&nbsp; 🗣️ ${sceneSpeakerName}` : '';
+
+            // 5. Construir cabecera enriquecida
             newHtml += `<div contenteditable="false" style="color: #7a7a7a; font-size: 0.8rem; font-weight: bold; margin-top: 35px; margin-bottom: 10px; user-select: none; border-bottom: 1px solid #333; padding-bottom: 4px; letter-spacing: 0.5px;">`;
-            newHtml += `TARJETA #${absoluteIndex} ${cardTitle} ${cardSection}`;
+            newHtml += `TARJETA #${absoluteIndex}${cardTitle}${cardSection}${cardSpeaker}`;
             newHtml += `</div>`;
 
-            // 5. Inyectar texto
+            // 6. Inyectar texto
             newHtml += scriptText.trim() + '<br><br>';
         }
     });
@@ -101,26 +188,64 @@ document.getElementById('api-speaker-select').addEventListener('change', (e) => 
     renderSidebar();
     updateGlobalStats();
     historyManager.pushHistory();
+    return true;
+}
+
+// --- LISTENERS DEL CUSTOM DROPDOWN DE HABLANTES ---
+
+// Abrir / cerrar dropdown al hacer clic en el contenedor
+document.getElementById('custom-speaker-select').addEventListener('click', (e) => {
+    const menu = document.getElementById('speaker-dropdown-menu');
+    menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+    e.stopPropagation();
+});
+
+// Cerrar dropdown al hacer clic fuera
+document.addEventListener('click', () => {
+    const menu = document.getElementById('speaker-dropdown-menu');
+    if (menu) menu.style.display = 'none';
+});
+
+// Delegación: cambio en cualquier checkbox
+document.getElementById('speaker-dropdown-menu').addEventListener('change', (e) => {
+    if (e.target.type !== 'checkbox') return;
+    const checked = Array.from(
+        document.querySelectorAll('#speaker-dropdown-menu input[type=checkbox]:checked')
+    ).map(cb => cb.value);
+
+    updateSpeakerLabel(checked);
+    if (checked.length === 0) return; // nada seleccionado: no renderizar
+    renderSelectedScenes(checked);
 });
 
 // --- EVENTOS DEL PANEL PRINCIPAL (SETUP) ---
 
 document.getElementById('btn-undo').addEventListener('click', () => { historyManager.undoHistory(); });
 document.getElementById('btn-refresh').addEventListener('click', () => {
-    const speakerSel = document.getElementById('api-speaker-select');
-    if (speakerSel.value) speakerSel.dispatchEvent(new Event('change'));
+    if (activeSpeakers.length > 0) renderSelectedScenes(activeSpeakers);
 });
 document.getElementById('btn-clear').addEventListener('click', () => {
-    state.originalTextContent = "";
-    textContainer.textContent = "";
+    // --- Guardarraíl: confirmar borrado total ---
+    if (state.cardsData.length > 0) {
+        if (!window.confirm('¿Borrar todo el progreso actual? Esta acción no se puede deshacer.')) return;
+    }
+    state.originalTextContent = '';
+    textContainer.innerHTML = '';
     state.cardsData = []; cardsList.innerHTML = ''; state.colorIndex = 0;
     updateGlobalStats();
     localStorage.removeItem('prompterAutosave');
     historyManager.pushHistory();
     document.getElementById('api-project-select').value = '';
-    const speakerSel = document.getElementById('api-speaker-select');
-    speakerSel.innerHTML = '<option value="">Selecciona Hablante...</option>';
-    speakerSel.disabled = true;
+    lastProjectId = ''; localStorage.setItem('prompter_lastProjectId', '');
+    activeSpeakers = []; localStorage.setItem('prompter_activeSpeakers', '[]');
+    // Resetear custom dropdown
+    const speakerDropdown = document.getElementById('speaker-dropdown-menu');
+    const customSelect = document.getElementById('custom-speaker-select');
+    speakerDropdown.innerHTML = '';
+    speakerDropdown.style.display = 'none';
+    document.getElementById('speaker-select-label').textContent = 'Selecciona Hablante...';
+    customSelect.style.opacity = '0.5';
+    customSelect.style.pointerEvents = 'none';
     currentApiProject = null;
 });
 
