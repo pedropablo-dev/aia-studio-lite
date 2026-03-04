@@ -322,6 +322,22 @@ textContainer.addEventListener('mouseup', function () {
     const cardId = Date.now();
     const range = selection.getRangeAt(0);
 
+    // --- BLOQUEO DE COLISIONES (Exclusión Mutua) ---
+    const isInsideMark = (node) => {
+        if (!node) return false;
+        const element = node.nodeType === 3 ? node.parentNode : node;
+        return element.closest ? element.closest('mark.highlight') !== null : false;
+    };
+    const fragment = range.cloneContents();
+    const containsMark = fragment.querySelector('mark.highlight') !== null;
+    const startInMark = isInsideMark(range.startContainer);
+    const endInMark = isInsideMark(range.endContainer);
+    if (containsMark || startInMark || endInMark) {
+        selection.removeAllRanges();
+        console.warn('Bloqueo de colisión: Violación de exclusión mutua en selección.');
+        return;
+    }
+
     // 1. Helper: DOM Traversal para buscar cabecera gris hacia atrás desde un nodo
     const getHeaderFromNode = (node, offset) => {
         let curr = node;
