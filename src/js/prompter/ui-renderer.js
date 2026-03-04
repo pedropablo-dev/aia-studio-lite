@@ -41,11 +41,15 @@ export function renderSidebar() {
         }
 
         const checkClass = card.completed ? 'btn-check completed' : 'btn-check';
-        cardDiv.innerHTML = `${metaHtml}<textarea data-id="${card.id}" spellcheck="false" rows="5" style="height: auto; min-height: 5rem;">${card.text}</textarea>
+        const checkStyle = card.completed
+            ? 'width: 24px; height: 24px; border-radius: 50%; padding: 0; outline: none; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; background: #4caf50; color: white;'
+            : 'width: 24px; height: 24px; border-radius: 50%; padding: 0; outline: none; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.1); color: #888;';
+
+        cardDiv.innerHTML = `${metaHtml}<textarea data-id="${card.id}" spellcheck="false" rows="5" style="height: auto; min-height: 5rem; overflow: hidden;">${card.text}</textarea>
         <div class="card-meta">
             <span>${card.text.length} car. | ~${timeStr}</span>
-            <div>
-                <button class="${checkClass}" title="Marcar como completado">✓</button>
+            <div style="display: flex; gap: 8px; align-items: center;">
+                <button class="${checkClass}" data-id="${card.id}" style="${checkStyle}" title="Marcar como completado">✓</button>
                 <button class="btn-delete">Eliminar</button>
             </div>
         </div>`;
@@ -62,6 +66,13 @@ export function renderSidebar() {
 
     let cardDebounceTimer;
     document.querySelectorAll('.card-item textarea').forEach(textarea => {
+        // Altura inicial
+        textarea.style.height = 'auto';
+        if (textarea.scrollHeight > 0) {
+            textarea.style.height = (textarea.scrollHeight) + 'px';
+        }
+
+        // Altura y estado dinámico en input
         textarea.addEventListener('input', function (e) {
             const id = parseInt(e.target.getAttribute('data-id'));
             const cardIndex = state.cardsData.findIndex(c => c.id === id);
@@ -73,12 +84,40 @@ export function renderSidebar() {
                 if (markNode) markNode.innerText = e.target.value;
                 updateGlobalStats(); saveToLocal();
 
+                e.target.style.height = 'auto';
+                e.target.style.height = (e.target.scrollHeight) + 'px';
+
                 clearTimeout(cardDebounceTimer);
                 cardDebounceTimer = setTimeout(() => { historyManager.pushHistory(); }, 500);
             }
         });
     });
-}
+
+    // Intercepción de evento para el botón check (aislando la fuga del Drag & Drop)
+    document.querySelectorAll('.btn-check').forEach(btn => {
+        btn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            e.preventDefault();
+            const id = parseInt(this.getAttribute('data-id'));
+            const card = state.cardsData.find(c => c.id === id);
+            if (card) {
+                card.completed = !card.completed;
+                saveToLocal();
+                renderSidebar();
+
+                // Actualizar visual en prompter si está abierto
+                const prompterView = document.getElementById('prompter-view');
+                if (prompterView && prompterView.style.display === 'block' && state.cardsData[state.currentCardIndex]?.id === id) {
+                    const btnCompleted = document.getElementById('btn-toggle-completed');
+                    if (btnCompleted) {
+                        btnCompleted.style.color = card.completed ? '#4caf50' : 'white';
+                        btnCompleted.style.borderColor = card.completed ? '#4caf50' : '#555';
+                    }
+                }
+            }
+        });
+    });
+} // Fin de renderSidebar cerrado correctamente
 
 export function deleteCard(id) {
     state.cardsData = state.cardsData.filter(c => c.id !== id);
@@ -96,7 +135,6 @@ export function swapCards(idA, idB) {
     state.cardsData[indexB] = tempCard;
 
     // El panel de texto izquierdo permanece INMUTABLE (Phase 5.4.8).
-    // Solo re-renderizamos la barra lateral para reflejar el nuevo estado visual.
     renderSidebar();
     saveToLocal();
     historyManager.pushHistory();

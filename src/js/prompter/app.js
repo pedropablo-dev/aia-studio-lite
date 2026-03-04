@@ -180,7 +180,7 @@ function renderSelectedScenes(selectedSpeakers) {
         const cardSpeaker = (selectedSpeakers.length > 1 && sceneSpeakerName)
             ? `&nbsp;•&nbsp; 🗣️ ${sceneSpeakerName}` : '';
 
-        newHtml += `<div contenteditable="false" style="color: #7a7a7a; font-size: 0.8rem; margin-top: 35px; margin-bottom: 10px; user-select: none; border-bottom: 1px solid #333; padding-bottom: 4px; letter-spacing: 0.5px;">`;
+        newHtml += `<div contenteditable="false" style="color: #7a7a7a; font-size: 0.8rem; margin-top: 35px; margin-bottom: 10px; user-select: none; border-bottom: 2px solid #333; padding-bottom: 4px; letter-spacing: 0.5px;">`;
         newHtml += `<span style="color: #b026ff;">TARJETA #${absoluteIndex}</span>${cardTitle}${cardSection}${cardSpeaker}`;
         newHtml += `</div>`;
 
