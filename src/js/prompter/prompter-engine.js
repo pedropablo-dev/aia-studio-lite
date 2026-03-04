@@ -51,13 +51,28 @@ function renderPrompterCard() {
     prompterText.style.fontSize = sizeToApply + 'vh';
     fontSizeSlider.value = sizeToApply;
 
+    // Actualizar telemetría de UI numérico/iconos
+    const zoomLabel = document.getElementById('zoom-value-display');
+    if (zoomLabel) zoomLabel.textContent = Number(sizeToApply).toFixed(1);
+
+    const alignBtn = document.getElementById('btn-align-prompter');
+    if (alignBtn) {
+        const alignIcons = { 'center': '≡', 'left': '⇦', 'right': '⇨', 'justify': '≣' };
+        alignBtn.textContent = alignIcons[state.textAlignment] || '≡';
+    }
+
+    const btnCompleted = document.getElementById('btn-toggle-completed');
+    if (btnCompleted) {
+        btnCompleted.style.color = currentCard.completed ? '#4caf50' : 'white';
+        btnCompleted.style.borderColor = currentCard.completed ? '#4caf50' : '#555';
+    }
+
     // Actualizar barra de metadatos superior
     const metaContainer = document.getElementById('prompter-top-metadata');
     if (metaContainer) {
         metaContainer.innerText = currentCard.metadata || '';
     }
 }
-
 export function nextCard() { if (state.currentCardIndex < state.cardsData.length - 1) { state.currentCardIndex++; renderPrompterCard(); } }
 export function prevCard() { if (state.currentCardIndex > 0) { state.currentCardIndex--; renderPrompterCard(); } }
 
@@ -87,6 +102,14 @@ export function cycleAlignment(e) {
     const currentIndex = alignments.indexOf(state.textAlignment);
     state.textAlignment = alignments[(currentIndex + 1) % alignments.length];
     prompterText.style.textAlign = state.textAlignment;
+
+    // Actualizar feedback visual
+    const alignBtn = document.getElementById('btn-align-prompter');
+    if (alignBtn) {
+        const alignIcons = { 'center': '≡', 'left': '⇦', 'right': '⇨', 'justify': '≣' };
+        alignBtn.textContent = alignIcons[state.textAlignment] || '≡';
+    }
+
     saveToLocal();
     import('./history-manager.js').then(module => module.historyManager.pushHistory());
 }
@@ -125,6 +148,28 @@ export function updateFontSize(e) {
     if (currentCard) {
         currentCard.localFontSize = newSize;
         prompterText.style.fontSize = newSize + 'vh';
+
+        const zoomLabel = document.getElementById('zoom-value-display');
+        if (zoomLabel) zoomLabel.textContent = newSize.toFixed(1);
+
         saveToLocal();
     }
+}
+
+export function toggleCompleted(e) {
+    if (e) e.stopPropagation();
+    if (state.cardsData.length === 0) return;
+    const currentCard = state.cardsData[state.currentCardIndex];
+    currentCard.completed = !currentCard.completed;
+
+    // Feedback inmediato en prompter
+    const btnCompleted = document.getElementById('btn-toggle-completed');
+    if (btnCompleted) {
+        btnCompleted.style.color = currentCard.completed ? '#4caf50' : 'white';
+        btnCompleted.style.borderColor = currentCard.completed ? '#4caf50' : '#555';
+    }
+
+    saveToLocal();
+    // Re-render sidebar en background
+    import('./ui-renderer.js').then(m => m.renderSidebar());
 }

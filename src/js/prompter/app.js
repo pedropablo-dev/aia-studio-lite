@@ -5,7 +5,7 @@
 import { state } from './state.js';
 import { loadFromLocal, saveToLocal } from './storage.js';
 import { renderSidebar, deleteCard, updateGlobalStats } from './ui-renderer.js';
-import { startPrompter, exitPrompter, openJumpMenu, closeJumpMenu, toggleFontSlider, handlePrompterInput, nextCard, prevCard, handleKeydown, updateFontSize, cycleAlignment } from './prompter-engine.js';
+import { startPrompter, exitPrompter, openJumpMenu, closeJumpMenu, toggleFontSlider, handlePrompterInput, nextCard, prevCard, handleKeydown, updateFontSize, cycleAlignment, toggleCompleted } from './prompter-engine.js';
 import { historyManager } from './history-manager.js';
 
 const textContainer = document.getElementById('text-container');
@@ -383,6 +383,28 @@ cardsList.addEventListener('click', (e) => {
             deleteCard(id);
         }
     }
+
+    const btnCheck = e.target.closest('.btn-check');
+    if (btnCheck) {
+        const cardItem = btnCheck.closest('.card-item');
+        if (cardItem) {
+            const id = parseInt(cardItem.dataset.id);
+            const card = state.cardsData.find(c => c.id === id);
+            if (card) {
+                card.completed = !card.completed;
+                saveToLocal();
+                renderSidebar();
+                // Si el prompter está activo y estamos en esta tarjeta, sincronizar
+                if (prompterView.style.display === 'block' && state.cardsData[state.currentCardIndex]?.id === id) {
+                    const btnCompleted = document.getElementById('btn-toggle-completed');
+                    if (btnCompleted) {
+                        btnCompleted.style.color = card.completed ? '#4caf50' : 'white';
+                        btnCompleted.style.borderColor = card.completed ? '#4caf50' : '#555';
+                    }
+                }
+            }
+        }
+    }
 });
 
 
@@ -393,6 +415,7 @@ document.getElementById('btn-exit-prompter').addEventListener('click', (e) => { 
 document.getElementById('btn-menu-prompter').addEventListener('click', (e) => { e.stopPropagation(); openJumpMenu(); });
 document.getElementById('btn-font-prompter').addEventListener('click', toggleFontSlider);
 document.getElementById('btn-align-prompter').addEventListener('click', cycleAlignment);
+document.getElementById('btn-toggle-completed').addEventListener('click', toggleCompleted);
 prompterView.addEventListener('click', () => { fontSliderPanel.style.display = 'none'; });
 fontSliderPanel.addEventListener('click', (e) => e.stopPropagation());
 prompterText.addEventListener('input', handlePrompterInput);

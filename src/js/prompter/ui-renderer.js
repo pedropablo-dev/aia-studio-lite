@@ -40,7 +40,15 @@ export function renderSidebar() {
             metaHtml = `<div class="card-meta-text" style="font-size:0.75rem; color:#888; padding:4px 6px; background:var(--bg-card); border-bottom:1px solid #333; margin-top:-2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${card.metadata}">${styledMeta}</div>`;
         }
 
-        cardDiv.innerHTML = `${metaHtml}<textarea data-id="${card.id}" spellcheck="false" rows="5" style="height: auto; min-height: 5rem;">${card.text}</textarea><div class="card-meta"><span>${card.text.length} car. | ~${timeStr}</span><button class="btn-delete">Eliminar</button></div>`;
+        const checkClass = card.completed ? 'btn-check completed' : 'btn-check';
+        cardDiv.innerHTML = `${metaHtml}<textarea data-id="${card.id}" spellcheck="false" rows="5" style="height: auto; min-height: 5rem;">${card.text}</textarea>
+        <div class="card-meta">
+            <span>${card.text.length} car. | ~${timeStr}</span>
+            <div>
+                <button class="${checkClass}" title="Marcar como completado">✓</button>
+                <button class="btn-delete">Eliminar</button>
+            </div>
+        </div>`;
         cardDiv.addEventListener('dragstart', (e) => { state.draggedCardId = card.id; e.dataTransfer.effectAllowed = 'move'; });
         cardDiv.addEventListener('dragover', (e) => { e.preventDefault(); cardDiv.classList.add('drag-over'); });
         cardDiv.addEventListener('dragleave', () => cardDiv.classList.remove('drag-over'));
