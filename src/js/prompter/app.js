@@ -190,7 +190,7 @@ function renderSelectedScenes(selectedSpeakers) {
         const cleanMeta = `TARJETA #${absoluteIndex}${titleText ? ' • ' + titleText : ''}${sectionText ? ' • ' + sectionText : ''}${sceneSpeakerName ? ' • 🗣️ ' + sceneSpeakerName : ''}`;
 
         // Convertir corchetes [texto] en tarjetas operativas y <mark> visuales
-        bodyHtml = bodyHtml.replace(/\[([^\]]+)\]/g, (match, content) => {
+        bodyHtml = bodyHtml.replace(/\[+([^\]]+)\]+/g, (match, content) => {
             const cleanText = content.trim();
             if (!cleanText) return match;
             const cardId = Date.now() + Math.floor(Math.random() * 10000);
@@ -499,6 +499,27 @@ function applyCurrentSorting() {
 }
 document.getElementById('sidebar-sorter').addEventListener('change', applyCurrentSorting);
 document.getElementById('btn-refresh-sorter').addEventListener('click', applyCurrentSorting);
+
+
+// FASE 6.3: Simulador de Ensamblaje Inverso (auditoría de payload sin alterar el DOM)
+window.testInverseAssembly = function () {
+    const sceneBlocks = document.querySelectorAll('.scene-text-block');
+    const payload = [];
+    sceneBlocks.forEach(block => {
+        const sceneId = block.getAttribute('data-scene-id');
+        if (!sceneId) return;
+        const clone = block.cloneNode(true);
+        clone.querySelectorAll('mark.highlight').forEach(mark => {
+            const cleanText = mark.innerText || mark.textContent;
+            mark.replaceWith(document.createTextNode(`[${cleanText}]`));
+        });
+        const finalScript = clone.textContent.replace(/\s+/g, ' ').trim();
+        payload.push({ scene_id: sceneId, new_text: finalScript });
+    });
+    console.log('=== SIMULACIÓN DE PAYLOAD PARA LA BASE DE DATOS ===');
+    console.table(payload);
+    return payload;
+};
 
 // --- ATAJOS GLOBALES DEL TECLADO ---
 document.addEventListener('keydown', function (e) {
