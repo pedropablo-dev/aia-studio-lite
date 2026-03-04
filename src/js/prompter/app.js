@@ -204,6 +204,9 @@ function renderSelectedScenes(selectedSpeakers) {
         });
 
         state.cardsData.forEach(card => {
+            // Bloqueo de doble envoltorio: si el ID o el texto ya están envueltos, abortar
+            if (bodyHtml.includes(`id="mark-${card.id}"`)) return;
+            if (bodyHtml.includes(`>${card.text}</mark>`)) return;
             // Solo cruzar tarjetas cuyo metadata apunte a este bloque
             if (!bodyHtml.includes(card.text)) return;
             const colorClass = `highlight c${state.cardsData.indexOf(card) % 4}`;
