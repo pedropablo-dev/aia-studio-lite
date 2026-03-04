@@ -28,6 +28,28 @@ export function updateGlobalStats() {
 }
 
 export function renderSidebar() {
+    // --- EVALUACIÓN DE ENTROPÍA: Visibilidad dinámica de la opción "Por Hablante" ---
+    const uniqueSpeakers = new Set();
+    state.cardsData.forEach(card => {
+        if (card.metadata && card.metadata.includes('🗣️')) {
+            const parts = card.metadata.split('🗣️');
+            for (let i = 1; i < parts.length; i++) {
+                const speakerName = parts[i].split('➔')[0].trim();
+                if (speakerName) uniqueSpeakers.add(speakerName);
+            }
+        }
+    });
+    const sorter = document.getElementById('sidebar-sorter');
+    const speakerOption = document.querySelector('#sidebar-sorter option[value="speaker"]');
+    if (speakerOption && sorter) {
+        if (uniqueSpeakers.size > 1) {
+            speakerOption.style.display = '';
+        } else {
+            speakerOption.style.display = 'none';
+            if (sorter.value === 'speaker') sorter.value = 'manual';
+        }
+    }
+
     cardsList.innerHTML = '';
     state.cardsData.forEach((card) => {
         const timeStr = calculateReadingTime(card.text) + "s";
