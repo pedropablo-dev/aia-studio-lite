@@ -332,25 +332,39 @@ textContainer.addEventListener('mouseup', function () {
     const cardId = Date.now();
     const range = selection.getRangeAt(0);
 
-    // DOM Traversal: normalizar al hijo directo de #text-container y rastrear hermanos previos
-    let metaText = '';
-    let currentNode = range.startContainer;
-
-    // 1. Normalizar el nodo: asegurar que estamos operando sobre un hijo directo del text-container
-    while (currentNode && currentNode.parentNode && currentNode.parentNode.id !== 'text-container') {
-        currentNode = currentNode.parentNode;
-    }
-
-    // 2. Rastrear hermanos hacia atrás hasta encontrar el DIV no editable
-    if (currentNode) {
-        let prevNode = currentNode.previousSibling;
-        while (prevNode) {
-            if (prevNode.nodeType === 1 && prevNode.tagName === 'DIV' && prevNode.getAttribute('contenteditable') === 'false') {
-                metaText = prevNode.innerText || prevNode.textContent;
-                break;
-            }
-            prevNode = prevNode.previousSibling;
+    // 1. Helper: DOM Traversal para buscar cabecera gris hacia atrás desde un nodo
+    const getHeaderFromNode = (node) => {
+        let curr = node;
+        while (curr && curr.parentNode && curr.parentNode.id !== 'text-container') {
+            curr = curr.parentNode;
         }
+        if (curr) {
+            if (curr.nodeType === 1 && curr.tagName === 'DIV' && curr.getAttribute('contenteditable') === 'false') {
+                return curr.innerText || curr.textContent;
+            }
+            let prev = curr.previousSibling;
+            while (prev) {
+                if (prev.nodeType === 1 && prev.tagName === 'DIV' && prev.getAttribute('contenteditable') === 'false') {
+                    return prev.innerText || prev.textContent;
+                }
+                prev = prev.previousSibling;
+            }
+        }
+        return '';
+    };
+
+    // 2. Escaneo de rango extendido (Origen y Destino)
+    let startMeta = getHeaderFromNode(range.startContainer);
+    let endMeta = getHeaderFromNode(range.endContainer);
+
+    // 3. Formateo de Salida
+    let metaText = startMeta;
+    if (startMeta && endMeta && startMeta !== endMeta) {
+        // Remover "TARJETA " del destino para ser más conciso (ej: "TARJETA #1 ... ➔ #2 ...")
+        let cleanEndMeta = endMeta.replace('TARJETA ', '').trim();
+        metaText = `${startMeta} ➔ ${cleanEndMeta}`;
+    } else if (!startMeta && endMeta) {
+        metaText = endMeta;
     }
 
     const markNode = document.createElement('mark');
