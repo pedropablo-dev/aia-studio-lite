@@ -73,12 +73,11 @@ document.getElementById('api-project-select').addEventListener('change', async (
     updateGlobalStats();
     historyManager.pushHistory();
 
-    // Resetear custom dropdown
-    const speakerDropdown = document.getElementById('speaker-dropdown-menu');
+    // Resetear modal de hablantes
+    const speakerModalList = document.getElementById('speaker-modal-list');
     const speakerLabel = document.getElementById('speaker-select-label');
     const customSelect = document.getElementById('custom-speaker-select');
-    speakerDropdown.innerHTML = '';
-    speakerDropdown.style.display = 'none';
+    speakerModalList.innerHTML = '';
     speakerLabel.textContent = 'Selecciona Hablante...';
     customSelect.style.opacity = '0.5';
     customSelect.style.pointerEvents = 'none';
@@ -92,18 +91,18 @@ document.getElementById('api-project-select').addEventListener('change', async (
             (currentApiProject.scenes || []).map(s => s.scene_data?.speakerName).filter(Boolean)
         )];
 
-        // Construir checkboxes en el dropdown
-        speakerDropdown.innerHTML = '';
+        // Construir checkboxes en la modal
+        speakerModalList.innerHTML = '';
         speakers.forEach(sp => {
             const label = document.createElement('label');
-            label.style.cssText = 'display:flex; align-items:center; gap:6px; padding:4px 6px; cursor:pointer; white-space:nowrap;';
+            label.style.cssText = 'display:flex; align-items:center; gap:8px; padding:6px 4px; cursor:pointer; font-size:0.9rem;';
             const cb = document.createElement('input');
             cb.type = 'checkbox'; cb.value = sp;
             // Restaurar estado persistido
             if (activeSpeakers.includes(sp)) cb.checked = true;
             label.appendChild(cb);
             label.appendChild(document.createTextNode(sp));
-            speakerDropdown.appendChild(label);
+            speakerModalList.appendChild(label);
         });
 
         customSelect.style.opacity = '1';
@@ -216,33 +215,30 @@ function renderSelectedScenes(selectedSpeakers) {
     return true;
 }
 
-// --- LISTENERS DEL CUSTOM DROPDOWN DE HABLANTES ---
+// --- LISTENERS DE LA MODAL DE HABLANTES ---
 
-// Abrir / cerrar dropdown al hacer clic en el contenedor principal
-document.getElementById('custom-speaker-select').addEventListener('click', (e) => {
-    const menu = document.getElementById('speaker-dropdown-menu');
-    menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
-    e.stopPropagation();
+// Abrir modal al hacer clic en el trigger
+document.getElementById('custom-speaker-select').addEventListener('click', () => {
+    document.getElementById('speaker-modal-overlay').style.display = 'flex';
 });
 
-// El dropdown mismo absorbe los clicks para no propagarlos al document
-document.getElementById('speaker-dropdown-menu').addEventListener('click', (e) => {
-    e.stopPropagation();
+// Cerrar modal: botón X
+document.getElementById('btn-close-speaker-modal').addEventListener('click', () => {
+    document.getElementById('speaker-modal-overlay').style.display = 'none';
 });
 
-// Cerrar el menú al hacer clic fuera del componente entero
-document.addEventListener('click', (e) => {
-    const container = document.getElementById('custom-speaker-select');
-    if (container && !container.contains(e.target)) {
-        document.getElementById('speaker-dropdown-menu').style.display = 'none';
+// Cerrar modal: clic en el overlay (fuera del contenido)
+document.getElementById('speaker-modal-overlay').addEventListener('click', (e) => {
+    if (e.target === document.getElementById('speaker-modal-overlay')) {
+        document.getElementById('speaker-modal-overlay').style.display = 'none';
     }
 });
 
-// Delegación: cambio en cualquier checkbox
-document.getElementById('speaker-dropdown-menu').addEventListener('change', (e) => {
+// Delegación: cambio en cualquier checkbox de la modal
+document.getElementById('speaker-modal-list').addEventListener('change', (e) => {
     if (e.target.type !== 'checkbox') return;
     const checked = Array.from(
-        document.querySelectorAll('#speaker-dropdown-menu input[type=checkbox]:checked')
+        document.querySelectorAll('#speaker-modal-list input[type=checkbox]:checked')
     ).map(cb => cb.value);
 
     updateSpeakerLabel(checked);
@@ -253,7 +249,25 @@ document.getElementById('speaker-dropdown-menu').addEventListener('change', (e) 
 
 document.getElementById('btn-undo').addEventListener('click', () => { historyManager.undoHistory(); });
 document.getElementById('btn-refresh').addEventListener('click', () => {
-    if (activeSpeakers.length > 0) renderSelectedScenes(activeSpeakers);
+    // Leer hablantes marcados en la modal
+    const checked = Array.from(
+        document.querySelectorAll('#speaker-modal-list input[type=checkbox]:checked')
+    ).map(cb => cb.value);
+    if (checked.length === 0) return;
+
+    // Guardarraíl: confirmar borrado de tarjetas actuales
+    if (state.cardsData.length > 0) {
+        if (!window.confirm('Recargar el guion eliminará todas las tarjetas y marcas actuales. ¿Continuar?')) return;
+    }
+
+    // Limpieza total del estado (reset a guión limpio sin marks)
+    state.cardsData = []; cardsList.innerHTML = ''; state.colorIndex = 0;
+    textContainer.innerHTML = '';
+
+    // Re-renderizar como carga limpia
+    isAutoLoading = true;
+    renderSelectedScenes(checked);
+    isAutoLoading = false;
 });
 document.getElementById('btn-clear').addEventListener('click', () => {
     // --- Guardarraíl: confirmar borrado total ---
@@ -269,14 +283,13 @@ document.getElementById('btn-clear').addEventListener('click', () => {
     document.getElementById('api-project-select').value = '';
     lastProjectId = ''; localStorage.setItem('prompter_lastProjectId', '');
     activeSpeakers = []; localStorage.setItem('prompter_activeSpeakers', '[]');
-    // Resetear custom dropdown
-    const speakerDropdown = document.getElementById('speaker-dropdown-menu');
-    const customSelect = document.getElementById('custom-speaker-select');
-    speakerDropdown.innerHTML = '';
-    speakerDropdown.style.display = 'none';
+    // Resetear modal de hablantes
+    const speakerModalListClear = document.getElementById('speaker-modal-list');
+    const customSelectClear = document.getElementById('custom-speaker-select');
+    if (speakerModalListClear) speakerModalListClear.innerHTML = '';
     document.getElementById('speaker-select-label').textContent = 'Selecciona Hablante...';
-    customSelect.style.opacity = '0.5';
-    customSelect.style.pointerEvents = 'none';
+    customSelectClear.style.opacity = '0.5';
+    customSelectClear.style.pointerEvents = 'none';
     currentApiProject = null;
 });
 
