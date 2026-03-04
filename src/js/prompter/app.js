@@ -177,8 +177,7 @@ function renderSelectedScenes(selectedSpeakers) {
         const sectionText = scene.sectionName || scene.section ||
             (scene.scene_data && (scene.scene_data.sectionName || scene.scene_data.section)) || '';
         const cardSection = sectionText ? `&nbsp;•&nbsp; ${sectionText}` : '';
-        const cardSpeaker = (selectedSpeakers.length > 1 && sceneSpeakerName)
-            ? `&nbsp;•&nbsp; 🗣️ ${sceneSpeakerName}` : '';
+        const cardSpeaker = sceneSpeakerName ? `&nbsp;•&nbsp; 🗣️ ${sceneSpeakerName}` : '';
 
         newHtml += `<div contenteditable="false" style="color: #7a7a7a; font-size: 0.8rem; margin-top: 35px; margin-bottom: 10px; user-select: none; border-bottom: 2px solid #333; padding-bottom: 4px; letter-spacing: 0.5px;">`;
         newHtml += `<span style="color: #b026ff;">TARJETA #${absoluteIndex}</span>${cardTitle}${cardSection}${cardSpeaker}`;
@@ -194,7 +193,7 @@ function renderSelectedScenes(selectedSpeakers) {
             // Reemplazar solo la primera ocurrencia para evitar duplicados
             bodyHtml = bodyHtml.replace(card.text, markHtml);
         });
-        newHtml += bodyHtml + '<br><br>';
+        newHtml += `<div class="scene-text-block" data-scene-id="${scene.id}" style="display: block;">${bodyHtml}</div><br>`;
     });
 
     textContainer.innerHTML = newHtml;
@@ -338,35 +337,22 @@ textContainer.addEventListener('mouseup', function () {
         return;
     }
 
-    // 1. Helper: DOM Traversal para buscar cabecera gris hacia atrás desde un nodo
-    const getHeaderFromNode = (node, offset) => {
-        let curr = node;
-        // Normalización para selecciones ancladas en el contenedor principal
-        if (curr && curr.id === 'text-container') {
-            curr = curr.childNodes[offset > 0 ? offset - 1 : 0] || curr;
-        }
-
-        while (curr && curr.parentNode && curr.parentNode.id !== 'text-container') {
-            curr = curr.parentNode;
-        }
-        if (curr) {
-            if (curr.nodeType === 1 && curr.tagName === 'DIV' && curr.getAttribute('contenteditable') === 'false') {
-                return curr.innerText || curr.textContent;
-            }
-            let prev = curr.previousSibling;
-            while (prev) {
-                if (prev.nodeType === 1 && prev.tagName === 'DIV' && prev.getAttribute('contenteditable') === 'false') {
-                    return prev.innerText || prev.textContent;
-                }
-                prev = prev.previousSibling;
+    // 1. Helper: DOM Traversal con closest() — compatible con la nueva estructura de scene-text-block
+    const getHeaderFromNode = (node) => {
+        const element = node.nodeType === 3 ? node.parentNode : node;
+        const sceneBlock = element.closest('.scene-text-block');
+        if (sceneBlock) {
+            const header = sceneBlock.previousElementSibling;
+            if (header && header.getAttribute('contenteditable') === 'false') {
+                return header.innerText || header.textContent;
             }
         }
         return '';
     };
 
     // 2. Escaneo de rango extendido (Origen y Destino)
-    let startMeta = getHeaderFromNode(range.startContainer, range.startOffset);
-    let endMeta = getHeaderFromNode(range.endContainer, range.endOffset);
+    let startMeta = getHeaderFromNode(range.startContainer);
+    let endMeta = getHeaderFromNode(range.endContainer);
 
     // 3. Formateo de Salida
     let metaText = startMeta;
