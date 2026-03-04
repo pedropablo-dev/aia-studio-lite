@@ -162,11 +162,33 @@ textContainer.addEventListener('mouseup', function () {
 
     const cardId = Date.now();
     const range = selection.getRangeAt(0);
+
+    // DOM Traversal: normalizar al hijo directo de #text-container y rastrear hermanos previos
+    let metaText = '';
+    let currentNode = range.startContainer;
+
+    // 1. Normalizar el nodo: asegurar que estamos operando sobre un hijo directo del text-container
+    while (currentNode && currentNode.parentNode && currentNode.parentNode.id !== 'text-container') {
+        currentNode = currentNode.parentNode;
+    }
+
+    // 2. Rastrear hermanos hacia atrás hasta encontrar el DIV no editable
+    if (currentNode) {
+        let prevNode = currentNode.previousSibling;
+        while (prevNode) {
+            if (prevNode.nodeType === 1 && prevNode.tagName === 'DIV' && prevNode.getAttribute('contenteditable') === 'false') {
+                metaText = prevNode.innerText || prevNode.textContent;
+                break;
+            }
+            prevNode = prevNode.previousSibling;
+        }
+    }
+
     const markNode = document.createElement('mark');
     markNode.className = `highlight c${state.colorIndex % 4}`; markNode.id = `mark-${cardId}`;
     try { markNode.appendChild(range.extractContents()); range.insertNode(markNode); } catch (e) { console.warn("Selección cruzada"); }
 
-    state.cardsData.push({ id: cardId, text: selectedText });
+    state.cardsData.push({ id: cardId, text: selectedText, metadata: metaText });
     state.colorIndex++; selection.removeAllRanges();
 
     const markElements = Array.from(textContainer.querySelectorAll('mark.highlight'));

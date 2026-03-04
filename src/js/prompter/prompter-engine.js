@@ -50,6 +50,12 @@ function renderPrompterCard() {
     const sizeToApply = currentCard.localFontSize || state.fontSize;
     prompterText.style.fontSize = sizeToApply + 'vh';
     fontSizeSlider.value = sizeToApply;
+
+    // Actualizar barra de metadatos superior
+    const metaContainer = document.getElementById('prompter-top-metadata');
+    if (metaContainer) {
+        metaContainer.innerText = currentCard.metadata || '';
+    }
 }
 
 export function nextCard() { if (state.currentCardIndex < state.cardsData.length - 1) { state.currentCardIndex++; renderPrompterCard(); } }
