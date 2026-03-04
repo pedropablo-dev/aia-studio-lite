@@ -135,56 +135,81 @@ function updateSpeakerLabel(selected) {
 function renderSelectedScenes(selectedSpeakers) {
     if (!currentApiProject) return;
 
-    // Guardarraíl (solo en cambios manuales)
-    if (!isAutoLoading && state.cardsData.length > 0) {
-        if (!window.confirm('Cambiar la selección eliminará las tarjetas actuales. ¿Continuar?')) {
-            return false; // señal de cancelación
-        }
+    // --- 1. Calcular speakers añadidos y quitados respecto al estado previo ---
+    const removedSpeakers = activeSpeakers.filter(s => !selectedSpeakers.includes(s));
+
+    // --- 2. Si se quitaron hablantes, depurar state.cardsData por metadata ---
+    if (removedSpeakers.length > 0) {
+        state.cardsData = state.cardsData.filter(card => {
+            // Eliminar si el metadata de la tarjeta menciona alguno de los hablantes quitados
+            return !removedSpeakers.some(sp =>
+                card.metadata && card.metadata.includes(sp)
+            );
+        });
     }
 
-    // Persistir selección
+    // --- 3. Persistir selección ---
     activeSpeakers = selectedSpeakers;
     localStorage.setItem('prompter_activeSpeakers', JSON.stringify(activeSpeakers));
 
-    const filteredScenes = (currentApiProject.scenes || [])
-        .filter(s => selectedSpeakers.includes(s.scene_data?.speakerName));
+    // Si no hay ningún hablante, limpiar y salir
+    if (selectedSpeakers.length === 0) {
+        state.cardsData = []; cardsList.innerHTML = ''; state.colorIndex = 0;
+        textContainer.innerHTML = '';
+        renderSidebar(); updateGlobalStats(); historyManager.pushHistory();
+        return true;
+    }
 
-    state.cardsData = [];
-    cardsList.innerHTML = '';
-    state.colorIndex = 0;
+    // --- 4. Construir HTML recorriendo el proyecto en ORDEN ORIGINAL ---
+    const allScenes = currentApiProject.scenes || [];
     let newHtml = '';
 
-    filteredScenes.forEach((scene) => {
+    allScenes.forEach((scene) => {
+        const sceneSpeakerName = scene.scene_data?.speakerName || '';
+        if (!selectedSpeakers.includes(sceneSpeakerName)) return;
+
         const scriptText = scene.script || (scene.scene_data && scene.scene_data.script) || '';
+        if (!scriptText.trim()) return;
 
-        if (scriptText.trim() !== '') {
-            // 1. Calcular número de tarjeta absoluto
-            const absoluteIndex = currentApiProject.scenes.findIndex(s => s.id === scene.id) + 1;
+        // 4a. Construir cabecera
+        const absoluteIndex = allScenes.findIndex(s => s.id === scene.id) + 1;
+        const titleText = scene.title || (scene.scene_data && scene.scene_data.title) || '';
+        const cardTitle = titleText ? `&nbsp;•&nbsp; ${titleText}` : '';
+        const sectionText = scene.sectionName || scene.section ||
+            (scene.scene_data && (scene.scene_data.sectionName || scene.scene_data.section)) || '';
+        const cardSection = sectionText ? `&nbsp;•&nbsp; ${sectionText}` : '';
+        const cardSpeaker = (selectedSpeakers.length > 1 && sceneSpeakerName)
+            ? `&nbsp;•&nbsp; 🗣️ ${sceneSpeakerName}` : '';
 
-            // 2. Búsqueda profunda de Título
-            const titleText = scene.title || (scene.scene_data && scene.scene_data.title) || '';
-            const cardTitle = titleText ? `&nbsp;•&nbsp; ${titleText}` : '';
+        newHtml += `<div contenteditable="false" style="color: #7a7a7a; font-size: 0.8rem; font-weight: bold; margin-top: 35px; margin-bottom: 10px; user-select: none; border-bottom: 1px solid #333; padding-bottom: 4px; letter-spacing: 0.5px;">`;
+        newHtml += `TARJETA #${absoluteIndex}${cardTitle}${cardSection}${cardSpeaker}`;
+        newHtml += `</div>`;
 
-            // 3. Búsqueda profunda de Sección
-            const sectionText = scene.sectionName || scene.section || (scene.scene_data && (scene.scene_data.sectionName || scene.scene_data.section)) || '';
-            const cardSection = sectionText ? `&nbsp;•&nbsp; ${sectionText}` : '';
-
-            // 4. Hablante (solo si hay múltiples seleccionados)
-            const sceneSpeakerName = scene.scene_data?.speakerName || '';
-            const cardSpeaker = (selectedSpeakers.length > 1 && sceneSpeakerName)
-                ? `&nbsp;•&nbsp; 🗣️ ${sceneSpeakerName}` : '';
-
-            // 5. Construir cabecera enriquecida
-            newHtml += `<div contenteditable="false" style="color: #7a7a7a; font-size: 0.8rem; font-weight: bold; margin-top: 35px; margin-bottom: 10px; user-select: none; border-bottom: 1px solid #333; padding-bottom: 4px; letter-spacing: 0.5px;">`;
-            newHtml += `TARJETA #${absoluteIndex}${cardTitle}${cardSection}${cardSpeaker}`;
-            newHtml += `</div>`;
-
-            // 6. Inyectar texto
-            newHtml += scriptText.trim() + '<br><br>';
-        }
+        // 4b. Cruzar scriptText con tarjetas existentes para re-envolver marks
+        let bodyHtml = scriptText.trim();
+        state.cardsData.forEach(card => {
+            // Solo cruzar tarjetas cuyo metadata apunte a este bloque
+            if (!bodyHtml.includes(card.text)) return;
+            const colorClass = `highlight c${state.cardsData.indexOf(card) % 4}`;
+            const markHtml = `<mark class="${colorClass}" id="mark-${card.id}">${card.text}</mark>`;
+            // Reemplazar solo la primera ocurrencia para evitar duplicados
+            bodyHtml = bodyHtml.replace(card.text, markHtml);
+        });
+        newHtml += bodyHtml + '<br><br>';
     });
 
     textContainer.innerHTML = newHtml;
+
+    // --- 5. Reordenar state.cardsData según posición real de los marks en el DOM ---
+    const markElements = Array.from(textContainer.querySelectorAll('mark.highlight'));
+    const sortedCards = [];
+    markElements.forEach(mark => {
+        const id = parseInt(mark.id.replace('mark-', ''));
+        const card = state.cardsData.find(c => c.id === id);
+        if (card) sortedCards.push(card);
+    });
+    state.cardsData = sortedCards;
+
     renderSidebar();
     updateGlobalStats();
     historyManager.pushHistory();
@@ -193,17 +218,24 @@ function renderSelectedScenes(selectedSpeakers) {
 
 // --- LISTENERS DEL CUSTOM DROPDOWN DE HABLANTES ---
 
-// Abrir / cerrar dropdown al hacer clic en el contenedor
+// Abrir / cerrar dropdown al hacer clic en el contenedor principal
 document.getElementById('custom-speaker-select').addEventListener('click', (e) => {
     const menu = document.getElementById('speaker-dropdown-menu');
     menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
     e.stopPropagation();
 });
 
-// Cerrar dropdown al hacer clic fuera
-document.addEventListener('click', () => {
-    const menu = document.getElementById('speaker-dropdown-menu');
-    if (menu) menu.style.display = 'none';
+// El dropdown mismo absorbe los clicks para no propagarlos al document
+document.getElementById('speaker-dropdown-menu').addEventListener('click', (e) => {
+    e.stopPropagation();
+});
+
+// Cerrar el menú al hacer clic fuera del componente entero
+document.addEventListener('click', (e) => {
+    const container = document.getElementById('custom-speaker-select');
+    if (container && !container.contains(e.target)) {
+        document.getElementById('speaker-dropdown-menu').style.display = 'none';
+    }
 });
 
 // Delegación: cambio en cualquier checkbox
@@ -214,7 +246,6 @@ document.getElementById('speaker-dropdown-menu').addEventListener('change', (e) 
     ).map(cb => cb.value);
 
     updateSpeakerLabel(checked);
-    if (checked.length === 0) return; // nada seleccionado: no renderizar
     renderSelectedScenes(checked);
 });
 
