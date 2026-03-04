@@ -33,7 +33,13 @@ export function renderSidebar() {
         const timeStr = calculateReadingTime(card.text) + "s";
         const cardDiv = document.createElement('div');
         cardDiv.className = 'card-item'; cardDiv.draggable = true; cardDiv.dataset.id = card.id;
-        cardDiv.innerHTML = `<textarea data-id="${card.id}" spellcheck="false">${card.text}</textarea><div class="card-meta"><span>${card.text.length} car. | ~${timeStr}</span><button class="btn-delete">Eliminar</button></div>`;
+
+        let metaHtml = '';
+        if (card.metadata) {
+            metaHtml = `<div class="card-meta-text" style="font-size:0.75rem; color:#888; padding:4px 6px; background:var(--bg-card); border-bottom:1px solid #333; margin-top:-2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${card.metadata}">${card.metadata}</div>`;
+        }
+
+        cardDiv.innerHTML = `${metaHtml}<textarea data-id="${card.id}" spellcheck="false">${card.text}</textarea><div class="card-meta"><span>${card.text.length} car. | ~${timeStr}</span><button class="btn-delete">Eliminar</button></div>`;
 
         cardDiv.addEventListener('dragstart', (e) => { state.draggedCardId = card.id; e.dataTransfer.effectAllowed = 'move'; });
         cardDiv.addEventListener('dragover', (e) => { e.preventDefault(); cardDiv.classList.add('drag-over'); });

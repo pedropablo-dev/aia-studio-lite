@@ -199,16 +199,6 @@ function renderSelectedScenes(selectedSpeakers) {
 
     textContainer.innerHTML = newHtml;
 
-    // --- 5. Reordenar state.cardsData según posición real de los marks en el DOM ---
-    const markElements = Array.from(textContainer.querySelectorAll('mark.highlight'));
-    const sortedCards = [];
-    markElements.forEach(mark => {
-        const id = parseInt(mark.id.replace('mark-', ''));
-        const card = state.cardsData.find(c => c.id === id);
-        if (card) sortedCards.push(card);
-    });
-    state.cardsData = sortedCards;
-
     renderSidebar();
     updateGlobalStats();
     historyManager.pushHistory();
@@ -373,15 +363,6 @@ textContainer.addEventListener('mouseup', function () {
 
     state.cardsData.push({ id: cardId, text: selectedText, metadata: metaText });
     state.colorIndex++; selection.removeAllRanges();
-
-    const markElements = Array.from(textContainer.querySelectorAll('mark.highlight'));
-    const sortedCards = [];
-    markElements.forEach(mark => {
-        const id = parseInt(mark.id.replace('mark-', ''));
-        const card = state.cardsData.find(c => c.id === id);
-        if (card) sortedCards.push(card);
-    });
-    state.cardsData = sortedCards;
 
     renderSidebar(); saveToLocal();
     historyManager.pushHistory();
