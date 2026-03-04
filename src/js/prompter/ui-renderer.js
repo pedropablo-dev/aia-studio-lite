@@ -81,10 +81,15 @@ export function deleteCard(id) {
 }
 
 export function swapCards(idA, idB) {
-    const indexA = state.cardsData.findIndex(c => c.id === idA); const indexB = state.cardsData.findIndex(c => c.id === idB);
-    const tempCard = state.cardsData[indexA]; state.cardsData[indexA] = state.cardsData[indexB]; state.cardsData[indexB] = tempCard;
-    const markA = document.getElementById(`mark-${idA}`); const markB = document.getElementById(`mark-${idB}`);
-    if (markA && markB) { const tempNode = document.createTextNode(''); markA.before(tempNode); markB.before(markA); tempNode.replaceWith(markB); }
-    renderSidebar(); saveToLocal();
+    const indexA = state.cardsData.findIndex(c => c.id === idA);
+    const indexB = state.cardsData.findIndex(c => c.id === idB);
+    const tempCard = state.cardsData[indexA];
+    state.cardsData[indexA] = state.cardsData[indexB];
+    state.cardsData[indexB] = tempCard;
+
+    // El panel de texto izquierdo permanece INMUTABLE (Phase 5.4.8).
+    // Solo re-renderizamos la barra lateral para reflejar el nuevo estado visual.
+    renderSidebar();
+    saveToLocal();
     historyManager.pushHistory();
 }

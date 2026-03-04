@@ -181,7 +181,7 @@ function renderSelectedScenes(selectedSpeakers) {
             ? `&nbsp;•&nbsp; 🗣️ ${sceneSpeakerName}` : '';
 
         newHtml += `<div contenteditable="false" style="color: #7a7a7a; font-size: 0.8rem; font-weight: bold; margin-top: 35px; margin-bottom: 10px; user-select: none; border-bottom: 1px solid #333; padding-bottom: 4px; letter-spacing: 0.5px;">`;
-        newHtml += `TARJETA #${absoluteIndex}${cardTitle}${cardSection}${cardSpeaker}`;
+        newHtml += `<span style="color: #b026ff; font-weight: 900;">TARJETA #${absoluteIndex}</span>${cardTitle}${cardSection}${cardSpeaker}`;
         newHtml += `</div>`;
 
         // 4b. Cruzar scriptText con tarjetas existentes para re-envolver marks
