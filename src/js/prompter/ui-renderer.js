@@ -42,10 +42,10 @@ export function renderSidebar() {
 
         const checkClass = card.completed ? 'btn-check completed' : 'btn-check';
         const checkStyle = card.completed
-            ? 'width: 24px; height: 24px; border-radius: 50%; padding: 0; outline: none; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; background: #4caf50; color: white;'
-            : 'width: 24px; height: 24px; border-radius: 50%; padding: 0; outline: none; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.1); color: #888;';
+            ? 'color: #4caf50; border: 2px solid #4caf50; background: transparent; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; cursor: pointer; outline: none; padding: 0;'
+            : 'color: #555; border: 2px solid #555; background: transparent; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; cursor: pointer; outline: none; padding: 0;';
 
-        cardDiv.innerHTML = `${metaHtml}<textarea data-id="${card.id}" spellcheck="false" rows="5" style="height: auto; min-height: 5rem; overflow: hidden;">${card.text}</textarea>
+        cardDiv.innerHTML = `${metaHtml}<textarea data-id="${card.id}" spellcheck="false" rows="3" style="height: auto; min-height: 3.5rem; overflow: hidden;">${card.text}</textarea>
         <div class="card-meta">
             <span>${card.text.length} car. | ~${timeStr}</span>
             <div style="display: flex; gap: 8px; align-items: center;">
