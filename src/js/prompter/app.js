@@ -68,24 +68,18 @@ document.getElementById('api-speaker-select').addEventListener('change', (e) => 
     const filteredScenes = (currentApiProject.scenes || [])
         .filter(s => s.scene_data?.speakerName === speaker);
 
-    let newCards = [];
+    state.cardsData = [];
+    state.colorIndex = 0;
     let newHtml = '';
 
-    filteredScenes.forEach(scene => {
+    filteredScenes.forEach((scene, index) => {
         const script = scene.scene_data?.script;
-        if (!script) return;
-        const phrases = script.match(/[^.!?\n]+[.!?\n]*/g) || [script];
-        phrases.forEach(phrase => {
-            const trimmed = phrase.trim();
-            if (!trimmed) return;
-            const uniqueId = Math.floor(Date.now() + Math.random() * 10000);
-            newCards.push({ id: uniqueId, text: trimmed, localFontSize: null });
-            newHtml += '<mark class="highlight c' + (state.colorIndex % 4) + '" id="mark-' + uniqueId + '">' + phrase + '</mark><br><br>';
-            state.colorIndex++;
-        });
+        if (script && script.trim() !== '') {
+            newHtml += '<div contenteditable="false" style="color: #666; font-size: 0.8rem; font-weight: bold; margin-top: 25px; margin-bottom: 8px; user-select: none; border-bottom: 1px solid #333; padding-bottom: 3px;">ESCENA ' + (index + 1) + '</div>';
+            newHtml += script.trim() + '<br><br>';
+        }
     });
 
-    state.cardsData = newCards;
     textContainer.innerHTML = newHtml;
     renderSidebar();
     updateGlobalStats();
