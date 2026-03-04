@@ -427,6 +427,62 @@ document.getElementById('btn-close-jump').addEventListener('click', closeJumpMen
 jumpMenuOverlay.addEventListener('click', (e) => { if (e.target === jumpMenuOverlay) closeJumpMenu(); });
 document.addEventListener('keydown', handleKeydown);
 
+// --- EXPORTACIÓN JSON (💾 btn-save) ---
+document.getElementById('btn-save').addEventListener('click', () => {
+    if (state.cardsData.length === 0) { alert('No hay tarjetas para exportar.'); return; }
+    const activeSpeakers = Array.from(
+        document.querySelectorAll('#speaker-modal-list input[type=checkbox]:checked')
+    ).map(cb => cb.value);
+    const payload = {
+        timestamp: Date.now(),
+        project: currentApiProject,
+        activeSpeakers,
+        cards: state.cardsData
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'prompter_project_backup.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+});
+
+// --- SORTING DINÁMICO DE TARJETAS ---
+document.getElementById('sidebar-sorter').addEventListener('change', (e) => {
+    const mode = e.target.value;
+    if (mode === 'manual') {
+        // No reordenar; solo refrescar con el orden de creación actual
+        renderSidebar(); return;
+    }
+    if (mode === 'number') {
+        state.cardsData.sort((a, b) => {
+            const matchA = (a.metadata || '').match(/#(\d+)/);
+            const matchB = (b.metadata || '').match(/#(\d+)/);
+            return (matchA ? parseInt(matchA[1]) : Infinity) - (matchB ? parseInt(matchB[1]) : Infinity);
+        });
+    } else if (mode === 'speaker') {
+        state.cardsData.sort((a, b) => {
+            // Extraer nombre del hablante (tras el icono 🗣️ o tras el separador •)
+            const getSpeaker = (meta) => {
+                const m = (meta || '').match(/🗣️\s*([^\u25ba\n]+)/);
+                return m ? m[1].trim() : (meta || '').split('•').slice(-1)[0].trim();
+            };
+            const getNum = (meta) => { const m = (meta || '').match(/#(\d+)/); return m ? parseInt(m[1]) : Infinity; };
+            const spkCmp = getSpeaker(a.metadata).localeCompare(getSpeaker(b.metadata), 'es');
+            // Si el hablante es el mismo, ordenar por número de tarjeta
+            return spkCmp !== 0 ? spkCmp : getNum(a.metadata) - getNum(b.metadata);
+        });
+    } else if (mode === 'status') {
+        // Pendientes (false) primero, completados (true) al final
+        state.cardsData.sort((a, b) => (a.completed ? 1 : 0) - (b.completed ? 1 : 0));
+    }
+    saveToLocal();
+    renderSidebar();
+});
+
 // --- ATAJOS GLOBALES DEL TECLADO ---
 document.addEventListener('keydown', function (e) {
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {

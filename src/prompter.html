@@ -53,6 +53,13 @@
             <div class="sidebar-header">
                 <h3 style="margin: 0 0 10px 0;">Tarjetas Generadas</h3>
                 <div class="global-stats" id="global-stats-sidebar">Tarjetas: 0</div>
+                <select id="sidebar-sorter"
+                    style="margin-bottom: 10px; width: 100%; padding: 5px; background: var(--bg-input); color: white; border: 1px solid #444; border-radius: 4px;">
+                    <option value="manual">Orden Actual / Creación</option>
+                    <option value="number">Por Número de Tarjeta</option>
+                    <option value="speaker">Por Hablante</option>
+                    <option value="status">Por Estado (Pendientes primero)</option>
+                </select>
                 <button id="btn-start">▶ Iniciar Modo Grabación</button>
             </div>
             <div id="cards-list"></div>
