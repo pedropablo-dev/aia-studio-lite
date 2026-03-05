@@ -111,7 +111,7 @@ export function renderSidebar() {
             <div style="display: flex; gap: 8px; align-items: center;">
                 <button class="${checkClass}" data-id="${card.id}" style="${checkStyle}" title="Marcar como completado">✓</button>
                 <button class="btn-insert-below" style="background:transparent; border:1px solid #4caf50; color:#4caf50; cursor:pointer; padding:4px 10px; border-radius:4px; font-size:0.75rem; height: 26px; display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; transition: all 0.2s;" title="Añadir tarjeta debajo">↳ Añadir</button>
-                <button class="btn-delete" style="height: 26px; display: inline-flex; align-items: center; box-sizing: border-box;">Eliminar</button>
+                <button class="btn-delete" style="height: 26px; font-weight: normal !important; display: inline-flex; align-items: center; box-sizing: border-box;">Eliminar</button>
             </div>
         </div>`;
         cardDiv.addEventListener('dragstart', (e) => { state.draggedCardId = card.id; e.dataTransfer.effectAllowed = 'move'; });
