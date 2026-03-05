@@ -1,5 +1,6 @@
 import uuid
 import base64
+from typing import List
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.concurrency import run_in_threadpool
 from sqlalchemy.orm import Session
@@ -15,6 +16,10 @@ router = APIRouter(prefix="/api/projects", tags=["projects"])
 
 class ProjectRenameRequest(BaseModel):
     new_title: str
+
+class PrompterSyncItem(BaseModel):
+    scene_id: str
+    new_text: str
 
 
 # ==========================================
@@ -224,3 +229,39 @@ async def duplicate_project(project_id: str, db: Session = Depends(database.get_
     db.commit()
     return {"status": "success", "message": "Proyecto duplicado", "new_id": new_id}
 
+
+# ==========================================
+# PROMPTER SYNC (PATCH QUIRÚRGICO)
+# ==========================================
+
+@router.patch("/{project_id}/prompter_sync")
+async def sync_prompter_data(project_id: str, payload: List[PrompterSyncItem], db: Session = Depends(database.get_db)):
+    # 1. Verificar existencia del proyecto
+    proj = db.query(models.Project).filter(models.Project.id == project_id).first()
+    if not proj:
+        raise HTTPException(status_code=404, detail="Proyecto no encontrado")
+
+    # 2. Iterar sobre el payload y actualizar quirúrgicamente el texto
+    updated_count = 0
+    for item in payload:
+        scene = db.query(models.Scene).filter(
+            models.Scene.id == item.scene_id,
+            models.Scene.project_id == project_id
+        ).first()
+
+        if scene:
+            # Clonar el diccionario para forzar la detección de cambios en SQLAlchemy
+            scene_dict = dict(scene.scene_data) if scene.scene_data else {}
+            scene_dict["script"] = item.new_text
+            scene.scene_data = scene_dict
+            updated_count += 1
+
+    # 3. Guardar cambios
+    try:
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        logger.error(f"[prompter_sync] Error guardando proyecto {project_id}: {e}")
+        raise HTTPException(status_code=500, detail="Error al sincronizar con la base de datos")
+
+    return {"status": "success", "message": f"Sincronizadas {updated_count} escenas", "updated_scenes": updated_count}
