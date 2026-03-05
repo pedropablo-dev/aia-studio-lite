@@ -199,21 +199,101 @@ function openMediaConfig() {
 // ================================================================
 // SISTEMA DE DIÁLOGOS CUSTOM (reemplaza confirm/prompt/alert)
 // ================================================================
+window.sysDialog = function sysDialog({ title = '', message = '', icon = '❓', type = 'confirm', defaultValue = '', confirmLabel = 'Aceptar', cancelLabel = 'Cancelar', confirmClass = 'btn-accent' } = {}) {
+    return new Promise(resolve => {
+        const overlay = document.getElementById('sys-dialog-overlay');
+        if (!overlay) { console.error("Error crítico: No se encuentra #sys-dialog-overlay"); return resolve({ confirmed: type === 'alert' ? true : false, value: defaultValue }); }
 
-/**
- * Shows a custom async dialog. Returns a Promise that resolves with
- * { confirmed: bool, value: string|null } when the user responds.
- *
- * @param {Object} opts
- * @param {string}  opts.title
- * @param {string}  opts.message
- * @param {string}  [opts.icon='❓']
- * @param {string}  [opts.type='confirm']   - 'confirm' | 'prompt' | 'alert'
- * @param {string}  [opts.defaultValue='']  - Initial value for prompt inputs
- * @param {string}  [opts.confirmLabel='Aceptar']
- * @param {string}  [opts.cancelLabel='Cancelar']
- * @param {string}  [opts.confirmClass='btn-accent']  - CSS class for confirm button
- */
+        const iconEl = document.getElementById('sys-dialog-icon');
+        const titleEl = document.getElementById('sys-dialog-title');
+        const messageEl = document.getElementById('sys-dialog-message');
+        const promptContainer = document.getElementById('sys-dialog-prompt-container');
+        const promptInput = document.getElementById('sys-dialog-input');
+        const btnsEl = document.getElementById('sys-dialog-btns');
+
+        if (!iconEl || !titleEl || !messageEl || !btnsEl) { console.error("Error crítico: Elementos internos de sysDialog faltantes"); return resolve({ confirmed: false }); }
+
+        iconEl.textContent = icon;
+        titleEl.textContent = title;
+        messageEl.innerHTML = message;
+
+        if (type === 'prompt' && promptContainer && promptInput) {
+            promptContainer.style.display = 'block';
+            promptInput.value = defaultValue;
+        } else if (promptContainer) {
+            promptContainer.style.display = 'none';
+        }
+
+        btnsEl.innerHTML = '';
+
+        const close = (confirmed, val) => {
+            overlay.style.display = 'none';
+            resolve(type === 'prompt' ? { confirmed, value: val } : { confirmed });
+        };
+
+        if (type !== 'alert') {
+            const cancelBtn = document.createElement('button');
+            cancelBtn.textContent = cancelLabel;
+            cancelBtn.className = 'btn-secondary';
+            cancelBtn.onclick = () => close(false, null);
+            btnsEl.appendChild(cancelBtn);
+        }
+
+        const confirmBtn = document.createElement('button');
+        confirmBtn.textContent = confirmLabel;
+        confirmBtn.className = confirmClass;
+        confirmBtn.onclick = () => close(true, type === 'prompt' && promptInput ? promptInput.value : null);
+        btnsEl.appendChild(confirmBtn);
+
+        overlay.style.display = 'flex';
+        if (type === 'prompt' && promptInput) promptInput.focus();
+        else confirmBtn.focus();
+    });
+};
+
+window.surgicalPull = async function () {
+    const currentId = ProjectState.getId();
+    if (!currentId) return;
+
+    const { confirmed } = await window.sysDialog({
+        title: 'Sincronizar desde Prompter',
+        message: 'Se actualizarán los textos desde la base de datos.<br>Los cambios locales de texto no guardados se perderán.<br>¿Continuar?',
+        icon: '📥',
+        type: 'confirm',
+        confirmLabel: 'Traer texto',
+        confirmClass: 'btn-danger'
+    });
+
+    if (!confirmed) return;
+
+    try {
+        const data = await liteLoadProjectApi(currentId);
+        if (!data || !data.scenes) throw new Error("Datos inválidos devueltos por la API");
+
+        // ACTUALIZACIÓN OCC PRIMORDIAL (ANTES DE CUALQUIER RENDER O GUARDADO)
+        ProjectState.lastKnownUpdatedAt = data.updated_at || null;
+
+        let updatedCount = 0;
+        data.scenes.forEach(remoteSceneWrapper => {
+            const remoteScene = remoteSceneWrapper.scene_data ? { id: remoteSceneWrapper.id, ...remoteSceneWrapper.scene_data } : remoteSceneWrapper;
+            const localScene = scenes.find(s => s.id === remoteScene.id);
+            if (localScene && remoteScene.script !== undefined) {
+                // Mezcla Quirúrgica
+                localScene.script = remoteScene.script;
+                updatedCount++;
+            }
+        });
+
+        // Aplicamos la propagación de UI y Ram persistente
+        debouncedSaveState();
+        render();
+        showToast(`✅ ${updatedCount} escenas emparejadas con éxito`);
+
+    } catch (err) {
+        console.error("[Surgical Pull Error]", err);
+        showToast("❌ Fallo en Sincronización Inversa", "error");
+    }
+};
 
 
 // ================================================================
@@ -587,6 +667,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Top Bar Global Actions
     document.getElementById('btn-history-undo')?.addEventListener('click', undo);
     document.getElementById('btn-history-redo')?.addEventListener('click', redo);
+    document.getElementById('btn-pull-surgical')?.addEventListener('click', window.surgicalPull);
 
     // Viewport
     document.getElementById('viewport')?.addEventListener('click', clearSelection);

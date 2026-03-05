@@ -5,6 +5,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from fastapi.concurrency import run_in_threadpool
 from sqlalchemy.orm import Session
 import logging
+from datetime import datetime
 
 from pydantic import BaseModel
 import database
@@ -99,6 +100,20 @@ async def save_project(project: schemas.ProjectSchema, db: Session = Depends(dat
         # Upsert Proyecto
         db_proj = db.query(models.Project).filter(models.Project.id == project.id).first()
         if db_proj:
+            # OPTIMISTIC CONCURRENCY CONTROL (OCC) ULTRA ROBUSTO
+            if db_proj.updated_at and project.updated_at:
+                try:
+                    # Asegurar que ambos son offset-aware o offset-naive
+                    db_dt = db_proj.updated_at.replace(tzinfo=None, microsecond=0)
+                    client_dt = datetime.fromisoformat(project.updated_at.replace("Z", "")).replace(microsecond=0)
+                    if db_dt > client_dt:
+                        logger.warning(f"CONFLICTO DETECTADO: DB({db_dt}) > CLIENT({client_dt})")
+                        raise HTTPException(status_code=409, detail="CONFLICT_OUTDATED")
+                except HTTPException:
+                    raise
+                except Exception as e:
+                    logger.warning(f"Error en comparación OCC (ignorado): {e}")
+
             db_proj.title = project.title
             db_proj.metadata_config = clean_meta
         else:
@@ -124,6 +139,9 @@ async def save_project(project: schemas.ProjectSchema, db: Session = Depends(dat
         # Commit Único — si falla cualquier paso anterior, nada se persiste
         db.commit()
 
+    except HTTPException:
+        db.rollback()
+        raise
     except Exception as e:
         db.rollback()
         logger.error(f"[save_project] Error crítico al guardar proyecto {project.id}: {e}")
@@ -155,6 +173,7 @@ async def load_project(project_id: str, db: Session = Depends(database.get_db)):
         "id": proj.id,
         "title": proj.title,
         "metadata_config": proj.metadata_config,
+        "updated_at": proj.updated_at.isoformat() if proj.updated_at else None,
         "scenes": [
             {
                 "id": s.id,
@@ -258,6 +277,8 @@ async def sync_prompter_data(project_id: str, payload: List[PrompterSyncItem], d
 
     # 3. Guardar cambios
     try:
+        if updated_count > 0:
+            proj.updated_at = datetime.utcnow()
         db.commit()
     except Exception as e:
         db.rollback()

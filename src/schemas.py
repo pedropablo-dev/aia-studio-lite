@@ -6,6 +6,7 @@ class ProjectSchema(BaseModel):
     title: str
     metadata_config: Dict[str, Any]
     scenes: List[Dict[str, Any]]
+    updated_at: Optional[str] = None
 
 class ProjectListSchema(BaseModel):
     id: str

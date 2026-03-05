@@ -60,6 +60,8 @@
         <div class="header-history-controls">
             <button id="btn-history-undo" class="history-btn" title="Deshacer (Ctrl+Z)">↩</button>
             <button id="btn-history-redo" class="history-btn" title="Rehacer (Ctrl+Y)">↪</button>
+            <button id="btn-pull-surgical" class="history-btn"
+                title="Sincronizar cambios del Prompter (Traer texto)">📥</button>
         </div>
 
         <div class="vertical-separator"></div>
@@ -456,18 +458,7 @@
             </div>
         </div>
     </div>
-    <!-- Custom Modal Overlay -->
-    <div id="custom-modal-overlay" class="modal-overlay hidden">
-        <div class="modal-box">
-            <h3 id="modal-title">Título</h3>
-            <p id="modal-message">Mensaje...</p>
-            <input type="text" id="modal-input" class="hidden" autocomplete="off">
-            <div class="modal-actions">
-                <button id="modal-btn-cancel" class="btn-secondary">Cancelar</button>
-                <button id="modal-btn-confirm" class="btn-primary">Aceptar</button>
-            </div>
-        </div>
-    </div>
+    <!-- Custom Modal Overlay eliminado (sustituido por sys-dialog-overlay global) -->
 
     <div id="timeline-outline-sidebar">
         <div class="outline-header">

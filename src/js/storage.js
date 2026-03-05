@@ -66,6 +66,7 @@ async function saveState() {
     const payload = {
         id: ProjectState.getId(),
         title: projectTitle || "Mi Proyecto",
+        updated_at: ProjectState.lastKnownUpdatedAt,
         metadata_config: {
             colors: presetColors,
             recentColors: recentColors,
@@ -84,7 +85,10 @@ async function saveState() {
     };
 
     try {
-        await liteSaveProjectApi(payload);
+        const responseData = await liteSaveProjectApi(payload);
+        // Si el guardado es exitoso (o Forzado posterior), actualizamos el reloj local con la nueva marca temporal del backend
+        ProjectState.lastKnownUpdatedAt = new Date().toISOString();
+
         // Guardado exitoso: eliminar badge de advertencia si estaba visible
         hideDbSyncWarning();
 
@@ -94,6 +98,42 @@ async function saveState() {
             toastEl.className = "toast";
         }
     } catch (error) {
+        if (error.message && error.message.includes("CONFLICT_OUTDATED")) {
+            // Manejo estricto del Choque de Concurrencia (OCC)
+            if (window.debounceSaveTimer) clearTimeout(window.debounceSaveTimer);
+            if (window.autosaveTimer) clearTimeout(window.autosaveTimer);
+
+            const { confirmed } = await sysDialog({
+                icon: '⚠️',
+                title: 'Proyecto Desactualizado',
+                message: 'Se han detectado cambios en el Prompter que no tienes en esta ventana.<br><br>¿Qué deseas hacer?',
+                type: 'confirm',
+                confirmLabel: 'Recargar del Prompter',
+                cancelLabel: 'Forzar (Sobrescribir Prompter)',
+                confirmClass: 'btn-accent'
+            });
+
+            if (confirmed) {
+                // Modo Ceder: Refrescar todo el frontend con la versión de la base de datos (Pull Quirúrgico)
+                if (typeof window.surgicalPull === 'function') {
+                    await window.surgicalPull();
+                } else {
+                    await loadFromLocal();
+                }
+            } else {
+                // Modo Forzado: Ignorar el timestamp local y sobreescribir DB
+                payload.updated_at = null;
+                try {
+                    await liteSaveProjectApi(payload);
+                    ProjectState.lastKnownUpdatedAt = new Date().toISOString();
+                    showToast("🔄 Guardado Forzado: Prompter sobrescrito.");
+                } catch (e) {
+                    showDbSyncWarning();
+                }
+            }
+            return;
+        }
+
         console.error("[Storage] Fallo al guardar en SQLite:", error);
         // Mostrar badge persistente (más visible que el toast que desaparece en 1.5s)
         showDbSyncWarning();
@@ -128,6 +168,9 @@ async function loadFromLocal() {
             if (titleInput) { titleInput.value = projectTitle; titleInput.title = projectTitle; }
             document.title = projectTitle + " - AIA Studio";
         }
+
+        // --- CONTROL DE CONCURRENCIA ---
+        ProjectState.lastKnownUpdatedAt = data.updated_at || null;
 
         if (data.metadata_config) {
             const m = data.metadata_config;
@@ -270,6 +313,7 @@ async function manualBackup() {
     const dataPayload = {
         id: ProjectState.getId(),
         title: projectTitle || "Mi Proyecto",
+        updated_at: ProjectState.lastKnownUpdatedAt,
         metadata_config: {
             colors: presetColors,
             recentColors: recentColors,
