@@ -10,6 +10,17 @@ const btnStart = document.getElementById('btn-start');
 
 export function calculateReadingTime(text) { return Math.ceil((text.trim().split(/\s+/).length / state.WPM) * 60); }
 
+const getGroupColor = (str) => {
+    if (!str) return '#555555'; // Fallback
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+        hash = str.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const hue = Math.abs(hash) % 360;
+    // Saturación y luminosidad fijas para alto contraste en modo oscuro
+    return `hsl(${hue}, 70%, 50%)`;
+};
+
 export function updateGlobalStats() {
     const fullText = textContainer.innerText || "";
     const tSecsDoc = calculateReadingTime(fullText);
@@ -57,22 +68,28 @@ export function renderSidebar() {
         cardDiv.className = 'card-item'; cardDiv.draggable = true; cardDiv.dataset.id = card.id;
 
         // --- Agrupación Visual Inteligente de Tarjetas ---
-        const currentMeta = card.metadata;
+        const currentMeta = card.metadata || '';
         const prevMeta = i > 0 ? state.cardsData[i - 1].metadata : null;
         const nextMeta = i < state.cardsData.length - 1 ? state.cardsData[i + 1].metadata : null;
 
-        let groupStyles = 'margin-bottom: 15px; border: 1px solid #333; border-radius: 6px;'; // Default standalone
+        const groupColor = getGroupColor(currentMeta);
 
-        if (currentMeta && (currentMeta === prevMeta || currentMeta === nextMeta)) {
-            const isFirst = currentMeta !== prevMeta;
-            const isLast = currentMeta !== nextMeta;
+        // Estilo por defecto: Tarjeta aislada (Borde completo del color del grupo)
+        let groupStyles = `margin-bottom: 15px; border: 1px solid ${groupColor}; border-radius: 6px; box-shadow: 0 0 5px ${groupColor}20;`;
 
-            if (isFirst) {
-                groupStyles = 'margin-top: 15px; margin-bottom: 0; border-top: 1px solid #666; border-left: 1px solid #666; border-right: 1px solid #666; border-bottom: none; border-radius: 6px 6px 0 0; padding-bottom: 8px;';
-            } else if (isLast) {
-                groupStyles = 'margin-top: 0; margin-bottom: 15px; border-bottom: 1px solid #666; border-left: 1px solid #666; border-right: 1px solid #666; border-top: none; border-radius: 0 0 6px 6px; padding-top: 8px;';
+        const isSamePrev = currentMeta === prevMeta;
+        const isSameNext = currentMeta === nextMeta;
+
+        if (isSamePrev || isSameNext) {
+            if (!isSamePrev && isSameNext) {
+                // Primera del grupo
+                groupStyles = `margin-top: 15px; margin-bottom: 0; border-top: 1px solid ${groupColor}; border-left: 1px solid ${groupColor}; border-right: 1px solid ${groupColor}; border-bottom: none; border-radius: 6px 6px 0 0; padding-bottom: 8px;`;
+            } else if (isSamePrev && !isSameNext) {
+                // Última del grupo
+                groupStyles = `margin-top: 0; margin-bottom: 15px; border-bottom: 1px solid ${groupColor}; border-left: 1px solid ${groupColor}; border-right: 1px solid ${groupColor}; border-top: none; border-radius: 0 0 6px 6px; padding-top: 8px;`;
             } else {
-                groupStyles = 'margin-top: 0; margin-bottom: 0; border-left: 1px solid #666; border-right: 1px solid #666; border-top: none; border-bottom: none; border-radius: 0; padding-top: 8px; padding-bottom: 8px;';
+                // En medio del grupo
+                groupStyles = `margin-top: 0; margin-bottom: 0; border-left: 1px solid ${groupColor}; border-right: 1px solid ${groupColor}; border-top: none; border-bottom: none; border-radius: 0; padding-top: 8px; padding-bottom: 8px;`;
             }
         }
         cardDiv.style.cssText = groupStyles;
