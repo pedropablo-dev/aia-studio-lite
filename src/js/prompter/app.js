@@ -37,6 +37,7 @@ function sysDialog({ title = '', message = '', icon = '❓', confirmLabel = 'Ace
 }
 
 const textContainer = document.getElementById('text-container');
+textContainer.setAttribute('contenteditable', 'false');
 const cardsList = document.getElementById('cards-list');
 const btnStart = document.getElementById('btn-start');
 const prompterView = document.getElementById('prompter-view');
@@ -354,48 +355,39 @@ document.getElementById('btn-clear').addEventListener('click', async () => {
     currentApiProject = null;
 });
 
-let debounceTimer;
-textContainer.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-        const selection = window.getSelection();
-        if (selection.rangeCount > 0) {
-            const node = selection.startContainer;
-            const element = node.nodeType === 3 ? node.parentNode : node;
-            if (element.closest('mark.highlight')) {
-                e.preventDefault();
-                document.execCommand('insertText', false, '\n');
-            }
-        }
-    }
-});
+let rightDebounceTimer;
+cardsList.addEventListener('input', (e) => {
+    if (e.target.tagName === 'TEXTAREA') {
+        const cardItem = e.target.closest('.card-item');
+        if (!cardItem) return;
+        const cardId = parseInt(cardItem.dataset.id);
+        const newText = e.target.value;
 
-textContainer.addEventListener('input', () => {
-    updateGlobalStats();
-    const selection = window.getSelection();
-    if (selection.rangeCount > 0) {
-        let node = selection.anchorNode;
-        while (node && node !== textContainer) {
-            if (node.nodeName === 'MARK' && node.id.startsWith('mark-')) {
-                const cardId = parseInt(node.id.replace('mark-', ''));
-                const newText = node.innerText;
-                const cardIndex = state.cardsData.findIndex(c => c.id === cardId);
-                if (cardIndex > -1) {
-                    state.cardsData[cardIndex].text = newText;
-                    const textarea = document.querySelector(`textarea[data-id="${cardId}"]`);
-                    if (textarea) {
-                        textarea.value = newText;
-                        const timeStr = Math.ceil((newText.trim().split(/\s+/).length / 130) * 60) + "s";
-                        textarea.nextElementSibling.querySelector('span').textContent = `${newText.length} car. | ~${timeStr}`;
-                    }
-                }
-                break;
-            }
-            node = node.parentNode;
+        // 1. Actualizar el estado central en memoria
+        const cardIndex = state.cardsData.findIndex(c => c.id === cardId);
+        if (cardIndex > -1) {
+            state.cardsData[cardIndex].text = newText;
         }
+
+        // 2. Reflejar visualmente el cambio en el guion original (Panel Izquierdo)
+        const markEl = document.getElementById(`mark-${cardId}`);
+        if (markEl) {
+            markEl.textContent = newText;
+        }
+
+        // 3. Actualizar metadatos de la tarjeta (caracteres y tiempo)
+        const timeStr = Math.ceil((newText.trim().split(/\s+/).length / 130) * 60) + "s";
+        const statsSpan = e.target.nextElementSibling?.querySelector('span');
+        if (statsSpan) statsSpan.textContent = `${newText.length} car. | ~${timeStr}`;
+
+        // 4. Disparar persistencia y métricas globales
+        saveToLocal();
+        clearTimeout(rightDebounceTimer);
+        rightDebounceTimer = setTimeout(() => {
+            historyManager.pushHistory();
+            updateGlobalStats();
+        }, 500);
     }
-    saveToLocal();
-    clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(() => { historyManager.pushHistory(); }, 500);
 });
 
 textContainer.addEventListener('mouseup', function () {
