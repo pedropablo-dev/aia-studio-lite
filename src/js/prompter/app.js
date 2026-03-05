@@ -21,7 +21,7 @@ function sysDialog({ title = '', message = '', icon = '❓', confirmLabel = 'Ace
         if (!isAlert) {
             const cancelBtn = document.createElement('button');
             cancelBtn.textContent = cancelLabel;
-            cancelBtn.style.cssText = 'padding:8px 16px; background:transparent; border:1px solid #555; color:#ccc; border-radius:4px; cursor:pointer;';
+            cancelBtn.style.cssText = 'padding:8px 16px; background:transparent; border:1px solid #555; color:#ccc; border-radius:4px; cursor:pointer; font-weight: normal !important;';
             cancelBtn.onclick = () => close(false);
             btnsEl.appendChild(cancelBtn);
         }

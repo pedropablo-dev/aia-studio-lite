@@ -51,10 +51,31 @@ export function renderSidebar() {
     }
 
     cardsList.innerHTML = '';
-    state.cardsData.forEach((card) => {
+    state.cardsData.forEach((card, i) => {
         const timeStr = calculateReadingTime(card.text) + "s";
         const cardDiv = document.createElement('div');
         cardDiv.className = 'card-item'; cardDiv.draggable = true; cardDiv.dataset.id = card.id;
+
+        // --- Agrupación Visual Inteligente de Tarjetas ---
+        const currentMeta = card.metadata;
+        const prevMeta = i > 0 ? state.cardsData[i - 1].metadata : null;
+        const nextMeta = i < state.cardsData.length - 1 ? state.cardsData[i + 1].metadata : null;
+
+        let groupStyles = 'margin-bottom: 15px; border: 1px solid #333; border-radius: 6px;'; // Default standalone
+
+        if (currentMeta && (currentMeta === prevMeta || currentMeta === nextMeta)) {
+            const isFirst = currentMeta !== prevMeta;
+            const isLast = currentMeta !== nextMeta;
+
+            if (isFirst) {
+                groupStyles = 'margin-top: 15px; margin-bottom: 0; border-top: 1px solid #666; border-left: 1px solid #666; border-right: 1px solid #666; border-bottom: none; border-radius: 6px 6px 0 0; padding-bottom: 8px;';
+            } else if (isLast) {
+                groupStyles = 'margin-top: 0; margin-bottom: 15px; border-bottom: 1px solid #666; border-left: 1px solid #666; border-right: 1px solid #666; border-top: none; border-radius: 0 0 6px 6px; padding-top: 8px;';
+            } else {
+                groupStyles = 'margin-top: 0; margin-bottom: 0; border-left: 1px solid #666; border-right: 1px solid #666; border-top: none; border-bottom: none; border-radius: 0; padding-top: 8px; padding-bottom: 8px;';
+            }
+        }
+        cardDiv.style.cssText = groupStyles;
 
         let metaHtml = '';
         if (card.metadata) {
@@ -72,8 +93,8 @@ export function renderSidebar() {
             <span>${card.text.length} car. | ~${timeStr}</span>
             <div style="display: flex; gap: 8px; align-items: center;">
                 <button class="${checkClass}" data-id="${card.id}" style="${checkStyle}" title="Marcar como completado">✓</button>
-                <button class="btn-insert-below" style="background:transparent; border:1px solid #444; color:#aaa; cursor:pointer; padding:2px 8px; border-radius:4px; font-size:0.75rem;" title="Añadir tarjeta debajo">↳ Añadir</button>
-                <button class="btn-delete">Eliminar</button>
+                <button class="btn-insert-below" style="background:transparent; border:1px solid #4caf50; color:#4caf50; cursor:pointer; padding:4px 10px; border-radius:4px; font-size:0.75rem; height: 26px; display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; transition: all 0.2s;" title="Añadir tarjeta debajo">↳ Añadir</button>
+                <button class="btn-delete" style="height: 26px; display: inline-flex; align-items: center; box-sizing: border-box;">Eliminar</button>
             </div>
         </div>`;
         cardDiv.addEventListener('dragstart', (e) => { state.draggedCardId = card.id; e.dataTransfer.effectAllowed = 'move'; });

@@ -235,6 +235,7 @@ window.sysDialog = function sysDialog({ title = '', message = '', icon = '❓', 
             const cancelBtn = document.createElement('button');
             cancelBtn.textContent = cancelLabel;
             cancelBtn.className = 'btn-secondary';
+            cancelBtn.style.cssText = 'font-weight: normal !important;';
             cancelBtn.onclick = () => close(false, null);
             btnsEl.appendChild(cancelBtn);
         }
