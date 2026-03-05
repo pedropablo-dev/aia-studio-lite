@@ -161,6 +161,7 @@ function render() {
                         <div class="script-area-container">
                             <textarea class="script-preview" placeholder="Diálogo..." data-id="${scene.id}">${scene.script}</textarea>
                             <button class="expand-btn view-modal-btn" data-id="${scene.id}" title="Expandir (Shift+O)">⤢</button>
+                            <button type="button" class="icon-btn btn-wrap-brackets" title="Envolver en corchetes para Prompter" style="position:absolute; bottom:8px; right:35px; width:26px; height:23px; font-size:0.7rem; padding:0; line-height:1; opacity:0.6;">[ ]</button>
                         </div>
 
                         <div class="move-controls" style="display:flex; justify-content: space-between; align-items: center; margin-top: 10px; margin-bottom: 10px;">
@@ -693,6 +694,25 @@ window.loadThumbnail = async function (sceneId, url, retries = 5) {
     }
 };
 
+// === FUNCIÓN GLOBAL: MARCADOR DE CORCHETES PARA PROMPTER ===
+window.wrapTextWithBrackets = function (textarea) {
+    if (!textarea) return;
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+
+    textarea.focus();
+    if (start !== end) {
+        const selected = textarea.value.substring(start, end);
+        textarea.setRangeText(`[${selected}]`, start, end, 'select');
+    } else {
+        textarea.setRangeText('[]', start, end, 'end');
+        textarea.selectionStart = start + 1;
+        textarea.selectionEnd = start + 1;
+    }
+    // Disparar evento para que el autoguardado lo detecte
+    textarea.dispatchEvent(new Event('input', { bubbles: true }));
+};
+
 // EXPOSITOR GLOBAL RETROCOMPATIBILIDAD
 window.render = render;
 window.renderTimelineOutline = renderTimelineOutline;
@@ -757,6 +777,16 @@ document.addEventListener('DOMContentLoaded', () => {
             projectState.selectedId = el.dataset.id;
             render();
             if (typeof window.openQuickFileModal === 'function') window.openQuickFileModal(el.dataset.id);
+            return;
+        }
+
+        el = target.closest('.btn-wrap-brackets');
+        if (el) {
+            const card = el.closest('.scene-card');
+            const textarea = card ? card.querySelector('.script-preview') : null;
+            if (textarea && typeof window.wrapTextWithBrackets === 'function') {
+                window.wrapTextWithBrackets(textarea);
+            }
             return;
         }
 

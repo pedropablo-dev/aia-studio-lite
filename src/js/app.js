@@ -597,6 +597,10 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btn-close-edit-modal-x')?.addEventListener('click', () => closeModal(false));
     document.getElementById('btn-close-edit-modal-cancel')?.addEventListener('click', () => closeModal(false));
     document.getElementById('btn-close-edit-modal-save')?.addEventListener('click', () => closeModal(true));
+    document.getElementById('btn-modal-wrap-brackets')?.addEventListener('click', () => {
+        const textarea = document.getElementById('modal-text');
+        if (typeof window.wrapTextWithBrackets === 'function') window.wrapTextWithBrackets(textarea);
+    });
     document.getElementById('btn-close-media-config-x')?.addEventListener('click', () => { document.getElementById('media-config-modal').style.display = 'none'; });
     document.getElementById('btn-close-media-config-done')?.addEventListener('click', () => { document.getElementById('media-config-modal').style.display = 'none'; });
 
