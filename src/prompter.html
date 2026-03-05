@@ -88,6 +88,11 @@
             padding-bottom: 60px !important;
             box-sizing: border-box !important;
         }
+
+        /* 5. Identificador Visual de Foco Sutil (Sincronización DOM) */
+        .card-item:focus-within .focus-indicator {
+            opacity: 1 !important;
+        }
     </style>
 </head>
 
@@ -134,6 +139,7 @@
                 <div style="display: flex; gap: 8px; margin-bottom: 10px; margin-top: 10px; align-items: center;">
                     <select id="sidebar-sorter"
                         style="flex-grow: 1; padding: 5px; background: var(--bg-input); color: white; border: 1px solid #444; border-radius: 4px;">
+                        <option value="sync">Orden Sincronizado</option>
                         <option value="manual">Orden Actual / Manual</option>
                         <option value="number">Por Número de Tarjeta</option>
                         <option value="speaker">Por Hablante</option>

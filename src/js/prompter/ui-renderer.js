@@ -97,7 +97,7 @@ export function renderSidebar() {
         let metaHtml = '';
         if (card.metadata) {
             const styledMeta = card.metadata.replace(/(TARJETA #[0-9]+|➔ #[0-9]+)/g, '<span style="color: #b026ff; font-weight: normal;">$1</span>');
-            metaHtml = `<div class="card-meta-text" style="font-size:0.75rem; color:#888; padding:4px 6px; background:var(--bg-card); border-bottom:1px solid #333; margin-top:-2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${card.metadata}">${styledMeta}</div>`;
+            metaHtml = `<div class="card-meta-text" style="font-size:0.75rem; color:#888; padding:4px 6px; background:var(--bg-card); border-bottom:1px solid #333; margin-top:-2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${card.metadata}">${styledMeta}<span class="focus-indicator" style="opacity: 0; transition: opacity 0.2s; color: #b026ff; font-size: 0.8rem; margin-left: 10px; font-weight: bold; pointer-events: none;">✍️ EDITANDO</span></div>`;
         }
 
         const checkClass = card.completed ? 'btn-check completed' : 'btn-check';

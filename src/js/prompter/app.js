@@ -736,6 +736,22 @@ function applyCurrentSorting() {
         });
     } else if (mode === 'status') {
         state.cardsData.sort((a, b) => (a.completed ? 1 : 0) - (b.completed ? 1 : 0));
+    } else if (mode === 'sync') {
+        // 1. Extraer el orden lineal exacto del DOM izquierdo
+        const marks = Array.from(document.querySelectorAll('#text-container mark.highlight'));
+        const domOrder = marks.map(m => parseInt(m.id.replace('mark-', '')));
+
+        // 2. Ordenar matriz de datos basándose en el índice del DOM
+        state.cardsData.sort((a, b) => {
+            const indexA = domOrder.indexOf(a.id);
+            const indexB = domOrder.indexOf(b.id);
+
+            // Contingencia: Si no existe en el DOM, empujar al final
+            const posA = indexA !== -1 ? indexA : Infinity;
+            const posB = indexB !== -1 ? indexB : Infinity;
+
+            return posA - posB;
+        });
     }
     saveToLocal();
     renderSidebar();
