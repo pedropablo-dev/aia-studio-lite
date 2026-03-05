@@ -478,6 +478,72 @@ document.getElementById('btn-save').addEventListener('click', () => {
     URL.revokeObjectURL(url);
 });
 
+// --- SINCRONIZACIÓN CON BASE DE DATOS (☁️ btn-sync-db) ---
+document.getElementById('btn-sync-db').addEventListener('click', async () => {
+    if (!currentApiProject || !currentApiProject.id) {
+        alert('Error: No hay ningún proyecto cargado.');
+        return;
+    }
+
+    // 1. Ensamblaje Inverso en RAM
+    const sceneBlocks = document.querySelectorAll('.scene-text-block');
+    const payload = [];
+
+    sceneBlocks.forEach(block => {
+        const sceneId = block.getAttribute('data-scene-id');
+        if (!sceneId) return;
+
+        // Clonación aséptica
+        const clone = block.cloneNode(true);
+        const marks = clone.querySelectorAll('mark.highlight');
+
+        // Transformación visual a datos puros
+        marks.forEach(mark => {
+            const cleanText = mark.innerText || mark.textContent;
+            const textNode = document.createTextNode(`[${cleanText}]`);
+            mark.replaceWith(textNode);
+        });
+
+        // Normalización
+        const finalScript = clone.textContent.replace(/\s+/g, ' ').trim();
+        payload.push({ scene_id: sceneId, new_text: finalScript });
+    });
+
+    if (payload.length === 0) {
+        alert('No se detectaron escenas para sincronizar.');
+        return;
+    }
+
+    // 2. Transmisión a la API con Feedback en UI
+    const btn = document.getElementById('btn-sync-db');
+    const originalIcon = btn.innerHTML;
+
+    try {
+        btn.innerHTML = '⏳';
+        btn.disabled = true;
+
+        const res = await fetch(`/api/projects/${currentApiProject.id}/prompter_sync`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+            alert(`✅ Sincronización exitosa: ${data.message}`);
+        } else {
+            alert(`❌ Error del servidor: ${data.detail || 'Fallo desconocido'}`);
+        }
+    } catch (err) {
+        console.error('[Prompter Sync Error]', err);
+        alert('❌ Error de red al intentar contactar con el servidor.');
+    } finally {
+        btn.innerHTML = originalIcon;
+        btn.disabled = false;
+    }
+});
+
 // --- SORTING DINÁMICO DE TARJETAS ---
 function applyCurrentSorting() {
     const mode = document.getElementById('sidebar-sorter').value;
