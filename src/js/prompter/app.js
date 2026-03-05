@@ -355,6 +355,20 @@ document.getElementById('btn-clear').addEventListener('click', async () => {
 });
 
 let debounceTimer;
+textContainer.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+        const selection = window.getSelection();
+        if (selection.rangeCount > 0) {
+            const node = selection.startContainer;
+            const element = node.nodeType === 3 ? node.parentNode : node;
+            if (element.closest('mark.highlight')) {
+                e.preventDefault();
+                document.execCommand('insertText', false, '\n');
+            }
+        }
+    }
+});
+
 textContainer.addEventListener('input', () => {
     updateGlobalStats();
     const selection = window.getSelection();
@@ -419,7 +433,14 @@ textContainer.addEventListener('mouseup', function () {
                 return header.innerText || header.textContent;
             }
         }
-        return '';
+        // Fallback robusto: buscar el último header disponible antes de este punto
+        const allHeaders = Array.from(document.querySelectorAll('#text-container div[contenteditable="false"]'));
+        for (let i = allHeaders.length - 1; i >= 0; i--) {
+            if (allHeaders[i].compareDocumentPosition(element) & Node.DOCUMENT_POSITION_FOLLOWING) {
+                return allHeaders[i].innerText || allHeaders[i].textContent;
+            }
+        }
+        return allHeaders.length > 0 ? allHeaders[allHeaders.length - 1].innerText : 'TARJETA NUEVA • Sin Metadatos';
     };
 
     // 2. Escaneo de rango extendido (Origen y Destino)
@@ -530,6 +551,15 @@ document.getElementById('btn-sync-db').addEventListener('click', async () => {
         await sysDialog({ title: 'Error', message: 'No hay ningún proyecto cargado.', isAlert: true, icon: '❌' });
         return;
     }
+
+    const confirmed = await sysDialog({
+        title: 'Confirmar Sincronización',
+        message: 'Vas a enviar los cambios actuales a la Base de Datos. Esto sobrescribirá el texto guardado.<br><br>¿Continuar?',
+        type: 'confirm',
+        confirmLabel: 'Sobrescribir DB',
+        icon: '☁️'
+    });
+    if (!confirmed) return;
 
     // 1. Ensamblaje Inverso en RAM
     const sceneBlocks = document.querySelectorAll('.scene-text-block');

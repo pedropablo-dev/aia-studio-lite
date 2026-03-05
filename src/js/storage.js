@@ -105,11 +105,11 @@ async function saveState() {
 
             const { confirmed } = await sysDialog({
                 icon: '⚠️',
-                title: 'Proyecto Desactualizado',
-                message: 'Se han detectado cambios en el Prompter que no tienes en esta ventana.<br><br>¿Qué deseas hacer?',
+                title: 'Conflicto de Versión',
+                message: 'Se han detectado cambios recientes en el guion guardado en la base de datos realizados desde el Prompter.<br><br>El texto actual de tus tarjetas está desactualizado.<br><br><b>¿Qué quieres hacer?</b>',
                 type: 'confirm',
-                confirmLabel: 'Recargar del Prompter',
-                cancelLabel: 'Forzar (Sobrescribir Prompter)',
+                confirmLabel: 'Actualizar (Sobrescribir Tarjetas)',
+                cancelLabel: 'Forzar (Sobrescribir Base de Datos)',
                 confirmClass: 'btn-accent'
             });
 
@@ -126,7 +126,7 @@ async function saveState() {
                 try {
                     await liteSaveProjectApi(payload);
                     ProjectState.lastKnownUpdatedAt = new Date().toISOString();
-                    showToast("🔄 Guardado Forzado: Prompter sobrescrito.");
+                    showToast("⚠️ Base de datos sobrescrita con la versión del Builder");
                 } catch (e) {
                     showDbSyncWarning();
                 }
