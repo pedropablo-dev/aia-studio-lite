@@ -612,6 +612,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const textarea = document.getElementById('modal-text');
         if (typeof window.wrapTextWithBrackets === 'function') window.wrapTextWithBrackets(textarea);
     });
+    document.getElementById('modal-text')?.addEventListener('input', (e) => {
+        if (typeof currentEditingId !== 'undefined' && currentEditingId) {
+            const scene = scenes.find(s => s.id === currentEditingId);
+            if (scene) scene.script = e.target.value;
+        }
+    });
     document.getElementById('btn-close-media-config-x')?.addEventListener('click', () => { document.getElementById('media-config-modal').style.display = 'none'; });
     document.getElementById('btn-close-media-config-done')?.addEventListener('click', () => { document.getElementById('media-config-modal').style.display = 'none'; });
 

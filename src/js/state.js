@@ -149,6 +149,18 @@ export class ProjectState {
         if (typeof window.renderChecklist === 'function') window.renderChecklist();
         if (typeof window.calculateTotalTime === 'function') window.calculateTotalTime();
         if (typeof window.updateLayoutWidth === 'function') window.updateLayoutWidth();
+
+        const editModal = document.getElementById('edit-modal');
+        if (editModal && editModal.style.display === 'flex' && this.currentEditingId) {
+            const activeScene = this.scenes.find(s => s.id === this.currentEditingId);
+            if (activeScene) {
+                const textarea = document.getElementById('modal-text');
+                if (textarea) {
+                    textarea.value = activeScene.script;
+                    textarea.focus();
+                }
+            }
+        }
     }
 
     undo() {
