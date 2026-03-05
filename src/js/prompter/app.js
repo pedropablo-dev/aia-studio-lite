@@ -7,6 +7,34 @@ import { loadFromLocal, saveToLocal } from './storage.js';
 import { renderSidebar, deleteCard, updateGlobalStats } from './ui-renderer.js';
 import { startPrompter, exitPrompter, openJumpMenu, closeJumpMenu, toggleFontSlider, handlePrompterInput, nextCard, prevCard, handleKeydown, updateFontSize, cycleAlignment, toggleCompleted } from './prompter-engine.js';
 import { historyManager } from './history-manager.js';
+function sysDialog({ title = '', message = '', icon = '❓', confirmLabel = 'Aceptar', cancelLabel = 'Cancelar', isAlert = false } = {}) {
+    return new Promise(resolve => {
+        const overlay = document.getElementById('sys-dialog-overlay');
+        document.getElementById('sys-dialog-icon').textContent = icon;
+        document.getElementById('sys-dialog-title').textContent = title;
+        document.getElementById('sys-dialog-message').innerHTML = message;
+        const btnsEl = document.getElementById('sys-dialog-btns');
+        btnsEl.innerHTML = '';
+
+        const close = (confirmed) => { overlay.style.display = 'none'; resolve(confirmed); };
+
+        if (!isAlert) {
+            const cancelBtn = document.createElement('button');
+            cancelBtn.textContent = cancelLabel;
+            cancelBtn.style.cssText = 'padding:8px 16px; background:transparent; border:1px solid #555; color:#ccc; border-radius:4px; cursor:pointer;';
+            cancelBtn.onclick = () => close(false);
+            btnsEl.appendChild(cancelBtn);
+        }
+
+        const confirmBtn = document.createElement('button');
+        confirmBtn.textContent = confirmLabel;
+        confirmBtn.style.cssText = 'padding:8px 16px; background:#b026ff; border:none; color:#fff; border-radius:4px; cursor:pointer; font-weight:bold;';
+        confirmBtn.onclick = () => close(true);
+        btnsEl.appendChild(confirmBtn);
+
+        overlay.style.display = 'flex';
+    });
+}
 
 const textContainer = document.getElementById('text-container');
 const cardsList = document.getElementById('cards-list');
@@ -56,7 +84,13 @@ document.getElementById('api-project-select').addEventListener('change', async (
 
     // --- Guardarraíl: proteger tarjetas en proceso ---
     if (!isAutoLoading && state.cardsData.length > 0) {
-        if (!window.confirm('Cambiar de proyecto eliminará las tarjetas actuales. ¿Continuar?')) {
+        const confirmed = await sysDialog({
+            title: '¿Cambiar Proyecto?',
+            message: 'Cambiar de proyecto eliminará las tarjetas actuales.',
+            confirmLabel: 'Cambiar',
+            icon: '⚠️'
+        });
+        if (!confirmed) {
             projectSel.value = lastProjectId;
             return;
         }
@@ -263,7 +297,7 @@ document.getElementById('speaker-modal-list').addEventListener('change', (e) => 
 // --- EVENTOS DEL PANEL PRINCIPAL (SETUP) ---
 
 document.getElementById('btn-undo').addEventListener('click', () => { historyManager.undoHistory(); });
-document.getElementById('btn-refresh').addEventListener('click', () => {
+document.getElementById('btn-refresh').addEventListener('click', async () => {
     // Leer hablantes marcados en la modal
     const checked = Array.from(
         document.querySelectorAll('#speaker-modal-list input[type=checkbox]:checked')
@@ -272,7 +306,13 @@ document.getElementById('btn-refresh').addEventListener('click', () => {
 
     // Guardarraíl: confirmar borrado de tarjetas actuales
     if (state.cardsData.length > 0) {
-        if (!window.confirm('Recargar el guion eliminará todas las tarjetas y marcas actuales. ¿Continuar?')) return;
+        const confirmed = await sysDialog({
+            title: '¿Recargar Guion?',
+            message: 'Se eliminarán todas las tarjetas y marcas de lectura actuales.',
+            confirmLabel: 'Recargar',
+            icon: '🔄'
+        });
+        if (!confirmed) return;
     }
 
     // Limpieza total del estado (reset a guión limpio sin marks)
@@ -284,10 +324,16 @@ document.getElementById('btn-refresh').addEventListener('click', () => {
     renderSelectedScenes(checked);
     isAutoLoading = false;
 });
-document.getElementById('btn-clear').addEventListener('click', () => {
+document.getElementById('btn-clear').addEventListener('click', async () => {
     // --- Guardarraíl: confirmar borrado total ---
     if (state.cardsData.length > 0) {
-        if (!window.confirm('¿Borrar todo el progreso actual? Esta acción no se puede deshacer.')) return;
+        const confirmed = await sysDialog({
+            title: '¿Limpiar Todo?',
+            message: 'Borrarás todo el texto actual y la configuración temporal de esta sesión.',
+            confirmLabel: 'Borrar Progreso',
+            icon: '🗑️'
+        });
+        if (!confirmed) return;
     }
     state.originalTextContent = '';
     textContainer.innerHTML = '';
@@ -457,7 +503,7 @@ document.addEventListener('keydown', handleKeydown);
 
 // --- EXPORTACIÓN JSON (💾 btn-save) ---
 document.getElementById('btn-save').addEventListener('click', () => {
-    if (state.cardsData.length === 0) { alert('No hay tarjetas para exportar.'); return; }
+    if (state.cardsData.length === 0) { sysDialog({ title: 'Exportación fallida', message: 'No hay tarjetas para exportar.', isAlert: true, icon: '❌' }); return; }
     const activeSpeakers = Array.from(
         document.querySelectorAll('#speaker-modal-list input[type=checkbox]:checked')
     ).map(cb => cb.value);
@@ -481,7 +527,7 @@ document.getElementById('btn-save').addEventListener('click', () => {
 // --- SINCRONIZACIÓN CON BASE DE DATOS (☁️ btn-sync-db) ---
 document.getElementById('btn-sync-db').addEventListener('click', async () => {
     if (!currentApiProject || !currentApiProject.id) {
-        alert('Error: No hay ningún proyecto cargado.');
+        await sysDialog({ title: 'Error', message: 'No hay ningún proyecto cargado.', isAlert: true, icon: '❌' });
         return;
     }
 
@@ -510,7 +556,7 @@ document.getElementById('btn-sync-db').addEventListener('click', async () => {
     });
 
     if (payload.length === 0) {
-        alert('No se detectaron escenas para sincronizar.');
+        await sysDialog({ title: 'Sin cambios', message: 'No se detectaron escenas modificadas para sincronizar.', isAlert: true, icon: 'ℹ️' });
         return;
     }
 
@@ -531,15 +577,60 @@ document.getElementById('btn-sync-db').addEventListener('click', async () => {
         const data = await res.json();
 
         if (res.ok) {
-            alert(`✅ Sincronización exitosa: ${data.message}`);
+            await sysDialog({ title: 'Sincronización Exitosa', message: data.message, isAlert: true, icon: '✅' });
         } else {
-            alert(`❌ Error del servidor: ${data.detail || 'Fallo desconocido'}`);
+            await sysDialog({ title: 'Error de Sincronización', message: (data.detail || 'Fallo desconocido'), isAlert: true, icon: '❌' });
         }
     } catch (err) {
         console.error('[Prompter Sync Error]', err);
-        alert('❌ Error de red al intentar contactar con el servidor.');
+        await sysDialog({ title: 'Error de Conexión', message: 'No se pudo contactar con el servidor local.', isAlert: true, icon: '🔌' });
     } finally {
         btn.innerHTML = originalIcon;
+        btn.disabled = false;
+    }
+});
+
+// --- DESCARGAR CAMBIOS (📥 btn-pull-db) ---
+document.getElementById('btn-pull-db').addEventListener('click', async () => {
+    if (!currentApiProject || !currentApiProject.id) {
+        await sysDialog({ title: 'Error', message: 'No hay ningún proyecto cargado para actualizar.', isAlert: true, icon: '❌' });
+        return;
+    }
+
+    const confirmed = await sysDialog({
+        title: '¿Descargar Cambios?',
+        message: 'Esto actualizará el guion con la última versión de la base de datos.<br><br><span style="color:#ffcc00">⚠️ Advertencia:</span> Si las tarjetas originales fueron borradas o alteradas sustancialmente en el Builder, podrías perder las marcas temporales vinculadas a esta sesión.',
+        confirmLabel: 'Descargar y Mezclar',
+        icon: '📥'
+    });
+
+    if (!confirmed) return;
+
+    try {
+        const btn = document.getElementById('btn-pull-db');
+        const originalIcon = btn.innerHTML;
+        btn.innerHTML = '⏳';
+        btn.disabled = true;
+
+        const response = await fetch(`/api/projects/${currentApiProject.id}`);
+        if (!response.ok) throw new Error('Fallo al obtener proyecto de la BD');
+
+        const freshProjectData = await response.json();
+        currentApiProject = freshProjectData; // Rehidratación del núcleo
+
+        // Bloqueamos las alertas de destrucción temporal mientras reingresamos las escenas
+        isAutoLoading = true;
+        renderSelectedScenes(activeSpeakers);
+        isAutoLoading = false;
+
+        await sysDialog({ title: 'Sincronización Completada', message: 'Guion actualizado con éxito.', isAlert: true, icon: '✅' });
+
+    } catch (err) {
+        console.error('[Pull Database Error]', err);
+        await sysDialog({ title: 'Error de Red', message: 'Fallo al descargar los cambios. Verifica la conexión con el motor local.', isAlert: true, icon: '🔌' });
+    } finally {
+        const btn = document.getElementById('btn-pull-db');
+        btn.innerHTML = '📥';
         btn.disabled = false;
     }
 });
