@@ -18,9 +18,20 @@ window.onload = async () => {
         }
     }, { passive: false });
 
-    // ATOMIC PERSISTENCE GLOBALS (Debounced 3s inactivity)
-    document.addEventListener('input', () => {
+    // ATOMIC PERSISTENCE GLOBALS (Debounced)
+    let historyDebounceTimer;
+    document.addEventListener('input', (e) => {
+        // 1. Guardado en BD local (3s)
         if (typeof window.debouncedSaveState === 'function') window.debouncedSaveState();
+
+        // 2. Micro-historial de texto para Undo/Redo Unificado (800ms)
+        const tag = e.target.tagName;
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || e.target.isContentEditable) {
+            clearTimeout(historyDebounceTimer);
+            historyDebounceTimer = setTimeout(() => {
+                if (typeof window.saveToHistory === 'function') window.saveToHistory();
+            }, 800);
+        }
     });
     document.addEventListener('change', () => {
         if (typeof window.debouncedSaveState === 'function') window.debouncedSaveState();

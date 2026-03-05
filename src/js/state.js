@@ -152,6 +152,7 @@ export class ProjectState {
     }
 
     undo() {
+        if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
         if (this.undoStack.length === 0) return;
         this.redoStack.push({
             scenes: JSON.parse(JSON.stringify(this.scenes)),
@@ -164,6 +165,7 @@ export class ProjectState {
     }
 
     redo() {
+        if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
         if (this.redoStack.length === 0) return;
 
         const currentState = {
