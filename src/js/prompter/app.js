@@ -460,8 +460,64 @@ textContainer.addEventListener('mouseup', function () {
     historyManager.pushHistory();
 });
 
+textContainer.addEventListener('click', (e) => {
+    if (e.target.tagName === 'MARK') {
+        const cardId = e.target.id.replace('mark-', '');
+        const textArea = document.querySelector(`textarea[data-id="${cardId}"]`);
+        if (textArea) {
+            textArea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            textArea.focus();
+        }
+    }
+});
+
 // Delegación de eventos para la lista de tarjetas
 cardsList.addEventListener('click', (e) => {
+    const btnInsert = e.target.closest('.btn-insert-below');
+    if (btnInsert) {
+        const cardItem = btnInsert.closest('.card-item');
+        const currentId = parseInt(cardItem.dataset.id);
+        const currentIndex = state.cardsData.findIndex(c => c.id === currentId);
+        if (currentIndex === -1) return;
+
+        const currentMark = document.getElementById(`mark-${currentId}`);
+        if (!currentMark) return;
+
+        // 1. Generar nueva tarjeta
+        const newId = Date.now();
+        const newCard = {
+            id: newId,
+            text: 'Nueva frase...',
+            metadata: state.cardsData[currentIndex].metadata,
+            completed: false
+        };
+
+        // 2. Inserción Segura en el DOM (Panel Izquierdo)
+        const newMark = document.createElement('mark');
+        newMark.className = `highlight c${state.colorIndex % 4}`;
+        newMark.id = `mark-${newId}`;
+        newMark.textContent = newCard.text;
+        state.colorIndex++;
+
+        currentMark.after(newMark);
+        currentMark.after(document.createTextNode('\n')); // Separador visual
+
+        // 3. Actualizar memoria y UI
+        state.cardsData.splice(currentIndex + 1, 0, newCard);
+        saveToLocal();
+        renderSidebar();
+        historyManager.pushHistory();
+
+        // 4. Auto-Focus en la nueva tarjeta creada
+        setTimeout(() => {
+            const newTextArea = document.querySelector(`textarea[data-id="${newId}"]`);
+            if (newTextArea) {
+                newTextArea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                newTextArea.select();
+            }
+        }, 50);
+    }
+
     const btnDelete = e.target.closest('.btn-delete');
     if (btnDelete) {
         const cardItem = btnDelete.closest('.card-item');
@@ -568,12 +624,12 @@ document.getElementById('btn-sync-db').addEventListener('click', async () => {
         // Transformación visual a datos puros
         marks.forEach(mark => {
             const cleanText = mark.innerText || mark.textContent;
-            const textNode = document.createTextNode(`[${cleanText}]`);
+            const textNode = document.createTextNode(`\n[${cleanText}]`);
             mark.replaceWith(textNode);
         });
 
         // Normalización
-        const finalScript = clone.textContent.replace(/\s+/g, ' ').trim();
+        const finalScript = clone.textContent.replace(/[ \t]+/g, ' ').replace(/\n\s*\n/g, '\n').trim();
         payload.push({ scene_id: sceneId, new_text: finalScript });
     });
 

@@ -72,6 +72,7 @@ export function renderSidebar() {
             <span>${card.text.length} car. | ~${timeStr}</span>
             <div style="display: flex; gap: 8px; align-items: center;">
                 <button class="${checkClass}" data-id="${card.id}" style="${checkStyle}" title="Marcar como completado">✓</button>
+                <button class="btn-insert-below" style="background:transparent; border:1px solid #444; color:#aaa; cursor:pointer; padding:2px 8px; border-radius:4px; font-size:0.75rem;" title="Añadir tarjeta debajo">↳ Añadir</button>
                 <button class="btn-delete">Eliminar</button>
             </div>
         </div>`;
