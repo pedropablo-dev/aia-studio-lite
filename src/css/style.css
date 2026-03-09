@@ -1826,3 +1826,8 @@ footer {
 .custom-dialog-buttons .btn-cancel:hover { background: #555; }
 .custom-dialog-buttons .btn-confirm { background: #005bbd; color: white; }
 .custom-dialog-buttons .btn-confirm:hover { background: #006ce0; }
+
+/* Bloqueo del focus ring nativo del navegador al usar atajos de teclado */
+*:focus-visible, textarea:focus, input:focus, button:focus {
+    outline: none !important;
+}

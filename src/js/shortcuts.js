@@ -20,6 +20,23 @@ document.addEventListener('keydown', (e) => {
         if (!e.altKey && !e.ctrlKey && !e.metaKey) return;
     }
 
+    if (e.altKey && e.key.toLowerCase() === 'w') {
+        const el = document.activeElement;
+        if (el && el.tagName === 'TEXTAREA') {
+            e.preventDefault();
+            const s = el.selectionStart, d = el.selectionEnd, v = el.value;
+            if (s !== d) {
+                el.value = v.substring(0, s) + '[' + v.substring(s, d) + ']' + v.substring(d);
+                el.selectionStart = s + 1; el.selectionEnd = d + 1;
+            } else {
+                el.value = v.substring(0, s) + '[]' + v.substring(d);
+                el.selectionStart = el.selectionEnd = s + 1;
+            }
+            el.dispatchEvent(new Event('input', { bubbles: true }));
+            return;
+        }
+    }
+
     // --- ACCIONES VINCULADAS AL PROYECTO ---
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'o') {
         e.preventDefault();

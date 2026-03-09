@@ -231,7 +231,8 @@ function openShortcutsModal() {
                 { keys: ["Ctrl", "D"], desc: "Duplicar Escena Seleccionada" },
                 { keys: ["Supr"], desc: "Eliminar Escena" },
                 { keys: ["Shift", "O"], desc: "Abrir Modal de Edición (Escena Seleccionada)" },
-                { keys: ["Shift", "Espacio"], desc: "Alternar Check de Estado" }
+                { keys: ["Shift", "Espacio"], desc: "Alternar Check de Estado" },
+                { keys: ["Alt", "W"], desc: "Envolver en corchetes" }
             ]
         },
         {
