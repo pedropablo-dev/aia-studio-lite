@@ -2,8 +2,6 @@
 
 **AIA Studio Lite** es un conjunto de herramientas de preproducción de vídeo ligero y de ejecución local. Elimina todas las dependencias de IA y bases de datos pesadas del AIA Studio original, conservando únicamente el constructor central, un gestor de archivos jerárquico con soporte CRUD completo y un explorador de medios impulsado por FFmpeg.
 
-> **Status: Grado Producción (Local)** — Optimizado para sesiones prolongadas de 12+ horas, proyectos de 5000+ escenas, y discos llenos. Puntuación de auditoría interna: **10/10** (entorno local monousuario).
-
 ## 👤 Autoría y Créditos
 Este software ha sido desarrollado por **Pedro Pablo Miras**, integrante del equipo de **Aplica la IA**. 
 👉 **Conoce más en nuestro Canal de YouTube**: [Aplica la IA](https://www.youtube.com/@Aplica_la_IA)
