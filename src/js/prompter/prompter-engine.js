@@ -32,6 +32,7 @@ export function startPrompter() {
     setupView.style.display = 'none'; prompterView.style.display = 'block';
     prompterText.style.textAlign = state.textAlignment || 'center';
     state.currentCardIndex = 0; renderPrompterCard();
+    prompterText.blur();
 }
 
 export function exitPrompter() {
