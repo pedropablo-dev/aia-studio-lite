@@ -42,3 +42,6 @@ Thumbs.db
 # --- Logs y Registros ---
 *.log
 app.log
+# Configuraciones de IA / Antigravity
+.agent/
+.agents/
